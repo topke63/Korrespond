@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2026 topke <topke63@gmail.com>
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 cmake_minimum_required(VERSION 3.22)
 
 project(plasma-mail VERSION 0.1.0 LANGUAGES CXX)
@@ -25,10 +28,14 @@ find_package(Qt6Keychain REQUIRED)
 
 add_definitions(-DTRANSLATION_DOMAIN=\"plasma-mail\")
 
+# Only build the main library for now
 add_subdirectory(src)
 
-if(BUILD_TESTING AND EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/autotests/CMakeLists.txt)
-    add_subdirectory(autotests)
+# Only build tests if they exist and BUILD_TESTING is enabled
+if(BUILD_TESTING)
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/autotests/CMakeLists.txt)
+        add_subdirectory(autotests)
+    endif()
 endif()
 
 feature_summary(WHAT ALL FATAL_ON_MISSING_REQUIRED_PACKAGES)

@@ -30,6 +30,149 @@
 4. Compose / reply / forward over SMTP (KPim6::SMTP is installed).
 5. IDLE, notifications, multiple accounts, background sync timer.
 
+## Build plan
+
+### Toolchain (installed on this machine, CachyOS)
+| Tool | Version | Used for |
+|---|---|---|
+| CMake | 4.4 | Build system (min. 3.22 in `CMakeLists.txt`) |
+| Ninja | system | Generator (`-G Ninja`) |
+| GCC | 16.2 | Default compiler, C++20 |
+| Clang | 23.1 | Optional second compiler; `clang-format` for T44 |
+| extra-cmake-modules (ECM) | 6.30 | KDE CMake settings, `ecm_add_test`, sanitizers, clang-format target |
+| qt6-tools / `qmllint` | 6.11 | QML linting (`/usr/bin/qmllint`) |
+| gdb | 18.1 | Debugging |
+| clazy, valgrind | **not installed** | Optional. Use ASan/UBSan (T43 preset) instead of valgrind. `sudo pacman -S clazy` if wanted. |
+
+### Libraries
+| Package (Arch) | Version | CMake package → target | What we use it for | First task |
+|---|---|---|---|---|
+| qt6-base | 6.11 | `Qt6` → `Qt6::Core`, `Gui`, `Network`, `Sql`, `Test` | Core types, TLS sockets, SQLite index, unit tests | T1 |
+| qt6-declarative | 6.11 | `Qt6::Qml`, `Quick`, `QuickControls2` | QML UI, `qt_add_qml_module` | T16 |
+| qt6-webengine | 6.11 | `Qt6::WebEngineQuick` | Sandboxed HTML message view | T19/T23 |
+| kirigami | 6.30 | `KF6::Kirigami` (QML import `org.kde.kirigami`) | Plasma-native window, pages, drawer, forms | T19 |
+| kirigami-addons | 1.15 | QML import `org.kde.kirigamiaddons.formcard` (optional) | Date picker for "Import mail from" (T41), if plain controls are too clumsy | T41 |
+| qqc2-desktop-style | 6.30 | runtime only | Native Breeze look for QtQuick Controls | T19 |
+| ki18n | 6.30 | `KF6::I18n`, `KF6::I18nQml` | Translatable strings in C++ and QML | T10 |
+| kcoreaddons | 6.30 | `KF6::CoreAddons` | `KAboutData`, `KJob` (base of KIMAP jobs), `KFormat` byte sizes | T16 |
+| kconfig | 6.30 | `KF6::ConfigCore` | `plasmamailrc` account + storage settings | T1 |
+| kmime | 6.30 | `KF6::Mime` | Parse messages, headers, body parts, attachments | T5 |
+| kimap | 26.08 | `KPim6IMAP` → `KPim6::IMAP` | IMAP session, login, LIST, SELECT, SEARCH, FETCH, STORE | T5 |
+| libsasl (cyrus) | 2.1.28 | runtime, via KIMAP | Login mechanisms (plain, login) | T5 |
+| qtkeychain-qt6 | 0.17 | `Qt6Keychain` → `Qt6Keychain::Qt6Keychain` | Store the app password in KWallet / Secret Service | T14 |
+| sqlite | 3.53 | runtime, via Qt `QSQLITE` driver | Local message index | T28 |
+| ksmtp, kmailtransport | 26.08 | `KPim6SMTP` | **Not in milestone 1** (sending, milestone 4) | — |
+| qt6-networkauth, libkgapi (`libkdexoauth2` SASL plugin) | — | `Qt6::NetworkAuth` | **Not in milestone 1** (Gmail/Outlook OAuth2, milestones 2–3) | — |
+
+Not used on purpose: Akonadi (too heavy for a simple client), KMail's MessageViewer/MessageComposer
+(widget-based, pulls in Akonadi), Gmail REST API (IMAP covers all providers with one code path).
+
+### Architecture
+```
+ ┌───────────────────────── plasma-mail (executable) ─────────────────────────┐
+ │  QML (src/qml): Main · AccountSetupPage · MessageListPage · MessagePage ·   │
+ │                 StorageSettingsPage            ── Kirigami, WebEngineView    │
+ │        ▲ properties / signals          │ Q_INVOKABLE calls                   │
+ │  MailController (src/app, QML singleton) ── the only class QML talks to     │
+ └────────┬───────────────────────────────┬────────────────────────────────────┘
+          │ owns                          │ owns
+ ┌────────▼──────── plasmamail_models ────┴───┐
+ │ FolderModel · MessageListModel (QtCore)    │
+ └────────┬───────────────────────────────────┘
+          │ uses value types (FolderInfo, MessageSummary)
+ ┌────────▼──────────────── plasmamail_engine (no UI) ──────────────────────────┐
+ │ Account · StorageSettings  ── KConfig (plasmamailrc)                          │
+ │ SecretStore                ── QtKeychain (KWallet / Secret Service)           │
+ │ ImapClient                 ── KIMAP Session + jobs over TLS ── IMAP server    │
+ │ folderutils · messagerenderer (KMime → safe HTML, attachment names)           │
+ │ MessageStore               ── QtSql SQLite index + .eml files                 │
+ │ retention · SyncManager    ── ImapClient + MessageStore + StorageSettings     │
+ └───────────────────────────────────────────────────────────────────────────────┘
+```
+Rules: the engine never includes QML/Quick headers; models never talk to the network;
+QML never calls the engine directly. Everything is asynchronous (signals), nothing blocks the
+GUI thread except small SQLite queries.
+
+### Main data flows
+- **Startup**: `Account::load()` → `SecretStore::readPassword` → `ImapClient::setAccount` →
+  `listFolders` → `FolderModel` → auto-select Inbox → `fetchHeaders(Inbox, 50)` →
+  `MessageListModel`. If storage is on: list from `MessageStore` first, then `SyncManager::syncAll`.
+- **Open message**: local `.eml` from `MessageStore` if present, else `ImapClient::fetchMessage`
+  → `messageBodyHtml` + `attachmentNames` → controller properties → `MessagePage`
+  (`WebEngineView.loadHtml`). If unread: `markSeen` on server, model and store.
+- **Sync** (per folder): SELECT (check UIDVALIDITY) → `SEARCH SINCE <cutoff>` → skip stored UIDs
+  → fetch newest first in batches of 20 within the size budget → `MessageStore::addMessage`
+  → `applyRetention`.
+
+### Directory layout (end of milestone 1)
+```
+CMakeLists.txt  CMakePresets.json  .clang-format  PLAN.md
+src/CMakeLists.txt
+src/engine/   account · storagesettings · secretstore · folderutils · imapclient
+              messagerenderer · messagestore · retention · syncmanager
+src/models/   foldermodel · messagelistmodel
+src/app/      main.cpp · mailcontroller
+src/qml/      Main · AccountSetupPage · MessageListPage · MessagePage · StorageSettingsPage
+autotests/    one <name>test.cpp per engine/model unit
+tools/        imapprobe.cpp (manual IMAP checks, not installed)
+```
+
+### Build, run, test
+```fish
+# configure
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug
+cmake --build build                         # everything
+cmake --build build --target plasmamail_engine
+ctest --test-dir build --output-on-failure  # all tests; -R <name> for one
+build/bin/plasma-mail                       # run the app
+qmllint -I build/src src/qml/*.qml          # lint QML (after T19; T19 notes the exact import path)
+
+# run against a throw-away profile (doesn't touch your real config/mail)
+env XDG_CONFIG_HOME=(mktemp -d) XDG_DATA_HOME=(mktemp -d) build/bin/plasma-mail
+
+# protocol debugging (prints IMAP traffic; never paste its output publicly: it has your mail)
+env QT_LOGGING_RULES="org.kde.pim.kimap*=true" build/bin/plasma-mail
+
+# sanitizer build (after T43)
+cmake --preset asan && cmake --build --preset asan && ctest --preset asan
+```
+
+### Where data lives at runtime
+| What | Where |
+|---|---|
+| Account + storage settings | `~/.config/plasmamailrc` |
+| App password | system keychain, service `plasma-mail`, key = email address |
+| Local mail index | `~/.local/share/plasma-mail/mail.sqlite` |
+| Stored messages | `~/.local/share/plasma-mail/messages/…/*.eml` |
+| Test runs | Qt test-mode paths (`~/.qttest/…`) — never the real ones |
+
+### Security rules (apply to every task)
+- Only encrypted connections: implicit TLS (993/465) or STARTTLS. Never `Unencrypted`.
+  Certificate errors fail the connection (no "ignore" button in milestone 1).
+- Passwords: never logged, never written to config, never in command-line arguments.
+- HTML mail: JavaScript off, remote images off, CSP meta tag, links open in the external
+  browser, `loadHtml` with base URL `about:blank`.
+- The app never deletes or moves mail on the server in milestone 1 (only `\Seen` is set).
+
+### Execution order (waves)
+Tasks in the same wave can run in parallel once the earlier waves are done.
+| Wave | Tasks |
+|---|---|
+| 0 | T1 ✔, T2 ✔ |
+| 1 | T3, T7, T14, T26, T43, T44 |
+| 2 | T4, T5, T8, T10, T15, T27 |
+| 3 | T6, T9, T11, T12, T16, T28, T34 |
+| 4 | T13, T17, T19, T29, T35 |
+| 5 | T18, T20, T21, T22, T30 |
+| 6 | T23, T31 |
+| 7 | T24 (manual), T32 |
+| 8 | T33, T36 |
+| 9 | T37 |
+| 10 | T38 (manual), T39 |
+| 11 | T40, T41 |
+| 12 | T42 (manual) |
+| 13 | T25 (global verify) |
+
 ## Conventions (read before any task)
 - Build dir is `build/` (git-ignored). Configure once with
   `cmake -S . -B build -G Ninja`; later builds just `cmake --build build`.
@@ -41,6 +184,13 @@
   `src/app/` + `src/qml/`, QML module URI `PlasmaMail`).
 - Adding a new source file to the matching `CMakeLists.txt` does not count toward a task's
   1–2 file limit, and a `.h`/`.cpp` pair counts as one file.
+- Every source, CMake and QML file starts with an SPDX header (`//` comments in C++/QML,
+  `#` in CMake):
+  `SPDX-FileCopyrightText: 2026 topke <topke63@gmail.com>` and
+  `SPDX-License-Identifier: GPL-2.0-or-later`. The licence text is in
+  `LICENSES/GPL-2.0-or-later.txt`.
+- Build only in `build/` (or `build-*/` presets). Never run `cmake .` in the source tree.
+- Include project headers by file name (`"folderutils.h"`), not `"engine/…"`.
 - Tests live in `autotests/`, use QTest, are added with ECM's `ecm_add_test`, and must call
   `QStandardPaths::setTestModeEnabled(true)` before touching config.
 - Installed library facts (verified on this machine, Qt 6.11, KF 6.30, KPim 26.08):
@@ -59,8 +209,7 @@
     root CMake).
   - QtWebEngine in QML needs `QtWebEngineQuick::initialize()` before the `QGuiApplication`
     is constructed.
-- Commit after each finished task: `T<n>: <title>` (git repo is initialized, nothing
-  committed yet).
+- Commit after each finished task: `T<n>: <title>`.
 - Local storage decisions:
   - Off by default. Settings per account, stored in `plasmamailrc` group `Storage`.
   - Settings: enabled; import start date (or "all mail"); keep-for = number + unit
@@ -105,7 +254,7 @@
   src/engine/imapclient.* and src/app/*model.* are still untracked and unbuilt.
 
 ### T2 — Test harness and `Account` unit test
-- status: todo
+- status: done
 - depends on: T1
 - parallel-safe with: T3, T7, T14
 - files: autotests/CMakeLists.txt, autotests/accounttest.cpp
@@ -114,10 +263,13 @@
 - output: `accounttest` checks: each preset fills correct hosts/ports, unknown provider returns
   false, `isValid` rules, save→load round trip, `remove()` clears it. Uses test mode paths.
 - verify: `cmake --build build && ctest --test-dir build -R accounttest --output-on-failure`
-- notes:
+- notes: Committed in c6da4f4 by another session. Re-verified 2026-10-08 after the file had been
+  deleted from the working tree (restored with `git restore`). `applyPreset` now clears host/port
+  fields first, so an unknown provider (incl. "custom") leaves them empty: callers must set custom
+  hosts *after* calling it.
 
 ### T3 — Folder helpers: `FolderInfo`, role detection, sorting
-- status: todo
+- status: done
 - depends on: T1
 - parallel-safe with: T2, T7, T14
 - files: src/engine/folderutils.h, src/engine/folderutils.cpp
@@ -129,7 +281,9 @@
   `void sortFolders(QList<FolderInfo> &)` (role order inbox, flagged, drafts, sent, archive,
   all, junk, trash, then others by path case-insensitively).
 - verify: `cmake --build build --target plasmamail_engine` succeeds.
-- notes:
+- notes: Committed in d745178 (that commit also contained the IMAP client, see T5). The
+  `folderutils.cpp` file was missing from src/CMakeLists.txt in that commit; added during the
+  2026-10-08 cleanup. Verified with `cmake --build build --target plasmamail_engine`.
 
 ### T4 — Unit test for folder helpers
 - status: todo
@@ -143,7 +297,7 @@
 - notes:
 
 ### T5 — `ImapClient` compiles against folder helpers
-- status: todo
+- status: done
 - depends on: T3
 - parallel-safe with: T4, T8, T10, T15
 - files: src/engine/imapclient.h, src/engine/imapclient.cpp
@@ -156,7 +310,9 @@
   `errorOccurred`. Review the draft against the KIMAP facts above; don't assume it is correct.
 - verify: `cmake --build build --target plasmamail_engine` succeeds with no warnings from our
   sources.
-- notes:
+- notes: Code arrived in the T3 commit (d745178); wired into src/CMakeLists.txt with KF6::Mime,
+  KPim6::IMAP, Qt6::Network (Qt6Keychain and Qt6::Sql are linked early for T14/T28). Builds with
+  no warnings. Known issue split out as T45 (one error per queued job after a failed login).
 
 ### T6 — `imap-probe` command-line tool for manual engine checks
 - status: todo
@@ -623,9 +779,49 @@
   still lists and opens messages.
 - notes:
 
+### T43 — CMake presets for debug, release and sanitizer builds
+- status: todo
+- depends on: T1
+- parallel-safe with: T3, T7, T14, T26, T44
+- files: CMakePresets.json, CMakeLists.txt
+- inputs: ECM module `ECMEnableSanitizers` (reads `ECM_ENABLE_SANITIZERS`).
+- output: configure/build/test presets `dev` (Debug, Ninja, `build/`), `release`
+  (RelWithDebInfo, `build-release/`), `asan` (Debug, `ECM_ENABLE_SANITIZERS="address;undefined"`,
+  `build-asan/`); root CMake includes `ECMEnableSanitizers`. Add `build-*/` to `.gitignore`.
+- verify: `cmake --preset asan && cmake --build --preset asan && ctest --preset asan` passes.
+- notes:
+
+### T44 — clang-format setup with KDE style
+- status: todo
+- depends on: T1
+- parallel-safe with: T3, T7, T14, T26, T43
+- files: CMakeLists.txt, .clang-format (generated)
+- inputs: ECM modules `KDEClangFormat` (`kde_clang_format(<files>)` adds target `clang-format`)
+  and `KDEGitCommitHooks` (`kde_configure_git_pre_commit_hook(CHECKS CLANG_FORMAT)`).
+- output: `cmake --build build --target clang-format` formats all `src/`, `autotests/`, `tools/`
+  C++ files; the KDE `.clang-format` file is generated into the source dir and committed;
+  pre-commit hook checks formatting.
+- verify: `cmake --build build --target clang-format && git diff --exit-code -- src autotests`
+  exits 0 after one formatting commit (run the target, commit, run again: no changes).
+- notes:
+
+### T45 — `ImapClient`: report a failed connection or login only once
+- status: todo
+- depends on: T5
+- parallel-safe with: T6–T15
+- files: src/engine/imapclient.{h,cpp}
+- inputs: found in the 2026-10-08 review: after `connectionFailed` or a failed `LoginJob`, every
+  job already queued on the session also emits `errorOccurred`, so the UI shows several
+  identical errors.
+- output: after a connection/login failure, the session is dropped and queued jobs' errors are
+  suppressed until the next request creates a new session; one `errorOccurred` per failure.
+- verify: `cmake --build build --target plasmamail_engine` succeeds; manual with `imap-probe`
+  (T6) and a wrong password prints exactly one error line.
+- notes:
+
 ### T25 — Global verify
 - status: todo
-- depends on: T1–T24, T26–T42
+- depends on: T1–T24, T26–T45
 - parallel-safe with: none
 - files: none
 - inputs: —

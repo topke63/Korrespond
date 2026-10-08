@@ -1,8 +1,5 @@
-/*
- * SPDX-FileCopyrightText: 2026 Free Software Foundation Europe e.V. <https://fsfe.org>
- *
- * SPDX-License-Identifier: BSD-2-Clause
- */
+// SPDX-FileCopyrightText: 2026 topke <topke63@gmail.com>
+// SPDX-License-Identifier: GPL-2.0-or-later
 
 #include <QStandardPaths>
 #include <QTest>

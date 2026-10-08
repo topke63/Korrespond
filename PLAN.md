@@ -1039,7 +1039,7 @@ body below. Message previews in the list (needs fetching body text) are out of s
   `org.kde.kirigamiaddons.components` `Avatar` (Kirigami 6 has no `Kirigami.Avatar`).
 
 ### T50 — Three-pane layout
-- status: todo
+- status: done
 - depends on: T49
 - parallel-safe with: none
 - files: src/qml/Main.qml, src/qml/MessageListPage.qml
@@ -1049,7 +1049,11 @@ body below. Message previews in the list (needs fetching body text) are out of s
   placeholder until a message is opened); on narrow windows clicking a row moves to the message
   column. Toolbar header style so each pane's title row lines up like one header bar.
 - verify: offscreen checks as in T19; screenshot with and without an open message reviewed.
-- notes:
+- notes: Done 2026-10-08. List column via `Kirigami.ColumnView` min/preferred/max width 20/28/40
+  grid units; MessagePage pushed once with `fillWidth` (Main.qml), `currentIndex` moves to it
+  on click. Changing folder no longer pops it (the controller clears the message). The default
+  ToolBar header style already lines up the title rows. Screenshot with real mail confirmed the
+  CSP blocks Yahoo's remote images and fonts (WebEngine logs each block as `js: Refused…`).
 
 ### T51 — Message list rows
 - status: todo

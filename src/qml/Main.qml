@@ -14,12 +14,19 @@ Kirigami.ApplicationWindow {
     // Shows account setup until an account exists, the mail view after.
     function showStartPage() {
         pageStack.clear();
-        pageStack.push(MailController.hasAccount ? mailPage : setupPage);
+        if (MailController.hasAccount) {
+            // Message list and message side by side; on narrow windows one at a time.
+            pageStack.push(mailPage);
+            pageStack.push(messagePage);
+            pageStack.currentIndex = 0;
+        } else {
+            pageStack.push(setupPage);
+        }
     }
 
     title: KI18n.i18nc("@title:window", "Plasma Mail")
-    width: Kirigami.Units.gridUnit * 50
-    height: Kirigami.Units.gridUnit * 35
+    width: Kirigami.Units.gridUnit * 75
+    height: Kirigami.Units.gridUnit * 45
 
     Component.onCompleted: showStartPage()
 
@@ -87,6 +94,14 @@ Kirigami.ApplicationWindow {
         id: mailPage
 
         MessageListPage {}
+    }
+
+    Component {
+        id: messagePage
+
+        MessagePage {
+            Kirigami.ColumnView.fillWidth: true
+        }
     }
 
     Connections {

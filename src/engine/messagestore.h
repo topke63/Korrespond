@@ -47,7 +47,8 @@ public:
     // messages were removed, or -1 on error (see lastError()).
     // Removes messages dated before cutoff. Messages without a date are kept.
     int removeOlderThan(const QDateTime &cutoff);
-    // Removes the oldest messages until totalSize() <= maxBytes; undated ones go first.
+    // Removes the oldest messages until totalSize() <= maxBytes. Undated ones go last: they are
+    // usually sent mail without a Date header (see messageDate()), not old mail.
     int removeOldestUntil(qint64 maxBytes);
     // Removes every message of folder, e.g. after the server changed its UIDVALIDITY.
     int removeFolder(const QString &folder);

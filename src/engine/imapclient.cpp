@@ -18,6 +18,28 @@
 
 using namespace Qt::StringLiterals;
 
+QDateTime messageDate(const KMime::Message &message)
+{
+    if (const auto *date = message.date(); date && date->dateTime().isValid()) {
+        return date->dateTime();
+    }
+    // Each server prepends its Received header, so the first one is the newest. Its date
+    // follows the last ';' (RFC 5322 section 3.6.7).
+    for (const KMime::Headers::Base *received : message.headersByType("Received")) {
+        const QByteArray value = received->as7BitString();
+        const qsizetype semicolon = value.lastIndexOf(';');
+        if (semicolon < 0) {
+            continue;
+        }
+        KMime::Headers::Date date;
+        date.from7BitString(value.mid(semicolon + 1).trimmed());
+        if (date.dateTime().isValid()) {
+            return date.dateTime();
+        }
+    }
+    return {};
+}
+
 static MessageSummary summaryOf(const KIMAP::Message &msg)
 {
     MessageSummary summary;
@@ -31,9 +53,7 @@ static MessageSummary summaryOf(const KIMAP::Message &msg)
         if (auto from = mime->from()) {
             summary.from = from->displayString();
         }
-        if (auto date = mime->date()) {
-            summary.date = date->dateTime();
-        }
+        summary.date = messageDate(*mime);
     }
     return summary;
 }

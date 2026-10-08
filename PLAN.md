@@ -790,7 +790,7 @@ T39 and T46 later make it fully functional.
 - verify: `ctest --test-dir build -R messagestoretest --output-on-failure`
 - notes: Remove functions return -1 on error (see `lastError()`); `clear()` returns bool and
   also deletes stray `.eml` files. `removeOlderThan` keeps undated messages; `removeOldestUntil`
-  evicts undated ones first (they list last). `storedUidValidity` returns 0 when nothing is
+  evicts undated ones last (changed in T38a; first version evicted them first). `storedUidValidity` returns 0 when nothing is
   stored. Rows are deleted in one transaction before their files, so a failure can only leave
   an orphan file, never a row without its file. Verified with `ctest --test-dir build` on
   2026-10-08: all 9 test executables pass.
@@ -919,7 +919,7 @@ T39 and T46 later make it fully functional.
   `PLASMAMAIL_MAX_MB` limit the store; the 60 s timeout restarts on every progress signal.
 
 ### T38a — Dates for messages without a `Date:` header
-- status: todo
+- status: done
 - depends on: T38
 - parallel-safe with: T39
 - files: src/engine/imapclient.{h,cpp}, src/engine/messagestore.{h,cpp},
@@ -930,7 +930,14 @@ T39 and T46 later make it fully functional.
   `MessageStore::removeOldestUntil` evicts undated messages last (they are usually sent mail).
   Tests for both.
 - verify: `ctest --test-dir build --output-on-failure`
-- notes:
+- notes: Done 2026-10-08. The Received date is parsed with `KMime::Headers::Date`, so
+  trailing comments like `(UTC)` work; Received headers without a parsable date are skipped.
+  `messageDate` is declared in imapclient.h (next to `MessageSummary`). Sent mail from Yahoo
+  webmail has no Received header and stays undated. The header list from the server
+  (`FetchScope::Headers`) only asks for the Date header, so there the fallback can't help; it
+  works for stored messages. Checked against the T38 store: the 6 undated INBOX messages'
+  newest Received dates are Jan–May 2026, so with this fix the since-2026-09-01 run would have
+  removed them. `ctest --test-dir build`: all 11 test executables pass.
 
 ### T39 — `MailController`: storage usage, cleanup and sync
 - status: todo

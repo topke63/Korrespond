@@ -33,6 +33,10 @@ struct MessageSummary {
     bool flagged = false;
 };
 
+// When the message was sent: its Date header, else the date of the newest Received header
+// (the last mail server's arrival time), else null. Yahoo webmail sends mail without Date.
+QDateTime messageDate(const KMime::Message &message);
+
 // Thin asynchronous wrapper around one KIMAP session.
 // KIMAP queues jobs per session, so callers can issue requests back to back.
 class ImapClient : public QObject

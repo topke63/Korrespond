@@ -362,12 +362,12 @@ private Q_SLOTS:
         QCOMPARE(store.totalSize(), qint64(500));
 
         QCOMPARE(store.removeOldestUntil(500), 0);
-        QCOMPARE(store.removeOldestUntil(250), 3); // undated first, then uid 1 and 2
-        QVERIFY(!store.contains(u"Sent"_s, 5));
+        QCOMPARE(store.removeOldestUntil(250), 3); // uid 1, 2 and 3; undated ones go last
         QVERIFY(!store.contains(u"INBOX"_s, 1));
         QVERIFY(!store.contains(u"INBOX"_s, 2));
-        QVERIFY(store.contains(u"INBOX"_s, 3));
+        QVERIFY(!store.contains(u"INBOX"_s, 3));
         QVERIFY(store.contains(u"INBOX"_s, 4));
+        QVERIFY(store.contains(u"Sent"_s, 5));
         QCOMPARE(store.totalSize(), qint64(200));
         QCOMPARE(emlFiles(dir.path()).size(), 2);
 

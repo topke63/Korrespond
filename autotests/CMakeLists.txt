@@ -65,3 +65,10 @@ ecm_add_test(
     TEST_NAME retentiontest
     LINK_LIBRARIES plasmamail_engine Qt6::Test
 )
+
+# Test for messageDate (Date header and Received fallback)
+ecm_add_test(
+    messagedatetest.cpp
+    TEST_NAME messagedatetest
+    LINK_LIBRARIES plasmamail_engine Qt6::Test
+)

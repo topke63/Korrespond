@@ -253,8 +253,7 @@ int MessageStore::removeOldestUntil(qint64 maxBytes)
         return 0;
     }
     QSqlQuery query(QSqlDatabase::database(m_connectionName, false));
-    // Undated messages list last (see messages()), so they count as the oldest here.
-    if (!query.exec(u"SELECT folder, uid, path, size FROM messages ORDER BY date IS NOT NULL, date, uid"_s)) {
+    if (!query.exec(u"SELECT folder, uid, path, size FROM messages ORDER BY date IS NULL, date, uid"_s)) {
         m_lastError = query.lastError().text();
         return -1;
     }

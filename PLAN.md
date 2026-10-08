@@ -1091,7 +1091,7 @@ T39 and T46 later make it fully functional.
   app (offscreen: open Settings at Local Storage, close); with the fix 0 errors.
 
 ### T43 — CMake presets for debug, release and sanitizer builds
-- status: todo
+- status: done
 - depends on: T1
 - parallel-safe with: T3, T7, T14, T26, T44
 - files: CMakePresets.json, CMakeLists.txt
@@ -1100,7 +1100,12 @@ T39 and T46 later make it fully functional.
   (RelWithDebInfo, `build-release/`), `asan` (Debug, `ECM_ENABLE_SANITIZERS="address;undefined"`,
   `build-asan/`); root CMake includes `ECMEnableSanitizers`. Add `build-*/` to `.gitignore`.
 - verify: `cmake --preset asan && cmake --build --preset asan && ctest --preset asan` passes.
-- notes:
+- notes: Done 2026-10-08. Presets file version 3 (needs CMake ≥ 3.21; the project requires
+  3.22). Test presets print output on failure; `asan` also sets
+  `UBSAN_OPTIONS=print_stacktrace=1:halt_on_error=1`, so undefined behaviour fails the test.
+  `build-*/` was already in .gitignore. License via `CMakePresets.json.license` (REUSE; JSON
+  has no comments). Verified: `asan` binaries link libasan and libubsan, all 11 tests pass with
+  leak detection on; `dev` (the existing build/) and `release` also build and pass.
 
 ### T44 — clang-format setup with KDE style
 - status: todo

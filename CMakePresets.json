@@ -1,0 +1,45 @@
+{
+    "version": 3,
+    "cmakeMinimumRequired": {"major": 3, "minor": 22, "patch": 0},
+    "configurePresets": [
+        {
+            "name": "dev",
+            "displayName": "Debug (build/)",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build",
+            "cacheVariables": {"CMAKE_BUILD_TYPE": "Debug"}
+        },
+        {
+            "name": "release",
+            "displayName": "Release with debug info (build-release/)",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build-release",
+            "cacheVariables": {"CMAKE_BUILD_TYPE": "RelWithDebInfo"}
+        },
+        {
+            "name": "asan",
+            "displayName": "Debug with AddressSanitizer and UBSan (build-asan/)",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build-asan",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Debug",
+                "ECM_ENABLE_SANITIZERS": "address;undefined"
+            }
+        }
+    ],
+    "buildPresets": [
+        {"name": "dev", "configurePreset": "dev"},
+        {"name": "release", "configurePreset": "release"},
+        {"name": "asan", "configurePreset": "asan"}
+    ],
+    "testPresets": [
+        {"name": "dev", "configurePreset": "dev", "output": {"outputOnFailure": true}},
+        {"name": "release", "configurePreset": "release", "output": {"outputOnFailure": true}},
+        {
+            "name": "asan",
+            "configurePreset": "asan",
+            "output": {"outputOnFailure": true},
+            "environment": {"UBSAN_OPTIONS": "print_stacktrace=1:halt_on_error=1"}
+        }
+    ]
+}

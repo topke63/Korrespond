@@ -16,6 +16,8 @@ include(KDECMakeSettings)
 include(KDECompilerSettings NO_POLICY_SCOPE)
 include(FeatureSummary)
 include(ECMAddTests)
+# ECM_ENABLE_SANITIZERS="address;undefined" (set by the asan preset) builds with sanitizers.
+include(ECMEnableSanitizers)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

@@ -57,6 +57,7 @@ private Q_SLOTS:
         QCOMPARE(first.data(MessageListModel::FromRole).toString(), u"Sender 42 <sender42@example.com>"_s);
         QCOMPARE(first.data(MessageListModel::DateRole).toDateTime(), date);
         QCOMPARE(first.data(MessageListModel::UnreadRole).toBool(), true);
+        QCOMPARE(first.data(MessageListModel::FlaggedRole).toBool(), false);
 
         QCOMPARE(model.index(1).data(MessageListModel::SubjectRole).toString(), u"(No subject)"_s);
 
@@ -67,6 +68,16 @@ private Q_SLOTS:
         QCOMPARE(names.value(MessageListModel::DateRole), "date");
         QCOMPARE(names.value(MessageListModel::DateTextRole), "dateText");
         QCOMPARE(names.value(MessageListModel::UnreadRole), "unread");
+        QCOMPARE(names.value(MessageListModel::FlaggedRole), "flagged");
+    }
+
+    void testFlagged()
+    {
+        MessageSummary flagged = summary(5, u"Starred"_s);
+        flagged.flagged = true;
+        MessageListModel model;
+        model.setMessages({flagged});
+        QCOMPARE(model.index(0).data(MessageListModel::FlaggedRole).toBool(), true);
     }
 
     void testDateText()

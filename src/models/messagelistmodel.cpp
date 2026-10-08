@@ -51,6 +51,8 @@ QVariant MessageListModel::data(const QModelIndex &index, int role) const
         return dateText(message.date, QDate::currentDate());
     case UnreadRole:
         return message.unread;
+    case FlaggedRole:
+        return message.flagged;
     }
     return {};
 }
@@ -64,6 +66,7 @@ QHash<int, QByteArray> MessageListModel::roleNames() const
         {DateRole, "date"},
         {DateTextRole, "dateText"},
         {UnreadRole, "unread"},
+        {FlaggedRole, "flagged"},
     };
 }
 

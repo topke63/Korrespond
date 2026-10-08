@@ -683,6 +683,7 @@ T39 and T46 later make it fully functional.
   without asking for the password → "Remove account" returns to the setup page.
 - notes: Partial 2026-10-08: with a new app password, add account → Inbox opens automatically
   with newest messages (folders: Inbox, Draft, Sent, Archive, Bulk, Trash). Rest still to check.
+  2026-10-08 run: unread dot hard to see, no flag shown in the list → T64.
 
 ### T26 — `StorageSettings`: values, load/save, cutoff and byte limit
 - status: done
@@ -1283,9 +1284,25 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   stays inside the settings window and shows a back arrow. Verified by triggering the row's
   click in a temporary patch; both pages screenshotted.
 
+### T64 — Clearer unread marker and flag in the list
+- status: done
+- depends on: T57, T54
+- parallel-safe with: none
+- files: src/models/messagelistmodel.{h,cpp}, src/qml/MessageListPage.qml (+ model test)
+- inputs: user's T24 run 2026-10-08: "dot for unread is not very visible, no starred info".
+- output: `FlaggedRole` ("flagged") from `MessageSummary.flagged` (filled since T57); unread rows
+  get a larger accent dot plus an accent bar at the row's left edge; flagged rows show an orange
+  flag icon next to the date. Model test covers the new role.
+- verify: `ctest --test-dir build -R messagelistmodeltest`; offscreen checks as in T19;
+  screenshot with unread and flagged mail reviewed.
+- notes: Done 2026-10-08. Unread = 10 px dot, 3 px left bar, 10 % tinted row and accent date, in a
+  fixed `#3daee9` (`page.unreadColor`): the theme `highlightColor` goes dull navy when the
+  window is inactive. Flag = orange `flag` icon before the date. Confirmed in the user's own
+  screenshot of the new build.
+
 ### T25 — Global verify
 - status: todo
-- depends on: T1–T24, T26–T63, T39a
+- depends on: T1–T24, T26–T64, T39a
 - parallel-safe with: none
 - files: none
 - inputs: —

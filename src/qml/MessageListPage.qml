@@ -6,6 +6,7 @@ import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.ki18n
 import org.kde.kirigami as Kirigami
+import org.kde.kirigamiaddons.components as Components
 import PlasmaMail
 
 Kirigami.ScrollablePage {
@@ -27,6 +28,8 @@ Kirigami.ScrollablePage {
         Kirigami.Action {
             text: KI18n.i18nc("@action:intoolbar", "Refresh")
             icon.name: "view-refresh"
+            displayHint: Kirigami.DisplayHint.IconOnly
+            tooltip: KI18n.i18nc("@info:tooltip", "Check for new mail (F5)")
             shortcut: "F5"
             enabled: !MailController.busy
             onTriggered: MailController.refresh()
@@ -43,6 +46,7 @@ Kirigami.ScrollablePage {
 
         model: MailController.messageModel
 
+        // Geary-style row: unread dot, sender avatar, sender + date, subject below.
         delegate: QQC2.ItemDelegate {
             id: row
 
@@ -53,37 +57,70 @@ Kirigami.ScrollablePage {
             required property bool unread
 
             width: list.width
+            topPadding: Kirigami.Units.mediumSpacing
+            bottomPadding: Kirigami.Units.mediumSpacing
+            leftPadding: Kirigami.Units.smallSpacing
+            rightPadding: Kirigami.Units.largeSpacing
             highlighted: uid === MailController.currentUid
             onClicked: page.openMessage(uid)
 
             contentItem: RowLayout {
-                spacing: Kirigami.Units.largeSpacing
+                spacing: Kirigami.Units.mediumSpacing
+
+                Rectangle {
+                    Layout.alignment: Qt.AlignVCenter
+                    implicitWidth: Kirigami.Units.smallSpacing * 2
+                    implicitHeight: implicitWidth
+                    radius: width / 2
+                    color: row.highlighted ? Kirigami.Theme.highlightedTextColor : Kirigami.Theme.highlightColor
+                    opacity: row.unread ? 1 : 0
+                }
+
+                Components.Avatar {
+                    Layout.preferredWidth: Kirigami.Units.iconSizes.medium + Kirigami.Units.smallSpacing * 2
+                    Layout.preferredHeight: Layout.preferredWidth
+                    name: row.from
+                }
 
                 ColumnLayout {
                     Layout.fillWidth: true
-                    spacing: 0
+                    spacing: Kirigami.Units.smallSpacing / 2
 
-                    QQC2.Label {
+                    RowLayout {
                         Layout.fillWidth: true
-                        text: row.from
-                        font.bold: row.unread
-                        elide: Text.ElideRight
+                        spacing: Kirigami.Units.smallSpacing
+
+                        QQC2.Label {
+                            Layout.fillWidth: true
+                            text: row.from
+                            elide: Text.ElideRight
+                            font.weight: row.unread ? Font.Bold : Font.Normal
+                            color: row.highlighted ? Kirigami.Theme.highlightedTextColor : Kirigami.Theme.textColor
+                        }
+                        QQC2.Label {
+                            text: row.dateText
+                            font: Kirigami.Theme.smallFont
+                            color: row.highlighted ? Kirigami.Theme.highlightedTextColor
+                                 : row.unread ? Kirigami.Theme.highlightColor : Kirigami.Theme.disabledTextColor
+                        }
                     }
                     QQC2.Label {
                         Layout.fillWidth: true
                         text: row.subject.length > 0 ? row.subject : KI18n.i18nc("@info", "(no subject)")
-                        font.bold: row.unread
                         elide: Text.ElideRight
-                        opacity: row.unread ? 1 : 0.8
+                        font.weight: row.unread ? Font.DemiBold : Font.Normal
+                        color: row.highlighted ? Kirigami.Theme.highlightedTextColor
+                             : row.unread ? Kirigami.Theme.textColor : Kirigami.Theme.disabledTextColor
                     }
                 }
+            }
 
-                QQC2.Label {
-                    Layout.alignment: Qt.AlignTop
-                    text: row.dateText
-                    font.bold: row.unread
-                    opacity: 0.8
-                }
+            Kirigami.Separator {
+                anchors.bottom: parent.bottom
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.leftMargin: Kirigami.Units.gridUnit * 3
+                opacity: 0.5
             }
         }
 

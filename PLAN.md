@@ -1056,7 +1056,7 @@ body below. Message previews in the list (needs fetching body text) are out of s
   CSP blocks Yahoo's remote images and fonts (WebEngine logs each block as `js: Refused…`).
 
 ### T51 — Message list rows
-- status: todo
+- status: done
 - depends on: T50
 - parallel-safe with: none
 - files: src/qml/MessageListPage.qml
@@ -1066,7 +1066,9 @@ body below. Message previews in the list (needs fetching body text) are out of s
   unread, thin separators, comfortable but compact padding. Refresh as an icon button with
   tooltip. Placeholder and progress bar kept.
 - verify: offscreen checks as in T19; screenshot reviewed.
-- notes:
+- notes: Done 2026-10-08. Kirigami Addons `Avatar` (initials + color from the sender), unread =
+  accent dot + bold sender + accent date; read subjects use `disabledTextColor`. Separators are
+  inset to start at the text. Refresh is icon-only with a tooltip mentioning F5.
 
 ### T52 — Message view
 - status: todo

@@ -676,7 +676,7 @@ T39 and T46 later make it fully functional.
   Link handling and image blocking are not checked offscreen: covered by T24.
 
 ### T24 — Manual end-to-end check with Yahoo
-- status: todo
+- status: done
 - depends on: T20, T21, T22, T23, Q1
 - parallel-safe with: none
 - files: none (record results in notes; file new tasks for any bug found)
@@ -692,9 +692,9 @@ T39 and T46 later make it fully functional.
   Seen in the later 2026-10-08 runs (storage checks): a folder opens from the sidebar (Inbox),
   an HTML Yahoo mail shows with its remote images blocked, every restart reconnected from the
   keychain without asking. Confirmed by the user 2026-10-08: an opened unread message lost
-  its unread dot and stayed read after a restart. Still to check: "Remove account" returns to
-  the setup page (it also deletes the local copies and the
-  keychain entry, so do it last).
+  its unread dot and stayed read after a restart. **User decision 2026-10-08:** the last
+  step, "Remove account" returns to the setup page, moves to milestone 2's T95 (T90 rewrites
+  adding and removing accounts). Every other step is confirmed, so T24 is done.
 
 ### T26 — `StorageSettings`: values, load/save, cutoff and byte limit
 - status: done
@@ -1921,7 +1921,8 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - output: confirmed in notes: Add Account → Gmail → browser sign-in → Gmail section appears
   under Yahoo with its folders; All Inboxes shows both, newest first; opening and flagging work
   in each account; restart reconnects both without a browser; with storage on, Gmail's All
-  Mail/Starred/Important are not stored; removing Gmail leaves Yahoo untouched.
+  Mail/Starred/Important are not stored; removing Gmail leaves Yahoo untouched; removing the
+  last account returns to the setup page (moved here from T24 by the user).
 - verify: manual, with the user.
 - notes:
 

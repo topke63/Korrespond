@@ -1104,7 +1104,7 @@ body below. Message previews in the list (needs fetching body text) are out of s
   requested; add as new tasks only if the user asks.
 
 ### T54 — Mimestream visual pass
-- status: todo
+- status: done
 - depends on: T51, T52
 - parallel-safe with: none
 - files: src/qml/MessageListPage.qml, src/qml/FolderSidebar.qml
@@ -1116,7 +1116,10 @@ body below. Message previews in the list (needs fetching body text) are out of s
   green, archive purple, junk amber, trash red, others neutral), the same neutral selection, and
   compact rows. Avatars stay in the message view.
 - verify: offscreen checks as in T19; screenshot reviewed.
-- notes:
+- notes: Done 2026-10-08. Selection/hover = `textColor` at 12 % / 5 % alpha, rounded
+  (`Units.cornerRadius`). List title via `titleDelegate` (bold Heading; margin must be
+  `leftPadding`, the title slot is not a Layout). Sidebar rows use a custom contentItem with
+  `Kirigami.Icon { isMask: true }` so the role color applies.
 
 ### T55 — Message previews in the list
 - status: todo

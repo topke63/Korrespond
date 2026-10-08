@@ -16,6 +16,19 @@ Kirigami.OverlayDrawer {
     signal storageSettingsRequested()
     signal removeAccountRequested()
 
+    // Mimestream-style colored icons by folder role; other folders stay neutral.
+    function roleColor(role: string): color {
+        switch (role) {
+        case "inbox": return "#3daee9";
+        case "drafts": return "#1abc9c";
+        case "sent": return "#27ae60";
+        case "archive": return "#9b59b6";
+        case "junk": return "#f39c12";
+        case "trash": return "#da4453";
+        default: return Kirigami.Theme.textColor;
+        }
+    }
+
     edge: Qt.application.layoutDirection === Qt.RightToLeft ? Qt.RightEdge : Qt.LeftEdge
     width: Kirigami.Units.gridUnit * 14
     handleVisible: modal && enabled
@@ -77,6 +90,16 @@ Kirigami.OverlayDrawer {
             }
         }
 
+        QQC2.Label {
+            Layout.fillWidth: true
+            Layout.leftMargin: Kirigami.Units.largeSpacing * 1.5
+            Layout.topMargin: Kirigami.Units.largeSpacing
+            Layout.bottomMargin: Kirigami.Units.smallSpacing
+            text: KI18n.i18nc("@title:group", "Folders")
+            font: Kirigami.Theme.smallFont
+            color: Kirigami.Theme.disabledTextColor
+        }
+
         QQC2.ScrollView {
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -85,28 +108,56 @@ Kirigami.OverlayDrawer {
                 id: folderList
 
                 clip: true
-                topMargin: Kirigami.Units.smallSpacing
                 bottomMargin: Kirigami.Units.smallSpacing
+                spacing: 1
                 model: MailController.folderModel
 
                 delegate: QQC2.ItemDelegate {
+                    id: folderRow
+
                     required property string path
                     required property string name
                     required property string iconName
+                    required property string folderRole
                     required property int depth
 
                     width: ListView.view.width - Kirigami.Units.smallSpacing * 2
                     x: Kirigami.Units.smallSpacing
                     leftPadding: Kirigami.Units.largeSpacing + depth * Kirigami.Units.gridUnit
-                    topPadding: Kirigami.Units.smallSpacing * 1.5
-                    bottomPadding: Kirigami.Units.smallSpacing * 1.5
+                    topPadding: Kirigami.Units.smallSpacing + 1
+                    bottomPadding: Kirigami.Units.smallSpacing + 1
                     text: name
                     icon.name: iconName
+                    icon.color: sidebar.roleColor(folderRole)
                     highlighted: path === MailController.currentFolder
+                    font.weight: highlighted ? Font.DemiBold : Font.Normal
                     onClicked: {
                         MailController.selectFolder(path);
                         if (sidebar.modal) {
                             sidebar.close();
+                        }
+                    }
+
+                    background: Rectangle {
+                        radius: Kirigami.Units.cornerRadius
+                        color: folderRow.highlighted ? Qt.alpha(Kirigami.Theme.textColor, 0.12)
+                             : folderRow.hovered ? Qt.alpha(Kirigami.Theme.textColor, 0.05) : "transparent"
+                    }
+                    contentItem: RowLayout {
+                        spacing: Kirigami.Units.mediumSpacing
+
+                        Kirigami.Icon {
+                            implicitWidth: Kirigami.Units.iconSizes.small
+                            implicitHeight: Kirigami.Units.iconSizes.small
+                            source: folderRow.icon.name
+                            color: folderRow.icon.color
+                            isMask: true
+                        }
+                        QQC2.Label {
+                            Layout.fillWidth: true
+                            text: folderRow.text
+                            font: folderRow.font
+                            elide: Text.ElideRight
                         }
                     }
                 }

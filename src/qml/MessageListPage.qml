@@ -18,6 +18,14 @@ Kirigami.ScrollablePage {
     }
 
     title: MailController.currentFolderName
+    titleDelegate: Kirigami.Heading {
+        level: 2
+        font.weight: Font.Bold
+        text: page.title
+        elide: Text.ElideRight
+        Layout.fillWidth: true
+        leftPadding: Kirigami.Units.largeSpacing
+    }
     // A fixed list column, like Geary's; the message column takes the rest.
     Kirigami.ColumnView.minimumWidth: Kirigami.Units.gridUnit * 20
     Kirigami.ColumnView.preferredWidth: Kirigami.Units.gridUnit * 28
@@ -45,53 +53,49 @@ Kirigami.ScrollablePage {
 
         model: MailController.messageModel
 
-        // Clean rows (Mimestream-like): unread dot, solid avatar, sender + date, subject below.
+        // Mimestream-like rows: unread dot, sender + date, subject; hairline dividers and a soft
+        // neutral selection (avatars are only in the message view).
         delegate: QQC2.ItemDelegate {
             id: row
 
+            required property int index
             required property var uid
             required property string subject
             required property string from
             required property string dateText
             required property bool unread
 
-            readonly property color secondaryColor: highlighted ? Kirigami.Theme.highlightedTextColor
-                                                                : Kirigami.Theme.disabledTextColor
-
             width: list.width
-            topInset: 2
-            bottomInset: 2
+            topInset: 1
+            bottomInset: 1
             leftInset: Kirigami.Units.smallSpacing
             rightInset: Kirigami.Units.smallSpacing
             topPadding: Kirigami.Units.smallSpacing * 2
             bottomPadding: Kirigami.Units.smallSpacing * 2
-            leftPadding: Kirigami.Units.smallSpacing * 2
+            leftPadding: Kirigami.Units.smallSpacing
             rightPadding: Kirigami.Units.largeSpacing * 1.5
             highlighted: uid === MailController.currentUid
             onClicked: page.openMessage(uid)
 
             background: Rectangle {
                 radius: Kirigami.Units.cornerRadius
-                color: row.highlighted ? Kirigami.Theme.highlightColor
-                     : row.hovered ? Qt.alpha(Kirigami.Theme.textColor, 0.06) : "transparent"
+                color: row.highlighted ? Qt.alpha(Kirigami.Theme.textColor, 0.12)
+                     : row.hovered ? Qt.alpha(Kirigami.Theme.textColor, 0.05) : "transparent"
             }
 
             contentItem: RowLayout {
-                spacing: Kirigami.Units.mediumSpacing
+                spacing: Kirigami.Units.smallSpacing
 
                 Rectangle {
-                    Layout.alignment: Qt.AlignVCenter
+                    Layout.alignment: Qt.AlignTop
+                    Layout.topMargin: Math.round(senderLabel.height / 2 - height / 2)
+                    Layout.leftMargin: Kirigami.Units.smallSpacing
+                    Layout.rightMargin: Kirigami.Units.smallSpacing
                     implicitWidth: 7
                     implicitHeight: 7
                     radius: width / 2
-                    color: row.highlighted ? Kirigami.Theme.highlightedTextColor : Kirigami.Theme.highlightColor
+                    color: Kirigami.Theme.highlightColor
                     opacity: row.unread ? 1 : 0
-                }
-
-                SenderAvatar {
-                    Layout.alignment: Qt.AlignVCenter
-                    implicitWidth: Kirigami.Units.gridUnit * 2
-                    name: row.from
                 }
 
                 ColumnLayout {
@@ -103,17 +107,18 @@ Kirigami.ScrollablePage {
                         spacing: Kirigami.Units.smallSpacing
 
                         QQC2.Label {
+                            id: senderLabel
+
                             Layout.fillWidth: true
                             text: row.from
                             textFormat: Text.PlainText
                             elide: Text.ElideRight
                             font.weight: row.unread ? Font.Bold : Font.DemiBold
-                            color: row.highlighted ? Kirigami.Theme.highlightedTextColor : Kirigami.Theme.textColor
                         }
                         QQC2.Label {
                             text: row.dateText
                             font: Kirigami.Theme.smallFont
-                            color: row.unread && !row.highlighted ? Kirigami.Theme.highlightColor : row.secondaryColor
+                            color: row.unread ? Kirigami.Theme.highlightColor : Kirigami.Theme.disabledTextColor
                         }
                     }
                     QQC2.Label {
@@ -121,10 +126,21 @@ Kirigami.ScrollablePage {
                         text: row.subject.length > 0 ? row.subject : KI18n.i18nc("@info", "(no subject)")
                         textFormat: Text.PlainText
                         elide: Text.ElideRight
-                        color: row.highlighted || row.unread ? (row.highlighted ? Kirigami.Theme.highlightedTextColor : Kirigami.Theme.textColor)
-                                                             : row.secondaryColor
+                        opacity: row.unread ? 1 : 0.85
                     }
                 }
+            }
+
+            // Hairline divider under the text, hidden around the selected row.
+            Rectangle {
+                anchors.bottom: parent.bottom
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.leftMargin: Kirigami.Units.gridUnit * 1.5
+                anchors.rightMargin: Kirigami.Units.largeSpacing
+                height: 1
+                color: Qt.alpha(Kirigami.Theme.textColor, 0.08)
+                visible: !row.highlighted && !row.hovered
             }
         }
 

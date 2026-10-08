@@ -272,6 +272,10 @@ void MailController::saveStorageSettings(bool enabled, const QString &importSinc
     }
     Q_EMIT storageSettingsChanged();
     applyStorageLimits();
+    // The folder list may have arrived while storage was still off.
+    if (storageActive() && !m_folders.isEmpty() && !m_store->setFolders(m_folders)) {
+        qWarning("Cannot store the folder list: %s", qPrintable(m_store->lastError()));
+    }
     startSync();
 }
 

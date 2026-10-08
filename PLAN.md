@@ -1062,7 +1062,7 @@ T39 and T46 later make it fully functional.
   exercised in T42 (storage is off in the user's config).
 
 ### T42 — Manual end-to-end check of local storage
-- status: todo
+- status: done
 - depends on: T24, T40, T41, T46, T46a, Q1
 - parallel-safe with: none
 - files: none (record results; file new tasks for bugs)
@@ -1072,7 +1072,18 @@ T39 and T46 later make it fully functional.
   only mail since that date is stored and used size ≤ 50 MB → lower to 10 MB → oldest local
   copies removed, still visible on the server/webmail → offline (network off) the stored Inbox
   still lists and opens messages.
-- notes:
+- notes: Done 2026-10-08 with the user (Yahoo). Storage on, since 2026-09-08, 50 MB then
+  10 MB: 5 INBOX messages stored (0.11 MB, all dated October; the six once-undated ones are
+  now dated Jan–May by T38a and correctly left out). Sent stored nothing (its mail predates
+  the cutoff). The size limit was never reached, so eviction in the GUI is unconfirmed (unit
+  tests cover it). Offline was simulated with `unshare --map-current-user -n
+  build/bin/plasma-mail` (the app has no network; the rest of the desktop keeps it): folders
+  and the 5 stored INBOX messages show, "Could not connect to imap.mail.yahoo.com." appears, a
+  stored message opens. **Bug found and fixed:** the folder list was only saved when it arrived
+  while storage was already on, so turning storage on in a running app left no list for an
+  offline start; `saveStorageSettings` now saves it too. **Open:** the log showed
+  `ScrollablePage.qml:277: TypeError: Cannot read property 'flickable' of null` (3×) in
+  the run where the storage page was used, probably when it closed; not investigated yet.
 
 ### T43 — CMake presets for debug, release and sanitizer builds
 - status: todo

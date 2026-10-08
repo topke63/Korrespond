@@ -3,14 +3,17 @@
 
 #pragma once
 
+#include <QList>
 #include <QString>
 
-// Connection settings for a single mail account.
-// The password (or app password) is kept in the system keychain, never in the config file.
+// Connection settings for one mail account. Its email address identifies it.
+// The password (or, for OAuth, the refresh token) is kept in the system keychain, keyed by the
+// email address, never in the config file.
 struct Account {
     QString email;
     QString displayName;
     QString provider; // "yahoo", "gmail", "outlook" or "custom"
+    QString authMethod = QStringLiteral("password"); // or "oauth"
 
     QString imapHost;
     quint16 imapPort = 993;
@@ -22,7 +25,14 @@ struct Account {
     // Fills in server settings for a known provider. Returns false for unknown providers.
     static bool applyPreset(Account &account, const QString &provider);
 
-    // Single-account storage for now; multiple accounts come later.
+    // Every saved account, in the order they were added. A config from before multiple
+    // accounts (one [Account] group) is read as a single account.
+    static QList<Account> loadAll();
+    // Replaces the saved accounts with these, in this order. Removes the groups of accounts
+    // that are no longer in the list, and the old [Account] group.
+    static void saveAll(const QList<Account> &accounts);
+
+    // Deprecated: the single-account API, until MailController moves to loadAll/saveAll (T85).
     static Account load();
     void save() const;
     static void remove();

@@ -1571,7 +1571,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
     `PLASMAMAIL_GOOGLE_CLIENT_SECRET`). Needed by T80 and T95 (manual checks only).
 
 ### T68 — `Account`: several accounts in the config
-- status: todo
+- status: done
 - depends on: none
 - parallel-safe with: T70, T72, T74
 - files: src/engine/account.h, src/engine/account.cpp
@@ -1582,7 +1582,10 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   `[Account]` group exists, `loadAll()` returns it as the single account and `saveAll` deletes
   the old group. `load/save/remove` stay (callers move in T85) but are marked deprecated in comments.
 - verify: `cmake --build build --target plasmamail_engine` succeeds.
-- notes:
+- notes: Done 2026-10-08. Groups are `[Account <email>]`, order in `[Accounts] Order`. An
+  empty or missing Order falls back to the old `[Account]` group. Shared `readAccount` /
+  `writeAccount` helpers also serve the deprecated `load()/save()`, so `AuthMethod` is
+  written there too. Groups listed in Order but missing are skipped. Builds; all 11 tests pass.
 
 ### T69 — Tests for several accounts in the config
 - status: todo

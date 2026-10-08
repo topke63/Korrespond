@@ -199,7 +199,9 @@ Tasks in the same wave can run in parallel once the earlier waves are done.
     `nullptr` when absent. Useful: `mainBodyPart("text/html")`, `decodedText()`,
     `Content::attachments()`, `contentDisposition()->filename()`, `contentType()->name()`.
   - KIMAP is `KPim6::IMAP`, headers `<KIMAP/LoginJob>` etc. Jobs are KJobs queued per
-    `KIMAP::Session`. `ListJob::IncludeFolderRoleFlags` returns RFC 6154 flags (`\Sent`…).
+    `KIMAP::Session`. List folders with `ListJob::IncludeUnsubscribed` (plain LIST, which
+    carries RFC 6154 flags like `\Sent`); never `IncludeFolderRoleFlags`: it sends Gmail-only
+    `XLIST`, which Yahoo rejects (see T6).
     `FetchJob::FetchScope::Headers` fetches flags + UID + common headers;
     `FetchScope::Full` fetches the whole message.
   - QtKeychain: `find_package(Qt6Keychain)`, target `Qt6Keychain::Qt6Keychain`,

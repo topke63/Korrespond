@@ -21,6 +21,7 @@ target_link_libraries(plasmamail_engine PUBLIC
 # Models: list models for the UI (QtCore only, no QML).
 add_library(plasmamail_models STATIC
     models/foldermodel.cpp
+    models/messagelistmodel.cpp
 )
 target_include_directories(plasmamail_models PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/models)
 target_link_libraries(plasmamail_models PUBLIC

@@ -402,7 +402,7 @@ Tasks in the same wave can run in parallel once the earlier waves are done.
   registration was taken out of autotests/CMakeLists.txt until T13.
 
 ### T12 — `MessageListModel` in the models library
-- status: todo
+- status: done
 - depends on: T5, T10
 - parallel-safe with: T11, T14, T15
 - files: src/models/messagelistmodel.h, src/models/messagelistmodel.cpp
@@ -412,7 +412,12 @@ Tasks in the same wave can run in parallel once the earlier waves are done.
   `setUnread(uid, bool)` (emits `dataChanged` for that row only), `message(uid)`.
   Remove the leftover draft files in src/app/.
 - verify: `cmake --build build --target plasmamail_models` succeeds.
-- notes:
+- notes: Done 2026-10-08 after review. Fixed: dates are converted to local time before the
+  "today" check (sender time zones), formatted with `QLocale` short formats, "(No subject)" is
+  translatable, `Qt::DisplayRole` = subject, no `Q_INVOKABLE`s, include `"imapclient.h"` by name.
+  Added `static QString dateText(const QDateTime &, const QDate &today)` so tests can pin "today".
+  `setUnread` emits `dataChanged` only when the value actually changes. src/app/ drafts were
+  already gone.
 
 ### T13 — Unit test for `MessageListModel`
 - status: todo

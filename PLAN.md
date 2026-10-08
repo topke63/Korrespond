@@ -355,7 +355,7 @@ Tasks in the same wave can run in parallel once the earlier waves are done.
   confirmed: script escaping, URL linking, multipart/alternative → HTML, QP + ISO-8859-1 decoding.
 
 ### T8 — Unit test for `messageBodyHtml`
-- status: todo
+- status: done
 - depends on: T2, T7
 - parallel-safe with: T4, T5, T10, T15
 - files: autotests/messagerenderertest.cpp
@@ -364,7 +364,13 @@ Tasks in the same wave can run in parallel once the earlier waves are done.
 - output: tests: plain-text only (escapes `<script>`, links a URL), multipart/alternative
   picks HTML, CSP meta always present, quoted-printable + non-UTF-8 charset decoded.
 - verify: `ctest --test-dir build -R messagerenderertest --output-on-failure`
-- notes:
+- notes: Done 2026-10-08. 27 checks: CSP present and before the body for plain, HTML,
+  no Content-Type, empty body and attachment-only mails; policy has `default-src 'none'` and no
+  script/http sources; markup escaped in plain text; data-driven URL linking (query `&`,
+  trailing dot, parentheses, quotes, angle brackets, two links, no link for `www.` or
+  `javascript:`); colors; missing Content-Type = plain; multipart/alternative and
+  mixed+alternative pick HTML; an attached .html file does not replace the plain body;
+  QP ISO-8859-1 incl. soft line break, base64 windows-1252 HTML, UTF-8 Cyrillic.
 
 ### T9 — Attachment names from a message
 - status: todo

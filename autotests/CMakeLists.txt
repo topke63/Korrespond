@@ -30,3 +30,10 @@ ecm_add_test(
     TEST_NAME messagelistmodeltest
     LINK_LIBRARIES plasmamail_models Qt6::Test
 )
+
+# Test for message rendering
+ecm_add_test(
+    messagerenderertest.cpp
+    TEST_NAME messagerenderertest
+    LINK_LIBRARIES plasmamail_engine Qt6::Test
+)

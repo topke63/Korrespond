@@ -44,3 +44,10 @@ ecm_add_test(
     TEST_NAME secretstoretest
     LINK_LIBRARIES plasmamail_engine Qt6::Test
 )
+
+# Test for StorageSettings
+ecm_add_test(
+    storagesettingstest.cpp
+    TEST_NAME storagesettingstest
+    LINK_LIBRARIES plasmamail_engine Qt6::Test
+)

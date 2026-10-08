@@ -694,7 +694,7 @@ T39 and T46 later make it fully functional.
   The import date counts from the start of that day in `now`'s time zone.
 
 ### T27 — Unit test for `StorageSettings`
-- status: todo
+- status: done
 - depends on: T2, T26
 - parallel-safe with: T4, T5, T8, T28
 - files: autotests/storagesettingstest.cpp
@@ -703,7 +703,8 @@ T39 and T46 later make it fully functional.
   Mar 31 − 1 month); cutoff takes the later of start date and keep-for; Forever + null start
   → null cutoff; save→load round trip; defaults.
 - verify: `ctest --test-dir build -R storagesettingstest --output-on-failure`
-- notes:
+- notes: Done 2026-10-08. 10 cases incl. Mar 31 − 1 month in a normal and a leap year, 5 GB
+  without int overflow, and "all mail" surviving save→load (not reverting to the default date).
 
 ### T28 — `MessageStore`: open database, add and look up messages
 - status: todo

@@ -1588,7 +1588,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   written there too. Groups listed in Order but missing are skipped. Builds; all 11 tests pass.
 
 ### T69 — Tests for several accounts in the config
-- status: todo
+- status: done
 - depends on: T68
 - parallel-safe with: T70–T75
 - files: autotests/accounttest.cpp
@@ -1597,7 +1597,11 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   authMethod; an old `[Account]` group migrates and disappears after saveAll; empty config →
   empty list; saving one account less removes its group.
 - verify: `ctest --test-dir build -R accounttest --output-on-failure`
-- notes:
+- notes: Done 2026-10-08. 4 new tests (empty, order + fields incl. authMethod, dropped
+  accounts' groups removed, migration of the old `[Account]` group). The test now turns on
+  test mode once in `initTestCase` (before any openConfig) and empties every config group in
+  `init()`, because the test config (~/.qttest/config/plasmamailrc) survives between runs.
+  13/13 pass, also on a second run; the user's real ~/.config/plasmamailrc is untouched.
 
 ### T70 — Gmail folder roles and which folders are stored
 - status: todo

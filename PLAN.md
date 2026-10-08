@@ -507,7 +507,7 @@ Tasks in the same wave can run in parallel once the earlier waves are done.
   0 skipped, ~30 ms, no permission prompt. 60 s wait per request covers a first-time prompt.
 
 ### T16 — `MailController`: account setup and folder listing
-- status: todo
+- status: in-progress
 - depends on: T5, T10, T14
 - parallel-safe with: T11, T13, T15
 - files: src/app/mailcontroller.h, src/app/mailcontroller.cpp
@@ -872,7 +872,7 @@ Tasks in the same wave can run in parallel once the earlier waves are done.
 - notes:
 
 ### T45 — `ImapClient`: report a failed connection or login only once
-- status: todo
+- status: done
 - depends on: T5
 - parallel-safe with: T6–T15
 - files: src/engine/imapclient.{h,cpp}
@@ -883,7 +883,15 @@ Tasks in the same wave can run in parallel once the earlier waves are done.
   suppressed until the next request creates a new session; one `errorOccurred` per failure.
 - verify: `cmake --build build --target plasmamail_engine` succeeds; manual with `imap-probe`
   (T6) and a wrong password prints exactly one error line.
-- notes:
+- notes: Done 2026-10-08, pulled forward because it blocked T16. Each KIMAP session gets a
+  generation number; every job/session callback carries it, and `isCurrent()` drops callbacks
+  from an older session or after a reported failure. `fail()` reports once, drops the session;
+  the next request opens a new one. `checkJob()` treats a job error as fatal only when the
+  session is disconnected (a NO for a missing folder keeps the session). Also fixed a worse bug
+  found in T16 testing: the old session's `connectionLost` cleanup used `m_session`, so closing
+  an old session (e.g. `setAccount` after a wrong password) destroyed the *new* session; the
+  right password then always failed. Verified on Yahoo: wrong password → exactly one error;
+  wrong then right password on the same client works; imap-probe still succeeds.
 
 ### T25 — Global verify
 - status: todo

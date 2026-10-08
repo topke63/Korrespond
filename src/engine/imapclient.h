@@ -56,12 +56,24 @@ Q_SIGNALS:
     void errorOccurred(const QString &message);
 
 private:
+    // Returns the session, creating it (and queueing the login) if needed. Each new session
+    // gets a new generation number; callbacks carry the number they were created for.
     KIMAP::Session *session();
-    void queueSelect(const QString &folder);
-    bool checkJob(KJob *job);
+    // True while callbacks of `generation` should still be acted on: it is the current
+    // session and no failure has been reported for it yet.
+    [[nodiscard]] bool isCurrent(quint64 generation) const;
+    // Reports a fatal error once per session and drops the session; later errors of the
+    // same (or an older) session are ignored. The next request opens a new session.
+    void fail(quint64 generation, const QString &message);
+    void dropSession();
+    void queueSelect(const QString &folder, quint64 generation);
+    // false if the job failed or belongs to an outdated session; reports the error if relevant.
+    bool checkJob(KJob *job, quint64 generation);
 
     Account m_account;
     QString m_password;
     QPointer<KIMAP::Session> m_session;
     QString m_selectedFolder; // folder of the last queued SELECT
+    quint64 m_generation = 0; // number of the current (or last) session
+    quint64 m_failedGeneration = 0; // session whose failure was already reported
 };

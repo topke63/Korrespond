@@ -35,12 +35,33 @@ void ImapClient::setAccount(const Account &account, const QString &password)
 
 void ImapClient::disconnectFromServer()
 {
+    ++m_generation; // whatever the old session still reports is no longer relevant
+    dropSession();
+}
+
+void ImapClient::dropSession()
+{
     if (m_session) {
         m_session->close();
         m_session->deleteLater();
     }
     m_session = nullptr;
     m_selectedFolder.clear();
+}
+
+bool ImapClient::isCurrent(quint64 generation) const
+{
+    return generation == m_generation && generation != m_failedGeneration;
+}
+
+void ImapClient::fail(quint64 generation, const QString &message)
+{
+    if (!isCurrent(generation)) {
+        return;
+    }
+    m_failedGeneration = generation;
+    dropSession();
+    Q_EMIT errorOccurred(message);
 }
 
 KIMAP::Session *ImapClient::session()
@@ -52,18 +73,13 @@ KIMAP::Session *ImapClient::session()
     m_session = new KIMAP::Session(m_account.imapHost, m_account.imapPort, this);
     m_session->setTimeout(60);
     m_selectedFolder.clear();
+    const quint64 generation = ++m_generation;
 
-    auto dropSession = [this] {
-        if (m_session) {
-            m_session->deleteLater();
-        }
-        m_session = nullptr;
-        m_selectedFolder.clear();
-    };
-    connect(m_session, &KIMAP::Session::connectionLost, this, dropSession);
-    connect(m_session, &KIMAP::Session::connectionFailed, this, [this, dropSession] {
-        Q_EMIT errorOccurred(u"Could not connect to %1."_s.arg(m_account.imapHost));
-        dropSession();
+    connect(m_session, &KIMAP::Session::connectionLost, this, [this, generation] {
+        fail(generation, u"Connection to the server was lost."_s);
+    });
+    connect(m_session, &KIMAP::Session::connectionFailed, this, [this, generation] {
+        fail(generation, u"Could not connect to %1."_s.arg(m_account.imapHost));
     });
 
     // Queued first; every later job waits for it.
@@ -72,9 +88,9 @@ KIMAP::Session *ImapClient::session()
     login->setPassword(m_password);
     login->setEncryptionMode(m_account.imapPort == 143 ? KIMAP::LoginJob::STARTTLS : KIMAP::LoginJob::SSLorTLS);
     login->setAuthenticationMode(KIMAP::LoginJob::ClearText);
-    connect(login, &KJob::result, this, [this](KJob *job) {
+    connect(login, &KJob::result, this, [this, generation](KJob *job) {
         if (job->error()) {
-            Q_EMIT errorOccurred(u"Login failed: %1"_s.arg(job->errorString()));
+            fail(generation, u"Login failed: %1"_s.arg(job->errorString()));
         }
     });
     login->start();
@@ -82,16 +98,25 @@ KIMAP::Session *ImapClient::session()
     return m_session;
 }
 
-bool ImapClient::checkJob(KJob *job)
+bool ImapClient::checkJob(KJob *job, quint64 generation)
 {
-    if (job->error()) {
-        Q_EMIT errorOccurred(job->errorString());
+    if (!isCurrent(generation)) {
         return false;
     }
-    return true;
+    if (!job->error()) {
+        return true;
+    }
+    // A job failing because the connection is gone ends the session; any other failure
+    // (e.g. NO for a missing folder) is reported but keeps the session.
+    if (!m_session || m_session->state() == KIMAP::Session::Disconnected) {
+        fail(generation, job->errorString());
+    } else {
+        Q_EMIT errorOccurred(job->errorString());
+    }
+    return false;
 }
 
-void ImapClient::queueSelect(const QString &folder)
+void ImapClient::queueSelect(const QString &folder, quint64 generation)
 {
     if (m_session && m_selectedFolder == folder) {
         return;
@@ -99,8 +124,8 @@ void ImapClient::queueSelect(const QString &folder)
     auto select = new KIMAP::SelectJob(session());
     select->setMailBox(folder);
     m_selectedFolder = folder;
-    connect(select, &KJob::result, this, [this](KJob *job) {
-        if (job->error()) {
+    connect(select, &KJob::result, this, [this, generation](KJob *job) {
+        if (job->error() && generation == m_generation) {
             m_selectedFolder.clear();
         }
     });
@@ -110,6 +135,7 @@ void ImapClient::queueSelect(const QString &folder)
 void ImapClient::listFolders()
 {
     auto job = new KIMAP::ListJob(session());
+    const quint64 generation = m_generation;
     // Plain LIST: servers with SPECIAL-USE (RFC 6154) put \Sent, \Trash etc. in its answer.
     // IncludeFolderRoleFlags would send XLIST, which only Gmail knows (Yahoo rejects it).
     job->setOption(KIMAP::ListJob::IncludeUnsubscribed);
@@ -136,8 +162,8 @@ void ImapClient::listFolders()
                 }
             });
 
-    connect(job, &KJob::result, this, [this, folders](KJob *job) {
-        if (!checkJob(job)) {
+    connect(job, &KJob::result, this, [this, folders, generation](KJob *job) {
+        if (!checkJob(job, generation)) {
             return;
         }
         // Special folders first, the rest alphabetically by path.
@@ -151,12 +177,15 @@ void ImapClient::fetchHeaders(const QString &folder, int limit)
 {
     // SELECT is issued directly here because we need its message count.
     auto select = new KIMAP::SelectJob(session());
+    const quint64 generation = m_generation;
     select->setMailBox(folder);
     m_selectedFolder = folder;
 
-    connect(select, &KJob::result, this, [this, folder, limit](KJob *job) {
-        if (!checkJob(job)) {
-            m_selectedFolder.clear();
+    connect(select, &KJob::result, this, [this, folder, limit, generation](KJob *job) {
+        if (!checkJob(job, generation)) {
+            if (generation == m_generation) {
+                m_selectedFolder.clear();
+            }
             return;
         }
         const int count = static_cast<KIMAP::SelectJob *>(job)->messageCount();
@@ -191,8 +220,8 @@ void ImapClient::fetchHeaders(const QString &folder, int limit)
                 messages->append(summary);
             }
         });
-        connect(fetch, &KJob::result, this, [this, folder, messages](KJob *job) {
-            if (!checkJob(job)) {
+        connect(fetch, &KJob::result, this, [this, folder, messages, generation](KJob *job) {
+            if (!checkJob(job, generation)) {
                 return;
             }
             std::sort(messages->begin(), messages->end(), [](const MessageSummary &a, const MessageSummary &b) {
@@ -207,7 +236,9 @@ void ImapClient::fetchHeaders(const QString &folder, int limit)
 
 void ImapClient::fetchMessage(const QString &folder, qint64 uid)
 {
-    queueSelect(folder);
+    session();
+    const quint64 generation = m_generation;
+    queueSelect(folder, generation);
 
     auto fetch = new KIMAP::FetchJob(session());
     fetch->setUidBased(true);
@@ -222,8 +253,8 @@ void ImapClient::fetchMessage(const QString &folder, qint64 uid)
             *result = batch.first().message;
         }
     });
-    connect(fetch, &KJob::result, this, [this, folder, uid, result](KJob *job) {
-        if (!checkJob(job)) {
+    connect(fetch, &KJob::result, this, [this, folder, uid, result, generation](KJob *job) {
+        if (!checkJob(job, generation)) {
             return;
         }
         if (!*result) {
@@ -237,13 +268,17 @@ void ImapClient::fetchMessage(const QString &folder, qint64 uid)
 
 void ImapClient::markSeen(const QString &folder, qint64 uid)
 {
-    queueSelect(folder);
+    session();
+    const quint64 generation = m_generation;
+    queueSelect(folder, generation);
 
     auto store = new KIMAP::StoreJob(session());
     store->setUidBased(true);
     store->setSequenceSet(KIMAP::ImapSet(uid));
     store->setFlags({"\\Seen"});
     store->setMode(KIMAP::StoreJob::AppendFlags);
-    connect(store, &KJob::result, this, &ImapClient::checkJob);
+    connect(store, &KJob::result, this, [this, generation](KJob *job) {
+        checkJob(job, generation);
+    });
     store->start();
 }

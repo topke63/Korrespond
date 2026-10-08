@@ -674,7 +674,8 @@ T39 and T46 later make it fully functional.
   → other folders open from the drawer → an HTML newsletter shows without remote images →
   an opened unread message becomes non-bold and stays read after restart → restart reconnects
   without asking for the password → "Remove account" returns to the setup page.
-- notes:
+- notes: Partial 2026-10-08: with a new app password, add account → Inbox opens automatically
+  with newest messages (folders: Inbox, Draft, Sent, Archive, Bulk, Trash). Rest still to check.
 
 ### T26 — `StorageSettings`: values, load/save, cutoff and byte limit
 - status: done
@@ -995,9 +996,92 @@ T39 and T46 later make it fully functional.
   confirmed in the user's GUI run: a rejected Yahoo login shows the new
   sentence as a passive notification.
 
+### Look and feel: Geary-like redesign (2026-10-08)
+The user finds the first GUI plain ("make it modern, at least like Geary but as Qt"). Target:
+three panes on wide windows (folders | message list | message), one pane at a time on narrow
+ones; a compact folder sidebar with the account at the top and settings in a menu; list rows
+with a sender avatar, sender + date on one line, subject below, unread shown by a dot + bold;
+a message view with a large subject, a sender header (avatar, name, address, date) and the
+body below. Message previews in the list (needs fetching body text) are out of scope for now.
+
+### T48 — Dev screenshot hook
+- status: todo
+- depends on: T19
+- parallel-safe with: none
+- files: src/app/main.cpp
+- inputs: needed to review the redesign without the user taking screenshots.
+- output: when `PLASMAMAIL_SCREENSHOT=<file.png>` is set, the app waits
+  `PLASMAMAIL_SCREENSHOT_DELAY` ms (default 6000), saves the window (`QQuickWindow::grabWindow`,
+  the app window only, never the screen) and quits. With `PLASMAMAIL_SCREENSHOT_OPEN=1` it first
+  opens the newest message of the current folder. Dev-only; documented in the commands section.
+- verify: offscreen run with a fake account writes a PNG and exits 0.
+- notes:
+
+### T49 — Folder sidebar
+- status: todo
+- depends on: T48
+- parallel-safe with: none
+- files: src/qml/FolderSidebar.qml, src/qml/Main.qml
+- inputs: `MailController.folderModel`, `accountEmail`.
+- output: replaces the GlobalDrawer content: header with the account (avatar + address,
+  elided), folder list starting at the top (compact rows, current folder highlighted, depth
+  indent), and a menu button ("Local Storage…", "Remove Account…") instead of the two footer
+  buttons. Still docked on wide windows, modal on narrow.
+- verify: offscreen checks as in T19 print no QML warnings; screenshot (T48) reviewed.
+- notes:
+
+### T50 — Three-pane layout
+- status: todo
+- depends on: T49
+- parallel-safe with: none
+- files: src/qml/Main.qml, src/qml/MessageListPage.qml
+- inputs: Kirigami `pageStack` (ColumnView).
+- output: default window 75×45 grid units; the message list has a fixed column width
+  (~28 grid units) and the message page is always pushed after it, filling the rest (empty
+  placeholder until a message is opened); on narrow windows clicking a row moves to the message
+  column. Toolbar header style so each pane's title row lines up like one header bar.
+- verify: offscreen checks as in T19; screenshot with and without an open message reviewed.
+- notes:
+
+### T51 — Message list rows
+- status: todo
+- depends on: T50
+- parallel-safe with: none
+- files: src/qml/MessageListPage.qml
+- inputs: model roles `from`, `subject`, `dateText`, `unread`, `uid`.
+- output: rows with `Kirigami.Avatar` (initials from the sender name), sender (bold when unread)
+  and date on the first line, subject below (elided, dimmer when read), an accent dot for
+  unread, thin separators, comfortable but compact padding. Refresh as an icon button with
+  tooltip. Placeholder and progress bar kept.
+- verify: offscreen checks as in T19; screenshot reviewed.
+- notes:
+
+### T52 — Message view
+- status: todo
+- depends on: T50
+- parallel-safe with: T51
+- files: src/qml/MessagePage.qml
+- inputs: `MailController` message properties.
+- output: large subject heading; sender block with avatar, display name and address (split
+  from `messageFrom`), "to" line, date on the right; attachment chips; body below without a
+  form layout. Placeholder ("No message selected") when nothing is open. Security settings of
+  T23 unchanged.
+- verify: offscreen checks as in T19; screenshot with an open message reviewed.
+- notes:
+
+### T53 — Visual review with the user
+- status: todo
+- depends on: T49–T52
+- parallel-safe with: none
+- files: none (feedback becomes new tasks)
+- inputs: the user runs the app.
+- output: user's verdict on the new look recorded in notes.
+- verify: manual.
+- notes:
+
 ### T25 — Global verify
 - status: todo
-- depends on: T1–T24, T26–T47, T39a
+- depends on: T1–T24, T26–T53, T39a
 - parallel-safe with: none
 - files: none
 - inputs: —

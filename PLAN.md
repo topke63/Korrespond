@@ -620,7 +620,7 @@ Tasks in the same wave can run in parallel once the earlier waves are done.
   `DBUS_SESSION_BUS_ADDRESS=disabled:` so the real wallet is never touched) so the drawer loads.
 
 ### T22 — Message list page
-- status: todo
+- status: done
 - depends on: T17, T19
 - parallel-safe with: T20, T21
 - files: src/qml/MessageListPage.qml, src/qml/Main.qml
@@ -630,7 +630,9 @@ Tasks in the same wave can run in parallel once the earlier waves are done.
   date, bold when unread; refresh action (F5); busy indicator; placeholder message when empty.
   Clicking a row calls `openMessage(uid)` and pushes the message page (T23; until then, no push).
 - verify: offscreen launch as in T19 prints no QML warnings.
-- notes:
+- notes: Done 2026-10-08. Busy shows as an indeterminate progress bar in the page header; the
+  refresh action is disabled meanwhile. The open message (`currentUid`) is highlighted. Main.qml
+  now pushes this page when an account exists. Empty subject shows "(no subject)".
 
 ### T23 — Message page with sandboxed HTML view
 - status: todo

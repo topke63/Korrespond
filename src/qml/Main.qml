@@ -102,20 +102,10 @@ Kirigami.ApplicationWindow {
         AccountSetupPage {}
     }
 
-    // Replaced by the folder and message list pages in T21–T22.
     Component {
         id: mailPage
 
-        Kirigami.Page {
-            title: MailController.accountEmail
-
-            Kirigami.PlaceholderMessage {
-                anchors.centerIn: parent
-                width: parent.width - Kirigami.Units.gridUnit * 4
-                icon.name: "mail-message"
-                text: KI18n.i18nc("@info:placeholder", "No message selected")
-            }
-        }
+        MessageListPage {}
     }
 
     Connections {

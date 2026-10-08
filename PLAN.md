@@ -882,7 +882,7 @@ T39 and T46 later make it fully functional.
 - notes:
 
 ### T41 — Storage settings page
-- status: todo
+- status: done
 - depends on: T21, T39a
 - parallel-safe with: T27
 - files: src/qml/StorageSettingsPage.qml, src/qml/Main.qml
@@ -894,7 +894,15 @@ T39 and T46 later make it fully functional.
   local copies are removed; "Clean up now" and "Apply" buttons. Drawer action opens it.
 - verify: offscreen launch as in T19 prints no QML warnings; manual: changing units keeps
   the number and the page reloads saved values after restart.
-- notes:
+- notes: Done 2026-10-08. Opened from a "Local Storage" button in the drawer footer as a page layer.
+  Import date uses Kirigami Addons `DatePopup` (runtime dep, QML only); a future date is clamped
+  to today on accept. **Do not set `DatePopup.maximumDate`:** in Kirigami Addons 1.15 it hangs
+  the app when the page opens (found by bisecting; nothing is logged). Extra "Defaults" button
+  uses `defaultStorageSettings()`. Unit combos change only the unit, so the number is kept.
+  Verified offscreen by temporarily opening the page at startup and calling Apply: config got
+  `[Storage]` with the new values, and a restart loaded them back (incl. "All mail").
+  Kirigami prints "StackView has detected conflicting anchors" (PageRow.qml) on any layer push,
+  even an empty page; harmless.
 
 ### T46 — Storage page: show usage and enable "Clean up now"
 - status: todo

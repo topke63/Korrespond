@@ -50,6 +50,7 @@ qt_add_qml_module(plasma-mail
         qml/AccountSetupPage.qml
         qml/MessageListPage.qml
         qml/MessagePage.qml
+        qml/StorageSettingsPage.qml
 )
 # The generated QML type registration includes headers by file name.
 target_include_directories(plasma-mail PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)

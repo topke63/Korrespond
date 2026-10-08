@@ -64,11 +64,28 @@ Kirigami.ApplicationWindow {
 
         footer: QQC2.ToolBar {
             position: QQC2.ToolBar.Footer
-            contentItem: QQC2.ToolButton {
-                text: KI18n.i18nc("@action:button", "Remove Account")
-                icon.name: "list-remove-user"
-                display: QQC2.AbstractButton.TextBesideIcon
-                onClicked: removeDialog.open()
+            contentItem: ColumnLayout {
+                spacing: 0
+
+                QQC2.ToolButton {
+                    Layout.fillWidth: true
+                    text: KI18n.i18nc("@action:button", "Local Storage")
+                    icon.name: "drive-harddisk"
+                    display: QQC2.AbstractButton.TextBesideIcon
+                    onClicked: {
+                        if (drawer.modal) {
+                            drawer.close();
+                        }
+                        window.pageStack.layers.push(storagePage);
+                    }
+                }
+                QQC2.ToolButton {
+                    Layout.fillWidth: true
+                    text: KI18n.i18nc("@action:button", "Remove Account")
+                    icon.name: "list-remove-user"
+                    display: QQC2.AbstractButton.TextBesideIcon
+                    onClicked: removeDialog.open()
+                }
             }
         }
     }
@@ -101,6 +118,12 @@ Kirigami.ApplicationWindow {
         id: setupPage
 
         AccountSetupPage {}
+    }
+
+    Component {
+        id: storagePage
+
+        StorageSettingsPage {}
     }
 
     Component {

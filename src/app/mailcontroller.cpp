@@ -5,9 +5,12 @@
 
 #include "foldermodel.h"
 #include "imapclient.h"
+#include "messagelistmodel.h"
 #include "secretstore.h"
 
 #include <KLocalizedString>
+
+#include <algorithm>
 
 using namespace Qt::StringLiterals;
 
@@ -16,8 +19,10 @@ MailController::MailController(QObject *parent)
     , m_client(new ImapClient(this))
     , m_secrets(new SecretStore(QString::fromLatin1(AccountSecrets::service), this))
     , m_folderModel(new FolderModel(this))
+    , m_messageModel(new MessageListModel(this))
 {
     connect(m_client, &ImapClient::foldersListed, this, &MailController::onFoldersListed);
+    connect(m_client, &ImapClient::headersFetched, this, &MailController::onHeadersFetched);
     connect(m_client, &ImapClient::errorOccurred, this, [this](const QString &message) {
         // A failed connection or login fails every queued job, so nothing is in flight any more.
         resetRequests();
@@ -56,6 +61,56 @@ bool MailController::busy() const
 QAbstractListModel *MailController::folderModel() const
 {
     return m_folderModel;
+}
+
+QAbstractListModel *MailController::messageModel() const
+{
+    return m_messageModel;
+}
+
+QString MailController::currentFolder() const
+{
+    return m_currentFolder;
+}
+
+QString MailController::currentFolderName() const
+{
+    return m_currentFolder.isEmpty() ? QString() : m_folderModel->displayName(m_currentFolder);
+}
+
+void MailController::selectFolder(const QString &path)
+{
+    if (path.isEmpty()) {
+        return;
+    }
+    if (path != m_currentFolder) {
+        m_currentFolder = path;
+        m_messageModel->clear();
+        Q_EMIT currentFolderChanged();
+    }
+    beginRequest();
+    m_client->fetchHeaders(path, messageLimit);
+}
+
+void MailController::refresh()
+{
+    if (!m_account.isValid() && !m_pendingAccount.isValid()) {
+        return;
+    }
+    beginRequest();
+    m_client->listFolders();
+    if (!m_currentFolder.isEmpty()) {
+        selectFolder(m_currentFolder);
+    }
+}
+
+void MailController::onHeadersFetched(const QString &folder, const QList<MessageSummary> &messages)
+{
+    endRequest();
+    if (folder != m_currentFolder) {
+        return; // the user switched folders while this was loading
+    }
+    m_messageModel->setMessages(messages);
 }
 
 void MailController::setupAccount(const QString &provider,
@@ -114,6 +169,11 @@ void MailController::removeAccount()
     Account::remove();
     m_account = {};
     m_folderModel->setFolders({});
+    m_messageModel->clear();
+    if (!m_currentFolder.isEmpty()) {
+        m_currentFolder.clear();
+        Q_EMIT currentFolderChanged();
+    }
     Q_EMIT accountChanged();
 }
 
@@ -153,6 +213,18 @@ void MailController::onFoldersListed(const QList<FolderInfo> &folders)
 {
     endRequest();
     m_folderModel->setFolders(folders);
+    const bool currentStillExists = std::any_of(folders.cbegin(), folders.cend(), [this](const FolderInfo &f) {
+        return f.path == m_currentFolder;
+    });
+    if (!currentStillExists) {
+        // First list after connecting, or the folder was deleted elsewhere: show the inbox.
+        m_currentFolder.clear();
+        m_messageModel->clear();
+        Q_EMIT currentFolderChanged();
+        selectFolder(m_folderModel->inboxPath());
+    } else {
+        Q_EMIT currentFolderChanged(); // the display name may have changed
+    }
 
     if (!m_pendingAccount.isValid()) {
         return;

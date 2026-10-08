@@ -536,7 +536,7 @@ Tasks in the same wave can run in parallel once the earlier waves are done.
   6 folders, `removeAccount` clears config and keychain.
 
 ### T17 — `MailController`: folder selection and message list
-- status: todo
+- status: done
 - depends on: T12, T16
 - parallel-safe with: T13, T15
 - files: src/app/mailcontroller.h, src/app/mailcontroller.cpp
@@ -546,7 +546,14 @@ Tasks in the same wave can run in parallel once the earlier waves are done.
   `refresh()`. After the first folder list arrives, auto-select `inboxPath()`. Ignore
   `headersFetched` for a folder that is no longer current.
 - verify: `cmake --build build --target plasma-mail` succeeds.
-- notes:
+- notes: Done 2026-10-08. `MailController::messageLimit = 50`. `selectFolder` clears the list
+  only when the folder changes (re-selecting the same folder keeps it while reloading).
+  `refresh()` reloads the folder list and the current folder. After every folder list: if the
+  current folder no longer exists (or none yet), the inbox is selected; otherwise
+  `currentFolderChanged` is re-emitted so the translated name updates. `headersFetched` for a
+  non-current folder only ends the busy request. `removeAccount` clears folder and messages.
+  Verified with the scratch harness on Yahoo: inbox auto-selected (50 rows, name "Inbox"),
+  Sent 41 rows, Trash→INBOX quick switch ends on INBOX, refresh keeps 6 folders/50 rows.
 
 ### T18 — `MailController`: open a message
 - status: todo

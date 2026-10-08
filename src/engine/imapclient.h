@@ -55,11 +55,17 @@ public:
     void markSeen(const QString &folder, qint64 uid);
     // Sets or clears \Flagged (shown as a star or flag by mail clients).
     void setFlagged(const QString &folder, qint64 uid, bool flagged);
+    // UIDs of the messages in folder that arrived on or after since (the server's arrival date,
+    // not the Date header); a null date means all messages. Emits searchFinished().
+    void searchSince(const QString &folder, const QDate &since);
 
 Q_SIGNALS:
     void foldersListed(const QList<FolderInfo> &folders);
     // `filter` is the one passed to fetchHeaders(), so results for the same folder can be told apart.
     void headersFetched(const QString &folder, ImapClient::HeaderFilter filter, const QList<MessageSummary> &messages);
+    // uids are in ascending order. uidValidity is the folder's current UIDVALIDITY: when it
+    // differs from the stored one, every stored uid of the folder is stale.
+    void searchFinished(const QString &folder, qint64 uidValidity, const QList<qint64> &uids);
     void messageFetched(const QString &folder, qint64 uid, const std::shared_ptr<KMime::Message> &message);
     void errorOccurred(const QString &message);
 

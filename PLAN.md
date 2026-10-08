@@ -825,7 +825,7 @@ T39 and T46 later make it fully functional.
   `ctest --test-dir build` on 2026-10-08: all 10 test executables pass.
 
 ### T34 — `ImapClient::searchSince`
-- status: todo
+- status: done
 - depends on: T5
 - parallel-safe with: T26–T33
 - files: src/engine/imapclient.{h,cpp}
@@ -834,7 +834,10 @@ T39 and T46 later make it fully functional.
 - output: `void searchSince(folder, const QDate &since)` (null date = all messages) emitting
   `searchFinished(folder, qint64 uidValidity, QList<qint64> uids)`.
 - verify: `cmake --build build --target plasmamail_engine` succeeds.
-- notes:
+- notes: Issues its own SELECT (not `queueSelect`) to read UIDVALIDITY. Null date searches
+  `1:*` (KIMAP has no ALL term); an empty folder emits an empty list without searching. SINCE
+  uses the server's arrival date, not the Date header. uids are emitted ascending. Builds with
+  no warnings on 2026-10-08; not yet run against a server (first use is in the sync tasks).
 
 ### T35 — `ImapClient::fetchRawMessages`
 - status: todo

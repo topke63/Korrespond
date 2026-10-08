@@ -241,6 +241,46 @@ void ImapClient::fetchHeaders(const QString &folder, int limit, HeaderFilter fil
     select->start();
 }
 
+void ImapClient::searchSince(const QString &folder, const QDate &since)
+{
+    // SELECT is issued directly here because we need its UIDVALIDITY.
+    auto select = new KIMAP::SelectJob(session());
+    const quint64 generation = m_generation;
+    select->setMailBox(folder);
+    m_selectedFolder = folder;
+
+    connect(select, &KJob::result, this, [this, folder, since, generation](KJob *job) {
+        if (!checkJob(job, generation)) {
+            if (generation == m_generation) {
+                m_selectedFolder.clear();
+            }
+            return;
+        }
+        const auto selectJob = static_cast<KIMAP::SelectJob *>(job);
+        const qint64 uidValidity = selectJob->uidValidity();
+        // Some servers reject SEARCH 1:* in an empty folder, so don't ask.
+        if (selectJob->messageCount() <= 0 || !m_session) {
+            Q_EMIT searchFinished(folder, uidValidity, {});
+            return;
+        }
+        auto search = new KIMAP::SearchJob(m_session);
+        search->setUidBased(true);
+        // IMAP has no plain "ALL" term in KIMAP; 1:* (every sequence number) means the same.
+        search->setTerm(since.isValid() ? KIMAP::Term(KIMAP::Term::Since, since)
+                                        : KIMAP::Term(KIMAP::Term::SequenceNumber, KIMAP::ImapSet(1, 0)));
+        connect(search, &KJob::result, this, [this, folder, uidValidity, generation](KJob *job) {
+            if (!checkJob(job, generation)) {
+                return;
+            }
+            QList<qint64> uids = static_cast<KIMAP::SearchJob *>(job)->results();
+            std::sort(uids.begin(), uids.end());
+            Q_EMIT searchFinished(folder, uidValidity, uids);
+        });
+        search->start();
+    });
+    select->start();
+}
+
 void ImapClient::fetchSummaries(const KIMAP::ImapSet &set, bool uidBased, const QString &folder, HeaderFilter filter, quint64 generation)
 {
     auto fetch = new KIMAP::FetchJob(m_session);

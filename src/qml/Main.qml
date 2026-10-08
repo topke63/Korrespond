@@ -51,7 +51,6 @@ Kirigami.ApplicationWindow {
             settings.open();
         }
         onAboutRequested: settings.open("about")
-        onRemoveAccountRequested: removeDialog.open()
     }
     // Inside the page row, so the sidebar's header lines up with the pages' title bars.
     pageStack.leftSidebar: sidebar
@@ -61,6 +60,12 @@ Kirigami.ApplicationWindow {
 
         window: window
         modules: [
+            KirigamiSettings.ConfigurationModule {
+                moduleId: "accounts"
+                text: KI18n.i18nc("@action:button", "Accounts")
+                icon.name: "mail-folder-inbox"
+                page: () => accountsPage
+            },
             KirigamiSettings.ConfigurationModule {
                 moduleId: "storage"
                 text: KI18n.i18nc("@action:button", "Local Storage")
@@ -83,34 +88,16 @@ Kirigami.ApplicationWindow {
         onActivated: settings.open()
     }
 
-    Kirigami.PromptDialog {
-        id: removeDialog
-
-        title: KI18n.i18nc("@title:dialog", "Remove Account?")
-        subtitle: KI18n.i18nc("@info", "This removes %1 and its saved password from this computer. No mail is deleted on the server.",
-                              MailController.accountEmail)
-        standardButtons: Kirigami.Dialog.NoButton
-        customFooterActions: [
-            Kirigami.Action {
-                text: KI18n.i18nc("@action:button", "Remove Account")
-                icon.name: "list-remove-user"
-                onTriggered: {
-                    removeDialog.close();
-                    MailController.removeAccount();
-                }
-            },
-            Kirigami.Action {
-                text: KI18n.i18nc("@action:button", "Cancel")
-                icon.name: "dialog-cancel"
-                onTriggered: removeDialog.close()
-            }
-        ]
-    }
-
     Component {
         id: setupPage
 
         AccountSetupPage {}
+    }
+
+    Component {
+        id: accountsPage
+
+        AccountSettingsPage {}
     }
 
     Component {
@@ -140,6 +127,14 @@ Kirigami.ApplicationWindow {
         }
         function onAccountChanged() {
             window.showStartPage();
+            // After removing the account there is nothing left to configure.
+            if (!MailController.hasAccount && settings.configViewItem) {
+                if (typeof settings.configViewItem.close === "function") {
+                    settings.configViewItem.close(); // desktop: the settings window
+                } else {
+                    window.pageStack.layers.clear(); // mobile: the settings layer
+                }
+            }
         }
     }
 }

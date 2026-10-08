@@ -15,7 +15,6 @@ Kirigami.OverlayDrawer {
 
     signal settingsRequested()
     signal aboutRequested()
-    signal removeAccountRequested()
 
     // Mimestream-style colored icons by folder role; other folders stay neutral.
     function roleColor(role: string): color {
@@ -92,12 +91,7 @@ Kirigami.OverlayDrawer {
                             icon.name: "help-about"
                             onTriggered: sidebar.aboutRequested()
                         }
-                        QQC2.MenuSeparator {}
-                        QQC2.MenuItem {
-                            text: KI18n.i18nc("@action:inmenu", "Remove Account…")
-                            icon.name: "list-remove-user"
-                            onTriggered: sidebar.removeAccountRequested()
-                        }
+
                     }
                 }
             }

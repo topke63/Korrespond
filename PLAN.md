@@ -1225,7 +1225,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   the focused window, so the settings window can be captured.
 
 ### T61 — Accounts settings page
-- status: todo
+- status: done
 - depends on: T60
 - parallel-safe with: none
 - files: src/qml/AccountSettingsPage.qml, src/app/mailcontroller.{h,cpp}
@@ -1235,7 +1235,10 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   provider, IMAP server) and a "Remove Account…" button with the confirmation dialog
   (moved from Main.qml).
 - verify: offscreen checks as in T19; screenshot reviewed.
-- notes:
+- notes: Done 2026-10-08. The ☰ menu is now "Settings…" and "About Plasma Mail"; Remove Account
+  lives on this page. After removal, Main.qml closes the settings window (desktop) or clears the
+  layers (mobile) on `accountChanged`. Removal itself not exercised on the real account (it would
+  delete the user's saved account); the dialog flow is unchanged from T21.
 
 ### T25 — Global verify
 - status: todo

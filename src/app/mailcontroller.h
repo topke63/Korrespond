@@ -33,6 +33,9 @@ class MailController : public QObject
 
     Q_PROPERTY(bool hasAccount READ hasAccount NOTIFY accountChanged)
     Q_PROPERTY(QString accountEmail READ accountEmail NOTIFY accountChanged)
+    Q_PROPERTY(QString accountDisplayName READ accountDisplayName NOTIFY accountChanged)
+    Q_PROPERTY(QString accountProvider READ accountProvider NOTIFY accountChanged) // readable, e.g. "Yahoo"
+    Q_PROPERTY(QString accountServer READ accountServer NOTIFY accountChanged) // "host:port" of the IMAP server
     Q_PROPERTY(bool busy READ busy NOTIFY busyChanged)
     Q_PROPERTY(QAbstractListModel *folderModel READ folderModel CONSTANT)
     Q_PROPERTY(QAbstractListModel *messageModel READ messageModel CONSTANT)
@@ -62,6 +65,9 @@ public:
 
     [[nodiscard]] bool hasAccount() const;
     [[nodiscard]] QString accountEmail() const;
+    [[nodiscard]] QString accountDisplayName() const;
+    [[nodiscard]] QString accountProvider() const;
+    [[nodiscard]] QString accountServer() const;
     [[nodiscard]] bool busy() const;
     [[nodiscard]] QAbstractListModel *folderModel() const;
     [[nodiscard]] QAbstractListModel *messageModel() const;

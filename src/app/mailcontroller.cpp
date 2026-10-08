@@ -60,6 +60,30 @@ QString MailController::accountEmail() const
     return m_account.email;
 }
 
+QString MailController::accountDisplayName() const
+{
+    return m_account.displayName;
+}
+
+QString MailController::accountProvider() const
+{
+    if (m_account.provider == "yahoo"_L1) {
+        return i18nc("@info mail provider", "Yahoo");
+    }
+    if (m_account.provider == "gmail"_L1) {
+        return i18nc("@info mail provider", "Gmail");
+    }
+    if (m_account.provider == "outlook"_L1) {
+        return i18nc("@info mail provider", "Outlook");
+    }
+    return i18nc("@info mail provider", "Custom IMAP");
+}
+
+QString MailController::accountServer() const
+{
+    return m_account.isValid() ? u"%1:%2"_s.arg(m_account.imapHost).arg(m_account.imapPort) : QString();
+}
+
 bool MailController::busy() const
 {
     return m_requests > 0;

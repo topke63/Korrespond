@@ -1248,9 +1248,24 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   layers (mobile) on `accountChanged`. Removal itself not exercised on the real account (it would
   delete the user's saved account); the dialog flow is unchanged from T21.
 
+### T62 — Compose button and New Message window (no sending yet)
+- status: todo
+- depends on: T54
+- parallel-safe with: none
+- files: src/qml/ComposeWindow.qml, src/qml/MessageListPage.qml
+- inputs: user 2026-10-08: "add create new mail and window for creating new mail next to check
+  for new mail". **Decided (user): window now, sending later** (sending is milestone 4).
+- output: a "New Message" icon button (`mail-message-new`, Ctrl+N) left of Refresh in the list
+  header; opens a separate window: From (account address, read-only), To, Cc, Subject, message
+  text; footer with Discard (asks first when anything was typed) and Send, disabled with a
+  tooltip saying sending comes in a later version. Several windows can be open; each is
+  destroyed when closed.
+- verify: offscreen checks as in T19; screenshot of the window reviewed.
+- notes:
+
 ### T25 — Global verify
 - status: todo
-- depends on: T1–T24, T26–T61, T39a
+- depends on: T1–T24, T26–T62, T39a
 - parallel-safe with: none
 - files: none
 - inputs: —

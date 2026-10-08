@@ -367,7 +367,7 @@ Tasks in the same wave can run in parallel once the earlier waves are done.
 - notes:
 
 ### T10 — `FolderModel` in the models library
-- status: todo
+- status: done
 - depends on: T3
 - parallel-safe with: T4, T5, T8, T14, T15
 - files: src/models/foldermodel.h, src/models/foldermodel.cpp
@@ -378,7 +378,13 @@ Tasks in the same wave can run in parallel once the earlier waves are done.
 - output: list model with roles `path, name, folderRole, depth, iconName`;
   `setFolders()`, `displayName(path)`, `inboxPath()`.
 - verify: `cmake --build build --target plasmamail_models` succeeds.
-- notes:
+- notes: Done 2026-10-08 after review. Fixed: translated "Inbox" name (also for
+  `Qt::DisplayRole`), `displayName()` falls back to the path, Breeze icon names that exist
+  (inbox `mail-folder-inbox`, sent `mail-folder-sent`, drafts `document-edit`, trash
+  `user-trash`, junk `mail-mark-junk`, archive/all `mail-folder-outbox`, flagged
+  `mail-mark-important`, other `folder-mail`; also served for `Qt::DecorationRole`), include
+  `"folderutils.h"` by name, no `Q_INVOKABLE`s. The models library contains only FolderModel
+  until T12 adds MessageListModel; `messagelistmodeltest` therefore doesn't link until T12/T13.
 
 ### T11 — Unit test for `FolderModel`
 - status: todo

@@ -17,3 +17,13 @@ target_link_libraries(plasmamail_engine PUBLIC
     Qt6Keychain::Qt6Keychain
     Qt6::Sql
 )
+
+# Models: list models for the UI (QtCore only, no QML).
+add_library(plasmamail_models STATIC
+    models/foldermodel.cpp
+)
+target_include_directories(plasmamail_models PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/models)
+target_link_libraries(plasmamail_models PUBLIC
+    plasmamail_engine
+    KF6::I18n
+)

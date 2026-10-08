@@ -1604,7 +1604,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   13/13 pass, also on a second run; the user's real ~/.config/plasmamailrc is untouched.
 
 ### T70 — Gmail folder roles and which folders are stored
-- status: todo
+- status: done
 - depends on: none
 - parallel-safe with: T68, T72, T74
 - files: src/engine/folderutils.cpp, src/engine/syncmanager.cpp
@@ -1612,7 +1612,10 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - output: `\\important` maps to role "important" (sorted after "all"); `isChosen` also skips
   "all", "flagged" and "important".
 - verify: `cmake --build build --target plasmamail_engine` succeeds.
-- notes:
+- notes: Done 2026-10-08. Also updated the role list and sort-order comments in
+  folderutils.h and the isChosen comment in syncmanager.h. "flagged" is skipped for any
+  server, since a `\Flagged` folder is always virtual. "important" has no icon of its own in
+  FolderModel yet (default folder icon). Builds; all 11 tests pass.
 
 ### T71 — Tests for Gmail folder roles
 - status: todo

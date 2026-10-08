@@ -19,6 +19,7 @@ static QString roleFromFlags(const QString &path, const QList<QByteArray> &flags
         {"\\archive", u"archive"_s},
         {"\\all", u"all"_s},
         {"\\flagged", u"flagged"_s},
+        {"\\important", u"important"_s}, // Gmail
     };
     for (const QByteArray &flag : flags) {
         const QByteArray lower = flag.toLower();
@@ -33,7 +34,7 @@ static QString roleFromFlags(const QString &path, const QList<QByteArray> &flags
 
 static int roleOrder(const QString &role)
 {
-    static const QStringList order = {u"inbox"_s, u"flagged"_s, u"drafts"_s, u"sent"_s, u"archive"_s, u"all"_s, u"junk"_s, u"trash"_s};
+    static const QStringList order = {u"inbox"_s, u"flagged"_s, u"drafts"_s, u"sent"_s, u"archive"_s, u"all"_s, u"important"_s, u"junk"_s, u"trash"_s};
     const qsizetype index = order.indexOf(role);
     return index < 0 ? int(order.size()) : int(index);
 }

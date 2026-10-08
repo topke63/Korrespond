@@ -36,7 +36,9 @@ bool SyncManager::isSyncing() const
 
 bool SyncManager::isChosen(const FolderInfo &folder)
 {
-    return folder.role != u"trash"_s && folder.role != u"junk"_s;
+    // Gmail's All Mail, Starred and Important only repeat mail from other folders.
+    static const QStringList skipped = {u"trash"_s, u"junk"_s, u"all"_s, u"flagged"_s, u"important"_s};
+    return !skipped.contains(folder.role);
 }
 
 void SyncManager::syncFolder(const QString &folder)

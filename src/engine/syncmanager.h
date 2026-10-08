@@ -32,7 +32,7 @@ public:
     // A run downloads at most maxBytes; retention then removes the oldest copies overall, so
     // the store ends up with the newest mail that fits. Emits folderSynced() or errorOccurred().
     void syncFolder(const QString &folder);
-    // Runs syncFolder() for each chosen folder in turn (all but Trash and Junk), then emits
+    // Runs syncFolder() for each chosen folder in turn (see isChosen()), then emits
     // syncFinished(). The first error stops the run; errorOccurred() or aborted() is then the
     // last signal.
     // Each folder may download up to maxBytes before retention trims the store.
@@ -42,7 +42,8 @@ public:
     // reports no error, so the run would otherwise wait forever). Late results are ignored.
     void stop();
 
-    // Whether syncAll() stores this folder's mail.
+    // Whether syncAll() stores this folder's mail: not Trash, Junk, or Gmail's All Mail, Starred
+    // and Important.
     [[nodiscard]] static bool isChosen(const FolderInfo &folder);
 
 Q_SIGNALS:

@@ -97,6 +97,21 @@ void MessageListModel::setUnread(qint64 uid, bool unread)
     }
 }
 
+void MessageListModel::setFlagged(qint64 uid, bool flagged)
+{
+    for (qsizetype row = 0; row < m_messages.size(); ++row) {
+        if (m_messages[row].uid != uid) {
+            continue;
+        }
+        if (m_messages[row].flagged != flagged) {
+            m_messages[row].flagged = flagged;
+            const QModelIndex idx = index(int(row));
+            Q_EMIT dataChanged(idx, idx, {FlaggedRole});
+        }
+        return;
+    }
+}
+
 MessageSummary MessageListModel::message(qint64 uid) const
 {
     for (const MessageSummary &msg : m_messages) {

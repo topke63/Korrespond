@@ -33,6 +33,7 @@ public:
     void clear();
     // Updates one message's unread state; emits dataChanged for that row only.
     void setUnread(qint64 uid, bool unread);
+    void setFlagged(qint64 uid, bool flagged);
     // Returns a default MessageSummary (uid 0) if `uid` is not in the list.
     [[nodiscard]] MessageSummary message(qint64 uid) const;
 

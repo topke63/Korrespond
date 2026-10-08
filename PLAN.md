@@ -1313,7 +1313,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - notes: Done 2026-10-08. Mirrors `markSeen`; RemoveFlags mode for unflag.
 
 ### T66 — `MailController`: flag / unflag
-- status: todo
+- status: done
 - depends on: T65, T64
 - parallel-safe with: none
 - files: src/app/mailcontroller.{h,cpp}, src/models/messagelistmodel.{h,cpp} (+ model test)
@@ -1323,7 +1323,9 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   `setFlagged(uid, bool)`: updates the list and the open message at once, then stores the flag
   on the server in the uid's folder (the shared views map to the inbox).
 - verify: `ctest --test-dir build -R messagelistmodeltest`; build succeeds.
-- notes:
+- notes: Done 2026-10-08. `messageFlagged` is taken from the list row when a message is opened
+  (KMime's parsed message has no IMAP flags). Optimistic update: list and open message change
+  first, then UID STORE; a failure is reported via `errorOccurred` like other jobs.
 
 ### T67 — Flag controls in the UI
 - status: todo

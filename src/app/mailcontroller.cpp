@@ -186,6 +186,11 @@ QStringList MailController::messageAttachments() const
     return m_messageAttachments;
 }
 
+bool MailController::messageFlagged() const
+{
+    return m_messageFlagged;
+}
+
 bool MailController::storageEnabled() const
 {
     return m_storage.enabled;
@@ -290,8 +295,27 @@ void MailController::openMessage(qint64 uid)
     m_currentUid = uid;
     m_messageFolder = imapFolderFor(m_currentFolder);
     clearMessage(false);
+    m_messageFlagged = m_messageModel->message(uid).flagged; // the parsed message carries no IMAP flags
     beginRequest();
     m_client->fetchMessage(m_messageFolder, uid);
+}
+
+void MailController::setFlagged(qint64 uid, bool flagged)
+{
+    if (uid <= 0) {
+        return;
+    }
+    // The open message may belong to a folder the list no longer shows.
+    const QString folder = uid == m_currentUid ? m_messageFolder : imapFolderFor(m_currentFolder);
+    if (folder.isEmpty()) {
+        return;
+    }
+    m_messageModel->setFlagged(uid, flagged);
+    if (uid == m_currentUid && m_messageFlagged != flagged) {
+        m_messageFlagged = flagged;
+        Q_EMIT currentMessageChanged();
+    }
+    m_client->setFlagged(folder, uid, flagged);
 }
 
 void MailController::onMessageFetched(const QString &folder, qint64 uid, const std::shared_ptr<KMime::Message> &message)
@@ -330,6 +354,7 @@ void MailController::clearMessage(bool clearUid)
     m_messageDate = {};
     m_messageHtml.clear();
     m_messageAttachments.clear();
+    m_messageFlagged = false;
     Q_EMIT currentMessageChanged();
 }
 

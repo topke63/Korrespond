@@ -78,6 +78,15 @@ private Q_SLOTS:
         MessageListModel model;
         model.setMessages({flagged});
         QCOMPARE(model.index(0).data(MessageListModel::FlaggedRole).toBool(), true);
+
+        QSignalSpy changed(&model, &QAbstractItemModel::dataChanged);
+        model.setFlagged(5, false);
+        QCOMPARE(changed.count(), 1);
+        QCOMPARE(changed.at(0).at(2).value<QList<int>>(), QList<int>{MessageListModel::FlaggedRole});
+        QCOMPARE(model.index(0).data(MessageListModel::FlaggedRole).toBool(), false);
+        model.setFlagged(5, false); // no change, no signal
+        model.setFlagged(99, true); // unknown uid is ignored
+        QCOMPARE(changed.count(), 1);
     }
 
     void testDateText()

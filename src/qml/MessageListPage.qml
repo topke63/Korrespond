@@ -150,14 +150,21 @@ Kirigami.ScrollablePage {
                             elide: Text.ElideRight
                             font.weight: row.unread ? Font.Bold : Font.DemiBold
                         }
-                        Kirigami.Icon {
-                            visible: row.flagged
-                            implicitWidth: Kirigami.Units.iconSizes.small
-                            implicitHeight: Kirigami.Units.iconSizes.small
-                            source: "flag"
-                            color: "#f67400"
-                            isMask: true
-                            Accessible.name: KI18n.i18nc("@info", "Flagged")
+                        // Orange when flagged; faint on hover so any row can be flagged with a click.
+                        QQC2.ToolButton {
+                            implicitWidth: Kirigami.Units.iconSizes.small + Kirigami.Units.smallSpacing * 2
+                            implicitHeight: implicitWidth
+                            padding: Kirigami.Units.smallSpacing
+                            flat: true
+                            opacity: row.flagged ? 1 : row.hovered ? 0.5 : 0
+                            enabled: row.flagged || row.hovered
+                            icon.name: "flag"
+                            icon.color: row.flagged ? "#f67400" : Kirigami.Theme.textColor
+                            icon.width: Kirigami.Units.iconSizes.small
+                            icon.height: Kirigami.Units.iconSizes.small
+                            display: QQC2.AbstractButton.IconOnly
+                            text: row.flagged ? KI18n.i18nc("@action:button", "Unflag") : KI18n.i18nc("@action:button", "Flag")
+                            onClicked: MailController.setFlagged(row.uid, !row.flagged)
                         }
                         QQC2.Label {
                             text: row.dateText

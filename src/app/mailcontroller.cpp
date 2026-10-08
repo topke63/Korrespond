@@ -296,6 +296,7 @@ void MailController::openMessage(qint64 uid)
     m_messageFolder = imapFolderFor(m_currentFolder);
     clearMessage(false);
     m_messageFlagged = m_messageModel->message(uid).flagged; // the parsed message carries no IMAP flags
+    Q_EMIT currentMessageChanged(); // the flag shows while the message is still loading
     beginRequest();
     m_client->fetchMessage(m_messageFolder, uid);
 }

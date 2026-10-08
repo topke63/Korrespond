@@ -1328,7 +1328,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   first, then UID STORE; a failure is reported via `errorOccurred` like other jobs.
 
 ### T67 — Flag controls in the UI
-- status: todo
+- status: done
 - depends on: T66, T56
 - parallel-safe with: none
 - files: src/qml/MessagePage.qml, src/qml/MessageListPage.qml
@@ -1338,7 +1338,11 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   row shows a flag button before the date; clicking it toggles that message (flagged rows keep the
   orange flag visible). Flagged view: unflagged rows stay until the next refresh (like Unread).
 - verify: offscreen checks as in T19; manual: flag in the app, see it in Yahoo webmail, and back.
-- notes:
+- notes: Done 2026-10-08. Toolbar toggle is a third Loader component in the T56 Repeater; list
+  toggle is a flat ToolButton (opacity 1 flagged / 0.5 hovered / 0). Also fixed: the toolbar flag
+  now shows while the message loads (controller emits after setting `messageFlagged`), and the
+  message header stays hidden until the message arrives (`loaded`), instead of "(no subject)" and
+  an empty avatar. Server round trip still to be checked by the user (flag in app → webmail).
 
 ### T25 — Global verify
 - status: todo

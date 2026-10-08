@@ -19,6 +19,9 @@ Kirigami.Page {
     }
 
     readonly property bool hasMessage: MailController.currentUid > 0
+    // The open message has arrived (until then only the busy indicator shows).
+    readonly property bool loaded: hasMessage && (html.length > 0 || MailController.messageFrom.length > 0
+                                                  || MailController.messageSubject.length > 0)
     // "Name <address>" split for the sender block; a bare address is used as the name.
     readonly property var sender: {
         const from = MailController.messageFrom.trim();
@@ -42,6 +45,7 @@ Kirigami.Page {
                 { icon: "archive-insert", text: KI18n.i18nc("@action:button", "Archive") },
                 { icon: "edit-delete", text: KI18n.i18nc("@action:button", "Delete") },
                 { icon: "mail-mark-unread", text: KI18n.i18nc("@action:button", "Mark as Unread") },
+                { flag: true },
                 { icon: "folder", text: KI18n.i18nc("@action:button", "Move to Folder") },
                 { icon: "tag", text: KI18n.i18nc("@action:button", "Label") },
                 { separator: true },
@@ -54,7 +58,26 @@ Kirigami.Page {
                 required property var modelData
 
                 visible: page.hasMessage
-                sourceComponent: modelData.separator ? separatorComponent : buttonComponent
+                sourceComponent: modelData.separator ? separatorComponent
+                               : modelData.flag ? flagComponent : buttonComponent
+
+                // The one working action in milestone 1: flag / unflag the open message.
+                Component {
+                    id: flagComponent
+
+                    QQC2.ToolButton {
+                        icon.name: "flag"
+                        icon.color: MailController.messageFlagged ? "#f67400" : Kirigami.Theme.textColor
+                        text: MailController.messageFlagged ? KI18n.i18nc("@action:button", "Unflag")
+                                                            : KI18n.i18nc("@action:button", "Flag")
+                        display: QQC2.AbstractButton.IconOnly
+                        onClicked: MailController.setFlagged(MailController.currentUid, !MailController.messageFlagged)
+
+                        QQC2.ToolTip.text: text + " (Ctrl+Shift+F)"
+                        QQC2.ToolTip.visible: hovered
+                        QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
+                    }
+                }
 
                 Component {
                     id: buttonComponent
@@ -90,6 +113,12 @@ Kirigami.Page {
     }
     padding: 0
     onHtmlChanged: showHtml()
+
+    Shortcut {
+        sequence: "Ctrl+Shift+F"
+        enabled: page.hasMessage
+        onActivated: MailController.setFlagged(MailController.currentUid, !MailController.messageFlagged)
+    }
     Component.onCompleted: showHtml()
 
     ColumnLayout {
@@ -103,7 +132,7 @@ Kirigami.Page {
             Layout.rightMargin: Kirigami.Units.gridUnit * 1.5
             Layout.topMargin: Kirigami.Units.gridUnit
             Layout.bottomMargin: Kirigami.Units.gridUnit
-            visible: page.hasMessage
+            visible: page.loaded
             spacing: Kirigami.Units.gridUnit * 0.75
 
             Kirigami.Heading {
@@ -189,7 +218,7 @@ Kirigami.Page {
 
         Kirigami.Separator {
             Layout.fillWidth: true
-            visible: page.hasMessage
+            visible: page.loaded
             opacity: 0.5
         }
 
@@ -203,7 +232,7 @@ Kirigami.Page {
                 id: view
 
                 anchors.fill: parent
-                visible: page.hasMessage
+                visible: page.loaded
                 backgroundColor: Kirigami.Theme.backgroundColor
                 settings.javascriptEnabled: false
                 settings.autoLoadImages: false

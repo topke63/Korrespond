@@ -41,4 +41,16 @@ if(BUILD_TESTING)
     endif()
 endif()
 
+# KDE code style: `cmake --build build --target clang-format` formats every C++ file, and the
+# pre-commit hook rejects commits whose changed lines aren't formatted. ECM generates
+# .clang-format at configure time (git-ignored, as ECM recommends).
+include(KDEClangFormat)
+file(GLOB_RECURSE ALL_CLANG_FORMAT_SOURCE_FILES CONFIGURE_DEPENDS
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp ${CMAKE_CURRENT_SOURCE_DIR}/src/*.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/autotests/*.cpp ${CMAKE_CURRENT_SOURCE_DIR}/autotests/*.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/tools/*.cpp ${CMAKE_CURRENT_SOURCE_DIR}/tools/*.h)
+kde_clang_format(${ALL_CLANG_FORMAT_SOURCE_FILES})
+include(KDEGitCommitHooks)
+kde_configure_git_pre_commit_hook(CHECKS CLANG_FORMAT)
+
 feature_summary(WHAT ALL FATAL_ON_MISSING_REQUIRED_PACKAGES)

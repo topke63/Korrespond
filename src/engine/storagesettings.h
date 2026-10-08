@@ -9,8 +9,18 @@
 // How much mail is kept on this computer. Limits only ever remove local copies; nothing is
 // deleted on the server. Stored in plasmamailrc, group "Storage".
 struct StorageSettings {
-    enum KeepUnit { Days, Weeks, Months, Years, Forever };
-    enum SizeUnit { MB, GB, Unlimited };
+    enum KeepUnit {
+        Days,
+        Weeks,
+        Months,
+        Years,
+        Forever
+    };
+    enum SizeUnit {
+        MB,
+        GB,
+        Unlimited
+    };
 
     bool enabled = false;
     QDate importSince; // null = all mail

@@ -186,7 +186,7 @@ int main(int argc, char *argv[])
         if (syncMode) {
             syncFolders = folders;
             print(u"\nSyncing (since %1, limit %2):"_s.arg(settings.importSince.isValid() ? settings.importSince.toString(Qt::ISODate) : u"all mail"_s,
-                                                       settings.maxBytes() > 0 ? u"%1 MB"_s.arg(settings.sizeValue) : u"none"_s));
+                                                           settings.maxBytes() > 0 ? u"%1 MB"_s.arg(settings.sizeValue) : u"none"_s));
             sync.syncAll(folders);
             return;
         }

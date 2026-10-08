@@ -64,9 +64,14 @@ int main(int argc, char *argv[])
     QGuiApplication app(argc, argv);
 
     KLocalizedString::setApplicationDomain("plasma-mail");
-    KAboutData about(u"plasma-mail"_s, i18nc("@title", "Plasma Mail"), u"0.1"_s,
-                     i18nc("@info", "A simple IMAP mail client for Plasma"), KAboutLicense::GPL_V2,
-                     i18nc("@info:credit", "© 2026 topke"), QString(), QString(),
+    KAboutData about(u"plasma-mail"_s,
+                     i18nc("@title", "Plasma Mail"),
+                     u"0.1"_s,
+                     i18nc("@info", "A simple IMAP mail client for Plasma"),
+                     KAboutLicense::GPL_V2,
+                     i18nc("@info:credit", "© 2026 topke"),
+                     QString(),
+                     QString(),
                      QString()); // no bug address: not a KDE project, so no bugs.kde.org link
     // Not "org.kde.…" (the default), so the About page shows no KDE donate/get-involved links.
     about.setDesktopFileName(u"plasma-mail"_s);

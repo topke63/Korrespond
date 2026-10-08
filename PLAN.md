@@ -1108,7 +1108,7 @@ T39 and T46 later make it fully functional.
   leak detection on; `dev` (the existing build/) and `release` also build and pass.
 
 ### T44 — clang-format setup with KDE style
-- status: todo
+- status: done
 - depends on: T1
 - parallel-safe with: T3, T7, T14, T26, T43
 - files: CMakeLists.txt, .clang-format (generated)
@@ -1119,7 +1119,13 @@ T39 and T46 later make it fully functional.
   pre-commit hook checks formatting.
 - verify: `cmake --build build --target clang-format && git diff --exit-code -- src autotests`
   exits 0 after one formatting commit (run the target, commit, run again: no changes).
-- notes:
+- notes: Done 2026-10-08 (clang-format 23). **Deviation:** `.clang-format` is git-ignored,
+  not committed: ECM's docs say so (it regenerates the file at configure time, and a committed
+  copy would stop ECM updating it). The target covers src/, autotests/ and tools/ (globbed with
+  CONFIGURE_DEPENDS). First run reformatted 10 files (~90 lines, layout only: enums one value
+  per line, lambda bodies re-indented); a second run changes nothing; build and all 11 tests
+  pass. `kde_configure_git_pre_commit_hook(CHECKS CLANG_FORMAT)` writes .git/hooks/pre-commit,
+  which runs `git clang-format` on staged lines.
 
 ### T45 — `ImapClient`: report a failed connection or login only once
 - status: done

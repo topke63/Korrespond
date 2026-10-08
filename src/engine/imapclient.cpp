@@ -115,8 +115,9 @@ QString ImapClient::loginErrorMessage(const QString &jobError) const
         return i18n("Could not log in: %1", jobError);
     }
     if (m_account.provider == "yahoo"_L1) {
-        return i18n("Yahoo did not accept the email address or password. Yahoo needs an app password here, "
-                    "not your normal password.");
+        return i18n(
+            "Yahoo did not accept the email address or password. Yahoo needs an app password here, "
+            "not your normal password.");
     }
     return i18n("The server did not accept the email address or password.");
 }
@@ -198,7 +199,9 @@ void ImapClient::listFolders()
     job->setOption(KIMAP::ListJob::IncludeUnsubscribed);
 
     auto folders = std::make_shared<QList<FolderInfo>>();
-    connect(job, &KIMAP::ListJob::mailBoxesReceived, this,
+    connect(job,
+            &KIMAP::ListJob::mailBoxesReceived,
+            this,
             [folders](const QList<KIMAP::MailBoxDescriptor> &descriptors, const QList<QList<QByteArray>> &flags) {
                 for (qsizetype i = 0; i < descriptors.size(); ++i) {
                     const auto &descriptor = descriptors[i];
@@ -306,8 +309,7 @@ void ImapClient::searchSince(const QString &folder, const QDate &since)
         auto search = new KIMAP::SearchJob(m_session);
         search->setUidBased(true);
         // IMAP has no plain "ALL" term in KIMAP; 1:* (every sequence number) means the same.
-        search->setTerm(since.isValid() ? KIMAP::Term(KIMAP::Term::Since, since)
-                                        : KIMAP::Term(KIMAP::Term::SequenceNumber, KIMAP::ImapSet(1, 0)));
+        search->setTerm(since.isValid() ? KIMAP::Term(KIMAP::Term::Since, since) : KIMAP::Term(KIMAP::Term::SequenceNumber, KIMAP::ImapSet(1, 0)));
         connect(search, &KJob::result, this, [this, folder, uidValidity, generation](KJob *job) {
             if (!checkJob(job, generation)) {
                 return;

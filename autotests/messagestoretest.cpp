@@ -482,10 +482,10 @@ private Q_SLOTS:
             db.setDatabaseName(dir.filePath(u"mail.sqlite"_s));
             QVERIFY(db.open());
             QSqlQuery query(db);
-            QVERIFY(query.exec(
-                u"CREATE TABLE messages (folder TEXT NOT NULL, uidvalidity INTEGER NOT NULL, uid INTEGER NOT NULL, "
-                "subject TEXT, sender TEXT, date INTEGER, unread INTEGER NOT NULL, flagged INTEGER NOT NULL DEFAULT 0, "
-                "size INTEGER NOT NULL, path TEXT NOT NULL, PRIMARY KEY(folder, uid))"_s));
+            QVERIFY(
+                query.exec(u"CREATE TABLE messages (folder TEXT NOT NULL, uidvalidity INTEGER NOT NULL, uid INTEGER NOT NULL, "
+                           "subject TEXT, sender TEXT, date INTEGER, unread INTEGER NOT NULL, flagged INTEGER NOT NULL DEFAULT 0, "
+                           "size INTEGER NOT NULL, path TEXT NOT NULL, PRIMARY KEY(folder, uid))"_s));
             QVERIFY(query.exec(u"INSERT INTO messages VALUES ('INBOX', 7, 1, 'old', 'a', 1, 1, 0, 10, 'messages/f/7-1.eml')"_s));
             QVERIFY(query.exec(u"PRAGMA user_version = 1"_s));
             db.close();

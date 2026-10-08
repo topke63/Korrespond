@@ -654,8 +654,8 @@ void MailController::onFoldersListed(const QList<FolderInfo> &folders)
         qWarning("Cannot store the folder list: %s", qPrintable(m_store->lastError()));
     }
     const bool currentStillExists = isSharedView(m_currentFolder) || std::any_of(folders.cbegin(), folders.cend(), [this](const FolderInfo &f) {
-        return f.path == m_currentFolder;
-    });
+                                        return f.path == m_currentFolder;
+                                    });
     if (!currentStillExists) {
         // First list after connecting, or the folder was deleted elsewhere: show All Inboxes.
         m_currentFolder.clear();

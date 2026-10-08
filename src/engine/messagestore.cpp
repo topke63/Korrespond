@@ -55,8 +55,8 @@ bool MessageStore::open()
         return false;
     }
 
-    QSqlDatabase db = QSqlDatabase::contains(m_connectionName) ? QSqlDatabase::database(m_connectionName, false)
-                                                               : QSqlDatabase::addDatabase(u"QSQLITE"_s, m_connectionName);
+    QSqlDatabase db =
+        QSqlDatabase::contains(m_connectionName) ? QSqlDatabase::database(m_connectionName, false) : QSqlDatabase::addDatabase(u"QSQLITE"_s, m_connectionName);
     db.setDatabaseName(m_baseDir + u"/mail.sqlite"_s);
     if (!db.open()) {
         m_lastError = db.lastError().text();
@@ -67,18 +67,17 @@ bool MessageStore::open()
     // date is milliseconds since the epoch (UTC), NULL when unknown, so it sorts correctly.
     // path is relative to baseDir, so the data directory can move.
     const bool ok = query.exec(
-        u"CREATE TABLE IF NOT EXISTS messages ("
-        "folder TEXT NOT NULL, uidvalidity INTEGER NOT NULL, uid INTEGER NOT NULL, "
-        "subject TEXT, sender TEXT, date INTEGER, unread INTEGER NOT NULL, flagged INTEGER NOT NULL DEFAULT 0, "
-        "size INTEGER NOT NULL, path TEXT NOT NULL, preview TEXT, "
-        "PRIMARY KEY(folder, uid))"_s)
+                        u"CREATE TABLE IF NOT EXISTS messages ("
+                        "folder TEXT NOT NULL, uidvalidity INTEGER NOT NULL, uid INTEGER NOT NULL, "
+                        "subject TEXT, sender TEXT, date INTEGER, unread INTEGER NOT NULL, flagged INTEGER NOT NULL DEFAULT 0, "
+                        "size INTEGER NOT NULL, path TEXT NOT NULL, preview TEXT, "
+                        "PRIMARY KEY(folder, uid))"_s)
         && query.exec(u"CREATE INDEX IF NOT EXISTS messages_date ON messages(folder, date)"_s)
         // position keeps the server list's order (special folders first).
         && query.exec(
             u"CREATE TABLE IF NOT EXISTS folders ("
             "position INTEGER PRIMARY KEY, path TEXT NOT NULL, name TEXT NOT NULL, role TEXT NOT NULL, depth INTEGER NOT NULL)"_s)
-        && updatePreviews()
-        && query.exec(u"PRAGMA user_version = %1"_s.arg(schemaVersion));
+        && updatePreviews() && query.exec(u"PRAGMA user_version = %1"_s.arg(schemaVersion));
     if (!ok) {
         if (query.lastError().isValid()) { // else updatePreviews() set m_lastError
             m_lastError = query.lastError().text();

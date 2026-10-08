@@ -51,7 +51,11 @@ public:
     void disconnectFromServer();
 
     // Which messages fetchHeaders() returns.
-    enum HeaderFilter { AllMessages, Unread, Flagged };
+    enum HeaderFilter {
+        AllMessages,
+        Unread,
+        Flagged
+    };
 
     void listFolders();
     // Fetches headers of the newest `limit` messages in `folder` that match `filter`.

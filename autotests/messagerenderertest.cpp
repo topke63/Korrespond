@@ -80,8 +80,7 @@ private Q_SLOTS:
         QTest::addColumn<QString>("expected");
         QTest::newRow("simple") << QByteArray("go to https://example.com now") << u"go to <a href=\"https://example.com\">https://example.com</a> now"_s;
         QTest::newRow("http") << QByteArray("http://example.org/x") << u"<a href=\"http://example.org/x\">http://example.org/x</a>"_s;
-        QTest::newRow("query with &") << QByteArray("https://e.com/a?b=1&c=2")
-                                      << u"<a href=\"https://e.com/a?b=1&amp;c=2\">https://e.com/a?b=1&amp;c=2</a>"_s;
+        QTest::newRow("query with &") << QByteArray("https://e.com/a?b=1&c=2") << u"<a href=\"https://e.com/a?b=1&amp;c=2\">https://e.com/a?b=1&amp;c=2</a>"_s;
         QTest::newRow("sentence dot") << QByteArray("see https://e.com/page.") << u"see <a href=\"https://e.com/page\">https://e.com/page</a>."_s;
         QTest::newRow("in parentheses") << QByteArray("(https://e.com/x)") << u"(<a href=\"https://e.com/x\">https://e.com/x</a>)"_s;
         QTest::newRow("in quotes") << QByteArray("\"https://e.com/q\"") << u"&quot;<a href=\"https://e.com/q\">https://e.com/q</a>&quot;"_s;
@@ -150,8 +149,9 @@ private Q_SLOTS:
 
     void testQuotedPrintableLatin1()
     {
-        const QString html = render("Subject: a\nContent-Type: text/plain; charset=iso-8859-1\nContent-Transfer-Encoding: quoted-printable\n\n"
-                                    "caf=E9 na=EFve =\nsoft break\n");
+        const QString html = render(
+            "Subject: a\nContent-Type: text/plain; charset=iso-8859-1\nContent-Transfer-Encoding: quoted-printable\n\n"
+            "caf=E9 na=EFve =\nsoft break\n");
         QVERIFY2(html.contains(u"café naïve soft break"_s), qPrintable(html));
     }
 
@@ -179,32 +179,27 @@ private Q_SLOTS:
         const QByteArray pdf = "Content-Transfer-Encoding: base64\n\nJVBERg==\n";
 
         QTest::newRow("none") << QByteArray("Subject: a\nContent-Type: text/plain\n\nbody\n") << QStringList();
-        QTest::newRow("disposition filename")
-            << head + "--M\nContent-Type: application/pdf\nContent-Disposition: attachment; filename=\"report.pdf\"\n" + pdf + tail
-            << QStringList{u"report.pdf"_s};
-        QTest::newRow("content-type name only")
-            << head + "--M\nContent-Type: application/pdf; name=\"invoice.pdf\"\nContent-Disposition: attachment\n" + pdf + tail
-            << QStringList{u"invoice.pdf"_s};
-        QTest::newRow("filename wins over name")
-            << head + "--M\nContent-Type: application/pdf; name=\"type.pdf\"\nContent-Disposition: attachment; filename=\"disp.pdf\"\n" + pdf + tail
-            << QStringList{u"disp.pdf"_s};
+        QTest::newRow("disposition filename") << head + "--M\nContent-Type: application/pdf\nContent-Disposition: attachment; filename=\"report.pdf\"\n" + pdf
+                + tail << QStringList{u"report.pdf"_s};
+        QTest::newRow("content-type name only") << head + "--M\nContent-Type: application/pdf; name=\"invoice.pdf\"\nContent-Disposition: attachment\n" + pdf
+                + tail << QStringList{u"invoice.pdf"_s};
+        QTest::newRow("filename wins over name") << head
+                + "--M\nContent-Type: application/pdf; name=\"type.pdf\"\nContent-Disposition: attachment; filename=\"disp.pdf\"\n" + pdf
+                + tail << QStringList{u"disp.pdf"_s};
         QTest::newRow("unnamed") << head + "--M\nContent-Type: application/octet-stream\nContent-Disposition: attachment\n" + pdf + tail
                                  << QStringList{u"Unnamed attachment"_s};
-        QTest::newRow("named and unnamed, in order")
-            << head + "--M\nContent-Type: application/pdf\nContent-Disposition: attachment; filename=a.pdf\n" + pdf
-                   + "--M\nContent-Type: application/octet-stream\nContent-Disposition: attachment\n" + pdf + tail
-            << QStringList{u"a.pdf"_s, u"Unnamed attachment"_s};
-        QTest::newRow("RFC 2231 filename")
-            << head + "--M\nContent-Type: application/pdf\nContent-Disposition: attachment; filename*=UTF-8''%D0%B8%D0%B7%D0%B2%D0%B5%D1%88%D1%82%D0%B0%D1%98.pdf\n"
-                   + pdf + tail
-            << QStringList{u"извештај.pdf"_s};
-        QTest::newRow("RFC 2047 name")
-            << head + "--M\nContent-Type: application/pdf; name=\"=?UTF-8?B?Y2Fmw6kucGRm?=\"\nContent-Disposition: attachment\n" + pdf + tail
-            << QStringList{u"café.pdf"_s};
-        QTest::newRow("alternative bodies are not attachments")
-            << QByteArray("Subject: a\nMIME-Version: 1.0\nContent-Type: multipart/alternative; boundary=B\n\n"
-                          "--B\nContent-Type: text/plain\n\nplain\n--B\nContent-Type: text/html\n\n<p>html</p>\n--B--\n")
-            << QStringList();
+        QTest::newRow("named and unnamed, in order") << head + "--M\nContent-Type: application/pdf\nContent-Disposition: attachment; filename=a.pdf\n" + pdf
+                + "--M\nContent-Type: application/octet-stream\nContent-Disposition: attachment\n" + pdf
+                + tail << QStringList{u"a.pdf"_s, u"Unnamed attachment"_s};
+        QTest::newRow("RFC 2231 filename") << head
+                + "--M\nContent-Type: application/pdf\nContent-Disposition: attachment; filename*=UTF-8''%D0%B8%D0%B7%D0%B2%D0%B5%D1%88%D1%82%D0%B0%D1%98.pdf\n"
+                + pdf + tail << QStringList{u"извештај.pdf"_s};
+        QTest::newRow("RFC 2047 name") << head + "--M\nContent-Type: application/pdf; name=\"=?UTF-8?B?Y2Fmw6kucGRm?=\"\nContent-Disposition: attachment\n"
+                + pdf + tail << QStringList{u"café.pdf"_s};
+        QTest::newRow("alternative bodies are not attachments") << QByteArray(
+            "Subject: a\nMIME-Version: 1.0\nContent-Type: multipart/alternative; boundary=B\n\n"
+            "--B\nContent-Type: text/plain\n\nplain\n--B\nContent-Type: text/html\n\n<p>html</p>\n--B--\n")
+                                                                << QStringList();
     }
 
     void testAttachmentNames()

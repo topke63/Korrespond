@@ -25,50 +25,36 @@ private Q_SLOTS:
         QTest::addColumn<QString>("expectedRole");
 
         // Test INBOX folder
-        QTest::newRow("inbox") << u"INBOX"_s << QList<QByteArray>()
-                               << u"inbox"_s;
+        QTest::newRow("inbox") << u"INBOX"_s << QList<QByteArray>() << u"inbox"_s;
 
         // Test standard special-use flags
-        QTest::newRow("sent") << u"Sent"_s << QList<QByteArray>{u"\\sent"_s.toUtf8()}
-                              << u"sent"_s;
-        
-        QTest::newRow("drafts") << u"Drafts"_s << QList<QByteArray>{u"\\drafts"_s.toUtf8()}
-                                << u"drafts"_s;
-        
-        QTest::newRow("trash") << u"Trash"_s << QList<QByteArray>{u"\\trash"_s.toUtf8()}
-                               << u"trash"_s;
-        
-        QTest::newRow("junk") << u"Junk"_s << QList<QByteArray>{u"\\junk"_s.toUtf8()}
-                              << u"junk"_s;
-        
-        QTest::newRow("archive") << u"Archive"_s << QList<QByteArray>{u"\\archive"_s.toUtf8()}
-                                 << u"archive"_s;
-        
-        QTest::newRow("all") << u"All"_s << QList<QByteArray>{u"\\all"_s.toUtf8()}
-                             << u"all"_s;
-        
-        QTest::newRow("flagged") << u"Flagged"_s << QList<QByteArray>{u"\\flagged"_s.toUtf8()}
-                                 << u"flagged"_s;
+        QTest::newRow("sent") << u"Sent"_s << QList<QByteArray>{u"\\sent"_s.toUtf8()} << u"sent"_s;
+
+        QTest::newRow("drafts") << u"Drafts"_s << QList<QByteArray>{u"\\drafts"_s.toUtf8()} << u"drafts"_s;
+
+        QTest::newRow("trash") << u"Trash"_s << QList<QByteArray>{u"\\trash"_s.toUtf8()} << u"trash"_s;
+
+        QTest::newRow("junk") << u"Junk"_s << QList<QByteArray>{u"\\junk"_s.toUtf8()} << u"junk"_s;
+
+        QTest::newRow("archive") << u"Archive"_s << QList<QByteArray>{u"\\archive"_s.toUtf8()} << u"archive"_s;
+
+        QTest::newRow("all") << u"All"_s << QList<QByteArray>{u"\\all"_s.toUtf8()} << u"all"_s;
+
+        QTest::newRow("flagged") << u"Flagged"_s << QList<QByteArray>{u"\\flagged"_s.toUtf8()} << u"flagged"_s;
 
         // Test uppercase flags (real IMAP servers send these)
-        QTest::newRow("sent_upper") << u"Sent"_s << QList<QByteArray>{u"\\SENT"_s.toUtf8()}
-                                    << u"sent"_s;
+        QTest::newRow("sent_upper") << u"Sent"_s << QList<QByteArray>{u"\\SENT"_s.toUtf8()} << u"sent"_s;
 
-        QTest::newRow("drafts_upper") << u"Drafts"_s << QList<QByteArray>{u"\\DRAFTS"_s.toUtf8()}
-                                      << u"drafts"_s;
+        QTest::newRow("drafts_upper") << u"Drafts"_s << QList<QByteArray>{u"\\DRAFTS"_s.toUtf8()} << u"drafts"_s;
 
-        QTest::newRow("sent_mixed") << u"Sent"_s << QList<QByteArray>{u"\\Sent"_s.toUtf8()}
-                                    << u"sent"_s;
+        QTest::newRow("sent_mixed") << u"Sent"_s << QList<QByteArray>{u"\\Sent"_s.toUtf8()} << u"sent"_s;
 
         // Test non-special folders
-        QTest::newRow("normal_folder") << u"Work/Projects"_s << QList<QByteArray>{u"\\foo"_s.toUtf8()}
-                                       << QString();
-        QTest::newRow("no_flags") << u"Custom"_s << QList<QByteArray>()
-                                  << QString();
+        QTest::newRow("normal_folder") << u"Work/Projects"_s << QList<QByteArray>{u"\\foo"_s.toUtf8()} << QString();
+        QTest::newRow("no_flags") << u"Custom"_s << QList<QByteArray>() << QString();
 
         // Test lowercase inbox path
-        QTest::newRow("inbox_lowercase") << u"inbox"_s << QList<QByteArray>()
-                                          << u"inbox"_s;
+        QTest::newRow("inbox_lowercase") << u"inbox"_s << QList<QByteArray>() << u"inbox"_s;
     }
 
     void testFolderRoleFromFlags()

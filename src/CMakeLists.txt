@@ -54,6 +54,7 @@ qt_add_qml_module(plasma-mail
         qml/FolderSidebar.qml
         qml/SenderAvatar.qml
         qml/AccountSettingsPage.qml
+        qml/AccountDetailsPage.qml
         qml/ComposeWindow.qml
 )
 # The generated QML type registration includes headers by file name.

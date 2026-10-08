@@ -1267,7 +1267,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   comes in a later version." instead.
 
 ### T63 — Accounts page as an account manager
-- status: todo
+- status: done
 - depends on: T61
 - parallel-safe with: none
 - files: src/qml/AccountSettingsPage.qml, src/qml/AccountDetailsPage.qml
@@ -1278,7 +1278,10 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   layer in the settings window) with the details from T61 and Remove Account. Below the list an
   "Add Account…" button, disabled with a note until multiple accounts exist (milestones 2–3).
 - verify: offscreen checks as in T19; screenshots of both pages reviewed.
-- notes:
+- notes: Done 2026-10-08. AccountDetailsPage is the former T61 page (git mv), titled with the
+  account name. Rows open it with `QQC2.ApplicationWindow.window.pageStack.layers.push`, which
+  stays inside the settings window and shows a back arrow. Verified by triggering the row's
+  click in a temporary patch; both pages screenshotted.
 
 ### T25 — Global verify
 - status: todo

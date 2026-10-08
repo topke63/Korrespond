@@ -9,24 +9,28 @@ import org.kde.kirigami as Kirigami
 import org.kde.kirigamiaddons.formcard as FormCard
 import PlasmaMail
 
-// Settings → Accounts: the account's details and removing it.
+// Settings → Accounts: the account manager. Lists the accounts; one opens its details.
 FormCard.FormCardPage {
     id: page
 
     title: KI18n.i18nc("@title", "Accounts")
 
     FormCard.FormHeader {
-        title: KI18n.i18nc("@title:group", "Account")
+        title: KI18n.i18nc("@title:group", "Accounts")
     }
 
     FormCard.FormCard {
+        // One row per account (a single account until milestones 2–3).
         FormCard.AbstractFormDelegate {
-            background: null
+            visible: MailController.hasAccount
+            onClicked: page.QQC2.ApplicationWindow.window.pageStack.layers.push(detailsPage)
+            Accessible.name: KI18n.i18nc("@action:button", "Show details of %1", MailController.accountEmail)
+
             contentItem: RowLayout {
                 spacing: Kirigami.Units.largeSpacing
 
                 SenderAvatar {
-                    implicitWidth: Kirigami.Units.gridUnit * 2.5
+                    implicitWidth: Kirigami.Units.gridUnit * 2
                     name: MailController.accountEmail
                 }
                 ColumnLayout {
@@ -42,33 +46,18 @@ FormCard.FormCardPage {
                     }
                     QQC2.Label {
                         Layout.fillWidth: true
-                        text: MailController.accountEmail
+                        text: KI18n.i18nc("@info address · provider", "%1 · %2", MailController.accountEmail, MailController.accountProvider)
                         color: Kirigami.Theme.disabledTextColor
+                        font: Kirigami.Theme.smallFont
                         elide: Text.ElideRight
                     }
                 }
+                Kirigami.Icon {
+                    implicitWidth: Kirigami.Units.iconSizes.small
+                    implicitHeight: Kirigami.Units.iconSizes.small
+                    source: "go-next-symbolic"
+                }
             }
-        }
-
-        FormCard.FormDelegateSeparator {}
-
-        FormCard.FormTextDelegate {
-            text: KI18n.i18nc("@label", "Provider")
-            description: MailController.accountProvider
-        }
-
-        FormCard.FormDelegateSeparator {}
-
-        FormCard.FormTextDelegate {
-            text: KI18n.i18nc("@label", "Incoming mail server (IMAP, SSL/TLS)")
-            description: MailController.accountServer
-        }
-
-        FormCard.FormDelegateSeparator {}
-
-        FormCard.FormTextDelegate {
-            text: KI18n.i18nc("@label", "Password")
-            description: KI18n.i18nc("@info", "Stored in the system wallet (KWallet)")
         }
     }
 
@@ -76,34 +65,16 @@ FormCard.FormCardPage {
         Layout.topMargin: Kirigami.Units.largeSpacing
 
         FormCard.FormButtonDelegate {
-            text: KI18n.i18nc("@action:button", "Remove Account…")
-            icon.name: "list-remove-user"
-            icon.color: Kirigami.Theme.negativeTextColor
-            onClicked: removeDialog.open()
+            text: KI18n.i18nc("@action:button", "Add Account…")
+            icon.name: "list-add-user"
+            description: KI18n.i18nc("@info", "More accounts come with Gmail and Outlook support in a later version.")
+            enabled: false
         }
     }
 
-    Kirigami.PromptDialog {
-        id: removeDialog
+    Component {
+        id: detailsPage
 
-        title: KI18n.i18nc("@title:dialog", "Remove Account?")
-        subtitle: KI18n.i18nc("@info", "This removes %1 and its saved password from this computer. No mail is deleted on the server.",
-                              MailController.accountEmail)
-        standardButtons: Kirigami.Dialog.NoButton
-        customFooterActions: [
-            Kirigami.Action {
-                text: KI18n.i18nc("@action:button", "Remove Account")
-                icon.name: "list-remove-user"
-                onTriggered: {
-                    removeDialog.close();
-                    MailController.removeAccount(); // Main.qml then closes the settings
-                }
-            },
-            Kirigami.Action {
-                text: KI18n.i18nc("@action:button", "Cancel")
-                icon.name: "dialog-cancel"
-                onTriggered: removeDialog.close()
-            }
-        ]
+        AccountDetailsPage {}
     }
 }

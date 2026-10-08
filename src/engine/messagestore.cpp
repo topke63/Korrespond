@@ -208,6 +208,156 @@ bool MessageStore::setUnread(const QString &folder, qint64 uid, bool unread)
     return true;
 }
 
+qint64 MessageStore::totalSize() const
+{
+    if (!isOpen()) {
+        m_lastError = u"Message store is not open"_s;
+        return 0;
+    }
+    QSqlQuery query(QSqlDatabase::database(m_connectionName, false));
+    if (!query.exec(u"SELECT COALESCE(SUM(size), 0) FROM messages"_s) || !query.next()) {
+        m_lastError = query.lastError().text();
+        return 0;
+    }
+    return query.value(0).toLongLong();
+}
+
+int MessageStore::removeOlderThan(const QDateTime &cutoff)
+{
+    if (!isOpen()) {
+        m_lastError = u"Message store is not open"_s;
+        return -1;
+    }
+    QSqlQuery query(QSqlDatabase::database(m_connectionName, false));
+    query.prepare(u"SELECT folder, uid, path FROM messages WHERE date < ?"_s);
+    query.addBindValue(cutoff.toMSecsSinceEpoch());
+    if (!query.exec()) {
+        m_lastError = query.lastError().text();
+        return -1;
+    }
+    QList<StoredFile> files;
+    while (query.next()) {
+        files.append({query.value(0).toString(), query.value(1).toLongLong(), query.value(2).toString()});
+    }
+    return removeStored(files);
+}
+
+int MessageStore::removeOldestUntil(qint64 maxBytes)
+{
+    if (!isOpen()) {
+        m_lastError = u"Message store is not open"_s;
+        return -1;
+    }
+    qint64 total = totalSize();
+    if (total <= maxBytes) {
+        return 0;
+    }
+    QSqlQuery query(QSqlDatabase::database(m_connectionName, false));
+    // Undated messages list last (see messages()), so they count as the oldest here.
+    if (!query.exec(u"SELECT folder, uid, path, size FROM messages ORDER BY date IS NOT NULL, date, uid"_s)) {
+        m_lastError = query.lastError().text();
+        return -1;
+    }
+    QList<StoredFile> files;
+    while (total > maxBytes && query.next()) {
+        files.append({query.value(0).toString(), query.value(1).toLongLong(), query.value(2).toString()});
+        total -= query.value(3).toLongLong();
+    }
+    return removeStored(files);
+}
+
+int MessageStore::removeFolder(const QString &folder)
+{
+    if (!isOpen()) {
+        m_lastError = u"Message store is not open"_s;
+        return -1;
+    }
+    QSqlQuery query(QSqlDatabase::database(m_connectionName, false));
+    query.prepare(u"SELECT uid, path FROM messages WHERE folder = ?"_s);
+    query.addBindValue(folder);
+    if (!query.exec()) {
+        m_lastError = query.lastError().text();
+        return -1;
+    }
+    QList<StoredFile> files;
+    while (query.next()) {
+        files.append({folder, query.value(0).toLongLong(), query.value(1).toString()});
+    }
+    return removeStored(files);
+}
+
+qint64 MessageStore::storedUidValidity(const QString &folder) const
+{
+    if (!isOpen()) {
+        m_lastError = u"Message store is not open"_s;
+        return 0;
+    }
+    QSqlQuery query(QSqlDatabase::database(m_connectionName, false));
+    // addMessage() replaces by uid only, so a folder could briefly mix values; the newest wins.
+    query.prepare(u"SELECT COALESCE(MAX(uidvalidity), 0) FROM messages WHERE folder = ?"_s);
+    query.addBindValue(folder);
+    if (!query.exec() || !query.next()) {
+        m_lastError = query.lastError().text();
+        return 0;
+    }
+    return query.value(0).toLongLong();
+}
+
+bool MessageStore::clear()
+{
+    if (!isOpen()) {
+        m_lastError = u"Message store is not open"_s;
+        return false;
+    }
+    QSqlQuery query(QSqlDatabase::database(m_connectionName, false));
+    if (!query.exec(u"DELETE FROM messages"_s)) {
+        m_lastError = query.lastError().text();
+        return false;
+    }
+    const QString messagesDir = m_baseDir + u"/messages"_s;
+    if (!QDir(messagesDir).removeRecursively() || !QDir().mkpath(messagesDir)) {
+        m_lastError = u"Cannot empty %1"_s.arg(messagesDir);
+        return false;
+    }
+    return true;
+}
+
+int MessageStore::removeStored(const QList<StoredFile> &files)
+{
+    if (files.isEmpty()) {
+        return 0;
+    }
+    QSqlDatabase db = QSqlDatabase::database(m_connectionName, false);
+    if (!db.transaction()) {
+        m_lastError = db.lastError().text();
+        return -1;
+    }
+    QSqlQuery query(db);
+    query.prepare(u"DELETE FROM messages WHERE folder = ? AND uid = ?"_s);
+    for (const StoredFile &file : files) {
+        query.addBindValue(file.folder);
+        query.addBindValue(file.uid);
+        if (!query.exec()) {
+            m_lastError = query.lastError().text();
+            db.rollback();
+            return -1;
+        }
+    }
+    if (!db.commit()) {
+        m_lastError = db.lastError().text();
+        db.rollback();
+        return -1;
+    }
+    // Rows go first: a file left behind by a failed remove is only wasted space, while a row
+    // without its file would show a message that can't be opened.
+    for (const StoredFile &file : files) {
+        const QString absPath = m_baseDir + u'/' + file.path;
+        QFile::remove(absPath);
+        QDir().rmdir(QFileInfo(absPath).absolutePath()); // only succeeds once the folder is empty
+    }
+    return int(files.size());
+}
+
 QString MessageStore::lastError() const
 {
     return m_lastError;

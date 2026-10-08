@@ -778,7 +778,7 @@ T39 and T46 later make it fully functional.
   `ctest --test-dir build -R messagestoretest` on 2026-10-08: passes.
 
 ### T31 — `MessageStore`: size accounting and removal
-- status: todo
+- status: done
 - depends on: T30
 - parallel-safe with: T26, T27
 - files: src/engine/messagestore.{h,cpp}, autotests/messagestoretest.cpp
@@ -788,7 +788,12 @@ T39 and T46 later make it fully functional.
   change); `qint64 storedUidValidity(folder) const`; `void clear()`. Each deletes rows and
   `.eml` files together. Plus test cases for each.
 - verify: `ctest --test-dir build -R messagestoretest --output-on-failure`
-- notes:
+- notes: Remove functions return -1 on error (see `lastError()`); `clear()` returns bool and
+  also deletes stray `.eml` files. `removeOlderThan` keeps undated messages; `removeOldestUntil`
+  evicts undated ones first (they list last). `storedUidValidity` returns 0 when nothing is
+  stored. Rows are deleted in one transaction before their files, so a failure can only leave
+  an orphan file, never a row without its file. Verified with `ctest --test-dir build` on
+  2026-10-08: all 9 test executables pass.
 
 ### T32 — Retention: apply settings to the store
 - status: todo

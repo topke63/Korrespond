@@ -6,6 +6,7 @@
 #include "imapclient.h"
 
 #include <QByteArray>
+#include <QDateTime>
 #include <QList>
 #include <QString>
 
@@ -40,6 +41,22 @@ public:
     // Returns false when the message isn't stored.
     bool setUnread(const QString &folder, qint64 uid, bool unread);
 
+    // Sum of the stored .eml sizes in bytes, over all folders.
+    [[nodiscard]] qint64 totalSize() const;
+    // The remove functions delete index rows and their .eml files together and return how many
+    // messages were removed, or -1 on error (see lastError()).
+    // Removes messages dated before cutoff. Messages without a date are kept.
+    int removeOlderThan(const QDateTime &cutoff);
+    // Removes the oldest messages until totalSize() <= maxBytes; undated ones go first.
+    int removeOldestUntil(qint64 maxBytes);
+    // Removes every message of folder, e.g. after the server changed its UIDVALIDITY.
+    int removeFolder(const QString &folder);
+    // The UIDVALIDITY folder's messages were stored under; 0 when none are stored (servers
+    // never use 0).
+    [[nodiscard]] qint64 storedUidValidity(const QString &folder) const;
+    // Removes every message, including stray .eml files no row points at.
+    bool clear();
+
     // Human-readable reason for the last failed call (for logs, not shown in the UI).
     [[nodiscard]] QString lastError() const;
 
@@ -48,6 +65,14 @@ private:
     // folder name (slashes, non-ASCII) gives a valid file name.
     [[nodiscard]] static QString relativePath(const QString &folder, qint64 uidValidity, qint64 uid);
     [[nodiscard]] QString storedPath(const QString &folder, qint64 uid) const;
+
+    struct StoredFile {
+        QString folder;
+        qint64 uid = 0;
+        QString path;
+    };
+    // Deletes the rows in one transaction, then their files. Returns the count or -1.
+    int removeStored(const QList<StoredFile> &files);
 
     QString m_baseDir;
     QString m_connectionName;

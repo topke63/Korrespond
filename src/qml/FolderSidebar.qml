@@ -29,6 +29,15 @@ Kirigami.OverlayDrawer {
         }
     }
 
+    function sharedColor(path: string): color {
+        switch (path) {
+        case "plasmamail:inboxes": return "#3daee9";
+        case "plasmamail:unread": return Kirigami.Theme.highlightColor;
+        case "plasmamail:flagged": return "#f67400";
+        default: return Kirigami.Theme.textColor;
+        }
+    }
+
     edge: Qt.application.layoutDirection === Qt.RightToLeft ? Qt.RightEdge : Qt.LeftEdge
     width: Kirigami.Units.gridUnit * 14
     handleVisible: modal && enabled
@@ -50,15 +59,13 @@ Kirigami.OverlayDrawer {
             contentItem: RowLayout {
                 spacing: Kirigami.Units.smallSpacing
 
-                SenderAvatar {
-                    Layout.leftMargin: Kirigami.Units.smallSpacing
-                    name: MailController.accountEmail
-                }
-                QQC2.Label {
+                Kirigami.Heading {
                     Layout.fillWidth: true
-                    text: MailController.accountEmail
+                    Layout.leftMargin: Kirigami.Units.largeSpacing
+                    level: 2
+                    font.weight: Font.Bold
+                    text: KI18n.i18nc("@title", "Mail")
                     elide: Text.ElideRight
-                    font.weight: Font.DemiBold
                 }
                 QQC2.ToolButton {
                     icon.name: "application-menu"
@@ -90,77 +97,152 @@ Kirigami.OverlayDrawer {
             }
         }
 
-        QQC2.Label {
-            Layout.fillWidth: true
-            Layout.leftMargin: Kirigami.Units.largeSpacing * 1.5
-            Layout.topMargin: Kirigami.Units.largeSpacing
-            Layout.bottomMargin: Kirigami.Units.smallSpacing
-            text: KI18n.i18nc("@title:group", "Folders")
-            font: Kirigami.Theme.smallFont
-            color: Kirigami.Theme.disabledTextColor
-        }
-
         QQC2.ScrollView {
+            id: scroll
+
             Layout.fillWidth: true
             Layout.fillHeight: true
+            contentWidth: availableWidth
 
-            ListView {
-                id: folderList
-
-                clip: true
-                bottomMargin: Kirigami.Units.smallSpacing
+            ColumnLayout {
+                width: scroll.availableWidth
                 spacing: 1
-                model: MailController.folderModel
 
-                delegate: QQC2.ItemDelegate {
-                    id: folderRow
+                SectionLabel {
+                    text: KI18n.i18nc("@title:group", "All Accounts")
+                }
 
-                    required property string path
-                    required property string name
-                    required property string iconName
-                    required property string folderRole
-                    required property int depth
+                Repeater {
+                    model: MailController.sharedFolders
 
-                    width: ListView.view.width - Kirigami.Units.smallSpacing * 2
-                    x: Kirigami.Units.smallSpacing
-                    leftPadding: Kirigami.Units.largeSpacing + depth * Kirigami.Units.gridUnit
-                    topPadding: Kirigami.Units.smallSpacing + 1
-                    bottomPadding: Kirigami.Units.smallSpacing + 1
-                    text: name
-                    icon.name: iconName
-                    icon.color: sidebar.roleColor(folderRole)
-                    highlighted: path === MailController.currentFolder
-                    font.weight: highlighted ? Font.DemiBold : Font.Normal
-                    onClicked: {
-                        MailController.selectFolder(path);
-                        if (sidebar.modal) {
-                            sidebar.close();
-                        }
+                    delegate: FolderRow {
+                        required property var modelData
+
+                        path: modelData.path
+                        text: modelData.name
+                        icon.name: modelData.iconName
+                        icon.color: sidebar.sharedColor(modelData.path)
                     }
+                }
+
+                // One section per account (only one account until milestones 2–3).
+                QQC2.ItemDelegate {
+                    id: accountHeader
+
+                    property bool expanded: true
+
+                    Layout.fillWidth: true
+                    Layout.topMargin: Kirigami.Units.largeSpacing
+                    Layout.leftMargin: Kirigami.Units.smallSpacing
+                    Layout.rightMargin: Kirigami.Units.smallSpacing
+                    topPadding: Kirigami.Units.smallSpacing
+                    bottomPadding: Kirigami.Units.smallSpacing
+                    onClicked: expanded = !expanded
+                    Accessible.name: KI18n.i18nc("@action:button", "Show or hide the folders of %1", MailController.accountEmail)
 
                     background: Rectangle {
                         radius: Kirigami.Units.cornerRadius
-                        color: folderRow.highlighted ? Qt.alpha(Kirigami.Theme.textColor, 0.12)
-                             : folderRow.hovered ? Qt.alpha(Kirigami.Theme.textColor, 0.05) : "transparent"
+                        color: accountHeader.hovered ? Qt.alpha(Kirigami.Theme.textColor, 0.05) : "transparent"
                     }
                     contentItem: RowLayout {
-                        spacing: Kirigami.Units.mediumSpacing
+                        spacing: Kirigami.Units.smallSpacing
 
                         Kirigami.Icon {
                             implicitWidth: Kirigami.Units.iconSizes.small
                             implicitHeight: Kirigami.Units.iconSizes.small
-                            source: folderRow.icon.name
-                            color: folderRow.icon.color
+                            source: accountHeader.expanded ? "arrow-down" : "arrow-right"
+                            color: Kirigami.Theme.disabledTextColor
                             isMask: true
+                        }
+                        SenderAvatar {
+                            implicitWidth: Kirigami.Units.iconSizes.smallMedium
+                            name: MailController.accountEmail
                         }
                         QQC2.Label {
                             Layout.fillWidth: true
-                            text: folderRow.text
-                            font: folderRow.font
+                            text: MailController.accountEmail
                             elide: Text.ElideRight
+                            font.weight: Font.DemiBold
                         }
                     }
                 }
+
+                Repeater {
+                    model: accountHeader.expanded ? MailController.folderModel : null
+
+                    delegate: FolderRow {
+                        required property string path
+                        required property string name
+                        required property string iconName
+                        required property string folderRole
+                        required property int depth
+
+                        // Indented under the account header.
+                        leftPadding: Kirigami.Units.gridUnit * 1.5 + depth * Kirigami.Units.gridUnit
+                        text: name
+                        icon.name: iconName
+                        icon.color: sidebar.roleColor(folderRole)
+                    }
+                }
+
+                Item {
+                    Layout.preferredHeight: Kirigami.Units.smallSpacing
+                }
+            }
+        }
+    }
+
+    // Small dim heading above a group of rows.
+    component SectionLabel: QQC2.Label {
+        Layout.fillWidth: true
+        Layout.leftMargin: Kirigami.Units.largeSpacing * 1.5
+        Layout.topMargin: Kirigami.Units.largeSpacing
+        Layout.bottomMargin: Kirigami.Units.smallSpacing
+        font: Kirigami.Theme.smallFont
+        color: Kirigami.Theme.disabledTextColor
+    }
+
+    // A clickable folder (or shared view) with a tinted icon and the soft selection.
+    component FolderRow: QQC2.ItemDelegate {
+        id: folderRow
+
+        property string path
+
+        Layout.fillWidth: true
+        Layout.leftMargin: Kirigami.Units.smallSpacing
+        Layout.rightMargin: Kirigami.Units.smallSpacing
+        leftPadding: Kirigami.Units.largeSpacing
+        topPadding: Kirigami.Units.smallSpacing + 1
+        bottomPadding: Kirigami.Units.smallSpacing + 1
+        highlighted: path === MailController.currentFolder
+        font.weight: highlighted ? Font.DemiBold : Font.Normal
+        onClicked: {
+            MailController.selectFolder(path);
+            if (sidebar.modal) {
+                sidebar.close();
+            }
+        }
+
+        background: Rectangle {
+            radius: Kirigami.Units.cornerRadius
+            color: folderRow.highlighted ? Qt.alpha(Kirigami.Theme.textColor, 0.12)
+                 : folderRow.hovered ? Qt.alpha(Kirigami.Theme.textColor, 0.05) : "transparent"
+        }
+        contentItem: RowLayout {
+            spacing: Kirigami.Units.mediumSpacing
+
+            Kirigami.Icon {
+                implicitWidth: Kirigami.Units.iconSizes.small
+                implicitHeight: Kirigami.Units.iconSizes.small
+                source: folderRow.icon.name
+                color: folderRow.icon.color
+                isMask: true
+            }
+            QQC2.Label {
+                Layout.fillWidth: true
+                text: folderRow.text
+                font: folderRow.font
+                elide: Text.ElideRight
             }
         }
     }

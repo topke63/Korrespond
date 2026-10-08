@@ -1192,7 +1192,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   folder list is known fetches nothing (no inbox path yet).
 
 ### T59 — Sidebar sections: shared folders, then per account
-- status: todo
+- status: done
 - depends on: T58
 - parallel-safe with: none
 - files: src/qml/FolderSidebar.qml
@@ -1201,7 +1201,11 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   All Inboxes (blue), Unread (accent), Flagged (orange); then an account section headed by the
   account's avatar and address (click to collapse) listing its folders as now.
 - verify: offscreen checks as in T19; screenshot reviewed.
-- notes:
+- notes: Done 2026-10-08. Inline components `FolderRow` and `SectionLabel`; one ScrollView with
+  shared rows, the collapsible account header and the account's folders. Verified on the real
+  account via a temporary Main.qml patch selecting each view: All Inboxes lists the inbox;
+  Unread and Flagged were empty with no error (the inbox had no unread/flagged mail), so a
+  non-empty match is still unconfirmed — check when unread/flagged mail exists.
 
 ### T25 — Global verify
 - status: todo

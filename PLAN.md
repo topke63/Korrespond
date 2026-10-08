@@ -587,7 +587,7 @@ Tasks in the same wave can run in parallel once the earlier waves are done.
   `qmllint -I build/src src/qml/*.qml` works as written in the commands section.
 
 ### T20 — Account setup page
-- status: todo
+- status: done
 - depends on: T19
 - parallel-safe with: T21, T22
 - files: src/qml/AccountSetupPage.qml, src/qml/Main.qml
@@ -600,7 +600,10 @@ Tasks in the same wave can run in parallel once the earlier waves are done.
 - verify: offscreen launch as in T19 with a clean config (`XDG_CONFIG_HOME` set to a fresh
   temp dir) prints no QML warnings; manual: the page renders and the button is disabled until
   email and password are filled.
-- notes:
+- notes: Done 2026-10-08. Main.qml clears the page stack and pushes the setup page or a
+  placeholder mail page on start and on every `accountChanged` (T21/T22 replace the placeholder).
+  Connect also needs a host for Custom and is disabled while `busy`. Port SpinBox has no
+  thousands separator. Yahoo hint links to https://help.yahoo.com/kb/SLN15241.html.
 
 ### T21 — Folder list in the global drawer
 - status: todo

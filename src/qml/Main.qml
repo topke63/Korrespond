@@ -8,19 +8,37 @@ import PlasmaMail
 Kirigami.ApplicationWindow {
     id: window
 
+    // Shows account setup until an account exists, the mail view after.
+    function showStartPage() {
+        pageStack.clear();
+        pageStack.push(MailController.hasAccount ? mailPage : setupPage);
+    }
+
     title: KI18n.i18nc("@title:window", "Plasma Mail")
     width: Kirigami.Units.gridUnit * 50
     height: Kirigami.Units.gridUnit * 35
 
-    // Replaced by the account setup and message list pages in T20–T22.
-    pageStack.initialPage: Kirigami.Page {
-        title: KI18n.i18nc("@title", "Plasma Mail")
+    Component.onCompleted: showStartPage()
 
-        Kirigami.PlaceholderMessage {
-            anchors.centerIn: parent
-            width: parent.width - Kirigami.Units.gridUnit * 4
-            icon.name: "mail-message"
-            text: KI18n.i18nc("@info:placeholder", "No account set up yet")
+    Component {
+        id: setupPage
+
+        AccountSetupPage {}
+    }
+
+    // Replaced by the folder and message list pages in T21–T22.
+    Component {
+        id: mailPage
+
+        Kirigami.Page {
+            title: MailController.accountEmail
+
+            Kirigami.PlaceholderMessage {
+                anchors.centerIn: parent
+                width: parent.width - Kirigami.Units.gridUnit * 4
+                icon.name: "mail-message"
+                text: KI18n.i18nc("@info:placeholder", "No message selected")
+            }
         }
     }
 
@@ -28,6 +46,9 @@ Kirigami.ApplicationWindow {
         target: MailController
         function onErrorOccurred(message: string) {
             window.showPassiveNotification(message);
+        }
+        function onAccountChanged() {
+            window.showStartPage();
         }
     }
 }

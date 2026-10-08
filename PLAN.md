@@ -1633,7 +1633,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   37/37; all 11 test executables pass.
 
 ### T72 — Google OAuth client settings
-- status: todo
+- status: done
 - depends on: none
 - parallel-safe with: T68, T70, T74
 - files: src/engine/oauthsettings.h, src/engine/oauthsettings.cpp (+ one line in src/CMakeLists.txt)
@@ -1641,7 +1641,9 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - output: `struct GoogleOAuthSettings { QString clientId, clientSecret; bool isConfigured() const;
   static GoogleOAuthSettings load(); }`; env vars win over the config file.
 - verify: `cmake --build build --target plasmamail_engine` succeeds.
-- notes:
+- notes: Done 2026-10-08. Values are trimmed; an environment variable wins only when it is
+  non-empty (a set but empty variable doesn't hide the config value). Builds; all 11 tests
+  pass; new files clang-format clean.
 
 ### T73 — Test for Google OAuth client settings
 - status: todo

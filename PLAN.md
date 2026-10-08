@@ -1159,7 +1159,7 @@ shared views cover that account's Inbox; with more accounts they will merge ever
 Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every folder.
 
 ### T57 — `ImapClient`: filtered header fetch
-- status: todo
+- status: done
 - depends on: T5
 - parallel-safe with: none
 - files: src/engine/imapclient.{h,cpp}
@@ -1170,7 +1170,10 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   filter so callers can tell results apart. `MessageSummary.flagged` filled from `\Flagged`.
   MailController's slot gets the new signature (ignores the filter until T58).
 - verify: `cmake --build build` succeeds; tests pass.
-- notes:
+- notes: Done 2026-10-08. Shared header-fetch code moved to `fetchSummaries(set, uidBased, …)`.
+  Search terms are `KIMAP::Term::Seen` (negated) / `Term::Flagged` (enum lives in `Term`).
+  mailcontroller.h now includes imapclient.h (nested enum in a slot signature); imap-probe's
+  lambda updated for the new signal.
 
 ### T58 — `MailController`: shared views
 - status: todo

@@ -15,6 +15,7 @@
 
 namespace KIMAP
 {
+class ImapSet;
 class Session;
 }
 namespace KMime
@@ -29,6 +30,7 @@ struct MessageSummary {
     QString from;
     QDateTime date;
     bool unread = false;
+    bool flagged = false;
 };
 
 // Thin asynchronous wrapper around one KIMAP session.
@@ -43,15 +45,19 @@ public:
     void setAccount(const Account &account, const QString &password);
     void disconnectFromServer();
 
+    // Which messages fetchHeaders() returns.
+    enum HeaderFilter { AllMessages, Unread, Flagged };
+
     void listFolders();
-    // Fetches headers of the newest `limit` messages in `folder`.
-    void fetchHeaders(const QString &folder, int limit);
+    // Fetches headers of the newest `limit` messages in `folder` that match `filter`.
+    void fetchHeaders(const QString &folder, int limit, HeaderFilter filter = AllMessages);
     void fetchMessage(const QString &folder, qint64 uid);
     void markSeen(const QString &folder, qint64 uid);
 
 Q_SIGNALS:
     void foldersListed(const QList<FolderInfo> &folders);
-    void headersFetched(const QString &folder, const QList<MessageSummary> &messages);
+    // `filter` is the one passed to fetchHeaders(), so results for the same folder can be told apart.
+    void headersFetched(const QString &folder, ImapClient::HeaderFilter filter, const QList<MessageSummary> &messages);
     void messageFetched(const QString &folder, qint64 uid, const std::shared_ptr<KMime::Message> &message);
     void errorOccurred(const QString &message);
 
@@ -69,6 +75,9 @@ private:
     void fail(quint64 generation, const QString &message);
     void dropSession();
     void queueSelect(const QString &folder, quint64 generation);
+    // Fetches headers for `set` (UIDs if uidBased, else sequence numbers) of the selected folder
+    // and emits headersFetched() newest first.
+    void fetchSummaries(const KIMAP::ImapSet &set, bool uidBased, const QString &folder, HeaderFilter filter, quint64 generation);
     // false if the job failed or belongs to an outdated session; reports the error if relevant.
     bool checkJob(KJob *job, quint64 generation);
 

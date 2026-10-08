@@ -5,6 +5,7 @@
 
 #include "account.h"
 #include "folderutils.h"
+#include "imapclient.h"
 #include "storagesettings.h"
 
 #include <QAbstractListModel>
@@ -20,9 +21,7 @@ namespace KMime
 class Message;
 }
 class FolderModel;
-class ImapClient;
 class MessageListModel;
-struct MessageSummary;
 class SecretStore;
 
 // The only object the QML UI talks to. Owns the engine objects for the single account.
@@ -126,7 +125,7 @@ private:
     void endRequest();
     void resetRequests();
     void onFoldersListed(const QList<FolderInfo> &folders);
-    void onHeadersFetched(const QString &folder, const QList<MessageSummary> &messages);
+    void onHeadersFetched(const QString &folder, ImapClient::HeaderFilter filter, const QList<MessageSummary> &messages);
     void onMessageFetched(const QString &folder, qint64 uid, const std::shared_ptr<KMime::Message> &message);
     // Empties the message properties; with clearUid also forgets which message is open.
     void clearMessage(bool clearUid);

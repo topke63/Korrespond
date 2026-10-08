@@ -7,6 +7,7 @@
 #include <KIMAP/ListJob>
 #include <KIMAP/LoginJob>
 #include <KIMAP/LogoutJob>
+#include <KIMAP/SearchJob>
 #include <KIMAP/SelectJob>
 #include <KIMAP/Session>
 #include <KIMAP/StoreJob>
@@ -189,15 +190,41 @@ void ImapClient::listFolders()
     job->start();
 }
 
-void ImapClient::fetchHeaders(const QString &folder, int limit)
+void ImapClient::fetchHeaders(const QString &folder, int limit, HeaderFilter filter)
 {
+    if (filter != AllMessages) {
+        // UID SEARCH in the folder, then the headers of the newest `limit` matches.
+        session();
+        const quint64 generation = m_generation;
+        queueSelect(folder, generation);
+        auto search = new KIMAP::SearchJob(session());
+        search->setUidBased(true);
+        search->setTerm(filter == Unread ? KIMAP::Term(KIMAP::Term::Seen).setNegated(true) : KIMAP::Term(KIMAP::Term::Flagged));
+        connect(search, &KJob::result, this, [this, folder, limit, filter, generation](KJob *job) {
+            if (!checkJob(job, generation)) {
+                return;
+            }
+            QList<qint64> uids = static_cast<KIMAP::SearchJob *>(job)->results();
+            if (uids.isEmpty() || !m_session) {
+                Q_EMIT headersFetched(folder, filter, {});
+                return;
+            }
+            std::sort(uids.begin(), uids.end());
+            KIMAP::ImapSet set;
+            set.add(QList<qint64>(uids.cend() - std::min<qsizetype>(limit, uids.size()), uids.cend()));
+            fetchSummaries(set, true, folder, filter, generation);
+        });
+        search->start();
+        return;
+    }
+
     // SELECT is issued directly here because we need its message count.
     auto select = new KIMAP::SelectJob(session());
     const quint64 generation = m_generation;
     select->setMailBox(folder);
     m_selectedFolder = folder;
 
-    connect(select, &KJob::result, this, [this, folder, limit, generation](KJob *job) {
+    connect(select, &KJob::result, this, [this, folder, limit, filter, generation](KJob *job) {
         if (!checkJob(job, generation)) {
             if (generation == m_generation) {
                 m_selectedFolder.clear();
@@ -206,48 +233,54 @@ void ImapClient::fetchHeaders(const QString &folder, int limit)
         }
         const int count = static_cast<KIMAP::SelectJob *>(job)->messageCount();
         if (count <= 0 || !m_session) {
-            Q_EMIT headersFetched(folder, {});
+            Q_EMIT headersFetched(folder, filter, {});
             return;
         }
-
-        auto fetch = new KIMAP::FetchJob(m_session);
-        fetch->setSequenceSet(KIMAP::ImapSet(std::max(1, count - limit + 1), count));
-        KIMAP::FetchJob::FetchScope scope;
-        scope.mode = KIMAP::FetchJob::FetchScope::Headers;
-        fetch->setScope(scope);
-
-        auto messages = std::make_shared<QList<MessageSummary>>();
-        connect(fetch, &KIMAP::FetchJob::messagesAvailable, this, [messages](const QMap<qint64, KIMAP::Message> &batch) {
-            for (const KIMAP::Message &msg : batch) {
-                MessageSummary summary;
-                summary.uid = msg.uid;
-                summary.unread = !msg.flags.contains("\\Seen");
-                if (const auto &mime = msg.message) {
-                    if (auto subject = mime->subject()) {
-                        summary.subject = subject->asUnicodeString();
-                    }
-                    if (auto from = mime->from()) {
-                        summary.from = from->displayString();
-                    }
-                    if (auto date = mime->date()) {
-                        summary.date = date->dateTime();
-                    }
-                }
-                messages->append(summary);
-            }
-        });
-        connect(fetch, &KJob::result, this, [this, folder, messages, generation](KJob *job) {
-            if (!checkJob(job, generation)) {
-                return;
-            }
-            std::sort(messages->begin(), messages->end(), [](const MessageSummary &a, const MessageSummary &b) {
-                return a.uid > b.uid; // newest first
-            });
-            Q_EMIT headersFetched(folder, *messages);
-        });
-        fetch->start();
+        fetchSummaries(KIMAP::ImapSet(std::max(1, count - limit + 1), count), false, folder, filter, generation);
     });
     select->start();
+}
+
+void ImapClient::fetchSummaries(const KIMAP::ImapSet &set, bool uidBased, const QString &folder, HeaderFilter filter, quint64 generation)
+{
+    auto fetch = new KIMAP::FetchJob(m_session);
+    fetch->setUidBased(uidBased);
+    fetch->setSequenceSet(set);
+    KIMAP::FetchJob::FetchScope scope;
+    scope.mode = KIMAP::FetchJob::FetchScope::Headers;
+    fetch->setScope(scope);
+
+    auto messages = std::make_shared<QList<MessageSummary>>();
+    connect(fetch, &KIMAP::FetchJob::messagesAvailable, this, [messages](const QMap<qint64, KIMAP::Message> &batch) {
+        for (const KIMAP::Message &msg : batch) {
+            MessageSummary summary;
+            summary.uid = msg.uid;
+            summary.unread = !msg.flags.contains("\\Seen");
+            summary.flagged = msg.flags.contains("\\Flagged");
+            if (const auto &mime = msg.message) {
+                if (auto subject = mime->subject()) {
+                    summary.subject = subject->asUnicodeString();
+                }
+                if (auto from = mime->from()) {
+                    summary.from = from->displayString();
+                }
+                if (auto date = mime->date()) {
+                    summary.date = date->dateTime();
+                }
+            }
+            messages->append(summary);
+        }
+    });
+    connect(fetch, &KJob::result, this, [this, folder, filter, messages, generation](KJob *job) {
+        if (!checkJob(job, generation)) {
+            return;
+        }
+        std::sort(messages->begin(), messages->end(), [](const MessageSummary &a, const MessageSummary &b) {
+            return a.uid > b.uid; // newest first
+        });
+        Q_EMIT headersFetched(folder, filter, *messages);
+    });
+    fetch->start();
 }
 
 void ImapClient::fetchMessage(const QString &folder, qint64 uid)

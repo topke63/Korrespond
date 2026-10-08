@@ -203,7 +203,7 @@ void MailController::refresh()
     }
 }
 
-void MailController::onHeadersFetched(const QString &folder, const QList<MessageSummary> &messages)
+void MailController::onHeadersFetched(const QString &folder, ImapClient::HeaderFilter, const QList<MessageSummary> &messages)
 {
     endRequest();
     if (folder != m_currentFolder) {

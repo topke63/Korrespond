@@ -107,7 +107,7 @@ int main(int argc, char *argv[])
         client.fetchHeaders(inbox, headerCount);
     });
 
-    QObject::connect(&client, &ImapClient::headersFetched, &app, [&](const QString &folder, const QList<MessageSummary> &messages) {
+    QObject::connect(&client, &ImapClient::headersFetched, &app, [&](const QString &folder, ImapClient::HeaderFilter, const QList<MessageSummary> &messages) {
         print(u"\nNewest %1 messages in %2:"_s.arg(messages.size()).arg(folder));
         for (const MessageSummary &msg : messages) {
             print(u"  %1 %2 %3 | %4 | %5"_s.arg(msg.unread ? u"*"_s : u" "_s)

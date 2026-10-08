@@ -743,7 +743,7 @@ T39 and T46 later make it fully functional.
   `open()` is idempotent. Verified: engine builds with no warnings, full build + all 8 tests pass.
 
 ### T29 — Unit test for `MessageStore` add/contains
-- status: todo
+- status: done
 - depends on: T2, T28
 - parallel-safe with: T26, T27
 - files: autotests/messagestoretest.cpp
@@ -751,7 +751,17 @@ T39 and T46 later make it fully functional.
 - output: open creates the DB; add → contains → `.eml` file exists with the same bytes;
   re-adding the same uid replaces it without a duplicate row.
 - verify: `ctest --test-dir build -R messagestoretest --output-on-failure`
-- notes:
+- notes: Done 2026-10-08. 9 cases: open creates mail.sqlite + messages/ (also when baseDir
+  doesn't exist; open twice is fine); calls on an unopened store fail without writing files;
+  add → contains → the one `.eml` has the same bytes (CRLF, NUL, 0xFF kept); same uid in two
+  folders; folder name with slashes, `..` and non-ASCII stays inside baseDir; re-add replaces
+  (one row, one file, new bytes); re-add under a new UIDVALIDITY deletes the old file; data
+  survives reopening; two stores at once don't share a connection. Row counts are checked
+  through a separate QSQLITE connection (test links Qt6::Sql). The test finds `.eml` files
+  by scanning messages/ because the path scheme is private. Verified in a cloud container
+  (no KF6 there) by building only messagestore + this test against Qt 6.4 with KDE's strict
+  defines and -Wall -Wextra -Werror, plus an ASan/UBSan run: 9/9 pass, no warnings. Not yet run
+  through `ctest` in this machine's real build.
 
 ### T30 — `MessageStore`: list, read and mark read
 - status: todo

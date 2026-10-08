@@ -692,8 +692,9 @@ T39 and T46 later make it fully functional.
   2026-10-08 run: unread dot hard to see, no flag shown in the list → T64.
   Seen in the later 2026-10-08 runs (storage checks): a folder opens from the sidebar (Inbox),
   an HTML Yahoo mail shows with its remote images blocked, every restart reconnected from the
-  keychain without asking. Still to check: an opened unread message stays read after restart;
-  "Remove account" returns to the setup page (it also deletes the local copies and the
+  keychain without asking. Confirmed by the user 2026-10-08: an opened unread message lost
+  its unread dot and stayed read after a restart. Still to check: "Remove account" returns to
+  the setup page (it also deletes the local copies and the
   keychain entry, so do it last).
 
 ### T26 — `StorageSettings`: values, load/save, cutoff and byte limit

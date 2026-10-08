@@ -37,3 +37,10 @@ ecm_add_test(
     TEST_NAME messagerenderertest
     LINK_LIBRARIES plasmamail_engine Qt6::Test
 )
+
+# Test for SecretStore (needs a keychain: run inside the Plasma session)
+ecm_add_test(
+    secretstoretest.cpp
+    TEST_NAME secretstoretest
+    LINK_LIBRARIES plasmamail_engine Qt6::Test
+)

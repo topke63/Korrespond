@@ -477,7 +477,7 @@ Tasks in the same wave can run in parallel once the earlier waves are done.
   Qt6Keychain was already linked into the engine.
 
 ### T15 — Test for `SecretStore` against the session keychain
-- status: todo
+- status: done
 - depends on: T2, T14
 - parallel-safe with: T4, T5, T8, T10–T13
 - files: autotests/secretstoretest.cpp
@@ -486,7 +486,13 @@ Tasks in the same wave can run in parallel once the earlier waves are done.
   using `QSignalSpy::wait`. `QSKIP` if the keychain reports "no backend available".
 - verify: `ctest --test-dir build -R secretstoretest --output-on-failure` (run inside the
   Plasma session so KWallet/Secret Service is reachable).
-- notes:
+- notes: Done 2026-10-08. Uses service *and* key `plasma-mail-autotest`, so it never touches
+  the app's real entries; `cleanupTestCase` deletes the test entry even after a failure. Covers
+  round trip with a non-ASCII/emoji/quoted password, read-after-delete error, overwrite, and
+  deleting a missing key twice. Skips (QSKIP) when `QKeychain::isAvailable()` is false.
+  Note: ctest reports a skipped test as "Passed"; run `build/bin/secretstoretest` to see
+  per-test PASS/SKIP. Verified in the Plasma session (kwalletd6 + ksecretd): 6 passed,
+  0 skipped, ~30 ms, no permission prompt. 60 s wait per request covers a first-time prompt.
 
 ### T16 — `MailController`: account setup and folder listing
 - status: todo

@@ -387,7 +387,7 @@ Tasks in the same wave can run in parallel once the earlier waves are done.
   until T12 adds MessageListModel; `messagelistmodeltest` therefore doesn't link until T12/T13.
 
 ### T11 — Unit test for `FolderModel`
-- status: todo
+- status: done
 - depends on: T2, T10
 - parallel-safe with: T12–T15
 - files: autotests/foldermodeltest.cpp
@@ -395,7 +395,11 @@ Tasks in the same wave can run in parallel once the earlier waves are done.
 - output: test runs `QAbstractItemModelTester` while calling `setFolders`, checks role values,
   `inboxPath()` (inbox role, fallback to first, empty model → empty string), `displayName()`.
 - verify: `ctest --test-dir build -R foldermodeltest --output-on-failure`
-- notes:
+- notes: Done 2026-10-08. Rewritten from the earlier draft (it used the forbidden
+  `slots` keyword and skipped `QAbstractItemModelTester`). Covers consistency via the tester,
+  all roles and role names, every icon name (data-driven), translated "Inbox", displayName
+  fallback, inboxPath fallbacks. Uses `QTEST_GUILESS_MAIN`. The `messagelistmodeltest`
+  registration was taken out of autotests/CMakeLists.txt until T13.
 
 ### T12 — `MessageListModel` in the models library
 - status: todo

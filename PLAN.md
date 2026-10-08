@@ -29,6 +29,10 @@
 3. Outlook/Microsoft via OAuth2 (reuses milestone 2 code).
 4. Compose / reply / forward over SMTP (KPim6::SMTP is installed).
 5. IDLE, notifications, multiple accounts, background sync timer.
+   Multiple accounts must include (user requests 2026-10-08): Settings → Accounts as the account
+   manager (T63) with a working "Add Account…"; **reordering accounts** there (drag handle or
+   move up/down), saved in the config and **mirrored in the sidebar's account sections**; the
+   shared views (All Inboxes, Unread, Flagged, T58) merging every account's inbox.
 
 ## Build plan
 

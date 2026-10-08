@@ -286,7 +286,7 @@ Tasks in the same wave can run in parallel once the earlier waves are done.
   2026-10-08 cleanup. Verified with `cmake --build build --target plasmamail_engine`.
 
 ### T4 — Unit test for folder helpers
-- status: todo
+- status: done
 - depends on: T2, T3
 - parallel-safe with: T5, T8, T10, T15
 - files: autotests/folderutilstest.cpp
@@ -294,7 +294,10 @@ Tasks in the same wave can run in parallel once the earlier waves are done.
 - output: data-driven tests for role detection (incl. `inbox` lowercase, `\Sent` vs `\SENT`,
   no flags) and sort order.
 - verify: `ctest --test-dir build -R folderutilstest --output-on-failure`
-- notes:
+- notes: Done 2026-10-08. Covers every special-use role, case-insensitive flags
+  (`\Sent`, `\SENT`, `\DRAFTS`), lowercase "inbox" path, unknown/no flags, and sort order incl.
+  case-insensitive names (apple before Banana). The test file defines operator== for
+  FolderInfo because QCOMPARE on QList<FolderInfo> needs it.
 
 ### T5 — `ImapClient` compiles against folder helpers
 - status: done

@@ -1123,21 +1123,35 @@ body below. Message previews in the list (needs fetching body text) are out of s
 
 ### T55 — Message previews in the list
 - status: todo
+- depends on: T40, T54
+- parallel-safe with: T41–T46
+- files: src/engine/messagestore.{h,cpp} (preview column), src/models/messagelistmodel.{h,cpp}
+  (+ list delegate line)
+- inputs: Mimestream/Spark-style third line in each row. **Decided 2026-10-08 (user): option b**,
+  previews come from local storage; no extra IMAP fetching. Messages not stored locally show no
+  preview line.
+- output: the store keeps a preview (first ~150 characters of the plain text, whitespace
+  collapsed) per message, computed when the message is stored; `MessageSummary.preview` filled
+  from the store; `preview` model role shown dimmed as the third row line when not empty.
+- verify: unit test for preview extraction; screenshot reviewed.
+- notes:
+
+### T56 — Message toolbar (look only)
+- status: todo
 - depends on: T54
 - parallel-safe with: none
-- files: src/engine/imapclient.{h,cpp}, src/models/messagelistmodel.{h,cpp} (+ list delegate line)
-- inputs: Mimestream/Spark-style third line in each row. Needs a fetch strategy decision
-  (see notes) before starting.
-- output: `MessageSummary.preview` (first ~150 characters of the plain text, whitespace
-  collapsed), a `preview` model role, shown dimmed as the third row line.
-- verify: unit test for the preview text extraction; screenshot reviewed.
-- notes: Open decision: (a) fetch each listed message's first text part with BODYSTRUCTURE +
-  a partial body fetch (light, more code), or (b) take previews from local storage once the
-  store exists (no extra traffic, only for stored mail).
+- files: src/qml/MessagePage.qml
+- inputs: user 2026-10-08: "toolbar actions for sure… icons just for looks, can be disabled".
+- output: the message column's title bar holds Mimestream-style icon buttons — Archive, Delete,
+  Mark as Unread, Move to Folder, Label | Reply, Reply All, Forward — and a search field on the
+  right. All disabled (milestone 1 is read-only; they get wired up in later milestones), with
+  accessible names set. Shown only when a message is open, except the search field.
+- verify: offscreen checks as in T19; screenshot reviewed.
+- notes:
 
 ### T25 — Global verify
 - status: todo
-- depends on: T1–T24, T26–T55, T39a
+- depends on: T1–T24, T26–T56, T39a
 - parallel-safe with: none
 - files: none
 - inputs: —

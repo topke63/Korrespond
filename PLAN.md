@@ -571,7 +571,7 @@ Tasks in the same wave can run in parallel once the earlier waves are done.
   the view never shows a stale body; changing folder or removing the account closes it.
 
 ### T19 — App entry point and main window
-- status: todo
+- status: done
 - depends on: T16
 - parallel-safe with: T17, T18
 - files: src/app/main.cpp, src/qml/Main.qml
@@ -581,7 +581,10 @@ Tasks in the same wave can run in parallel once the earlier waves are done.
   for now; `MailController.errorOccurred` shows `showPassiveNotification`.
 - verify: `cmake --build build && QT_QPA_PLATFORM=offscreen timeout 5 build/bin/plasma-mail; test $status -eq 124`
   (still running after 5 s = no startup crash) and no `qrc:` / `QML` warnings in the output.
-- notes:
+- notes: Done 2026-10-08. Load with `engine.loadFromModule("PlasmaMail", "Main")` (resource
+  path is `qrc:/qt/qml/PlasmaMail/qml/Main.qml`); exits 1 if the QML fails to load. QML strings
+  use `KI18n.i18nc` (links `KF6::I18nQml`). `QTP0004 NEW` set because QML lives in `qml/`.
+  `qmllint -I build/src src/qml/*.qml` works as written in the commands section.
 
 ### T20 — Account setup page
 - status: todo

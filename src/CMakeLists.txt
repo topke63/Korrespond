@@ -35,6 +35,7 @@ target_link_libraries(plasmamail_models PUBLIC
 
 # App: the controller QML talks to, and (from T19) the QML UI.
 qt_policy(SET QTP0001 NEW)
+qt_policy(SET QTP0004 NEW)
 add_executable(plasma-mail
     app/main.cpp
 )
@@ -43,10 +44,18 @@ qt_add_qml_module(plasma-mail
     VERSION 1.0
     SOURCES
         app/mailcontroller.cpp app/mailcontroller.h
+    QML_FILES
+        qml/Main.qml
 )
 # The generated QML type registration includes headers by file name.
 target_include_directories(plasma-mail PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
 target_link_libraries(plasma-mail PRIVATE
     plasmamail_models
     Qt6::Qml
+    Qt6::WebEngineQuick
+    Qt6::Quick
+    Qt6::QuickControls2
+    KF6::I18n
+    KF6::I18nQml
+    KF6::CoreAddons
 )

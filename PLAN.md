@@ -690,6 +690,11 @@ T39 and T46 later make it fully functional.
 - notes: Partial 2026-10-08: with a new app password, add account → Inbox opens automatically
   with newest messages (folders: Inbox, Draft, Sent, Archive, Bulk, Trash). Rest still to check.
   2026-10-08 run: unread dot hard to see, no flag shown in the list → T64.
+  Seen in the later 2026-10-08 runs (storage checks): a folder opens from the sidebar (Inbox),
+  an HTML Yahoo mail shows with its remote images blocked, every restart reconnected from the
+  keychain without asking. Still to check: an opened unread message stays read after restart;
+  "Remove account" returns to the setup page (it also deletes the local copies and the
+  keychain entry, so do it last).
 
 ### T26 — `StorageSettings`: values, load/save, cutoff and byte limit
 - status: done
@@ -1524,7 +1529,8 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - inputs: —
 - output: clean build and passing tests.
 - verify: `rm -rf build && cmake -S . -B build -G Ninja && cmake --build build && ctest --test-dir build --output-on-failure`
-- notes:
+- notes: 2026-10-08: verify command run (`rm -rf build`, configure, build, ctest): clean build,
+  no warnings, all 11 test executables pass. Stays todo until the manual T24 and T53 are done.
 
 ---
 

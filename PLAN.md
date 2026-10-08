@@ -173,6 +173,10 @@ Tasks in the same wave can run in parallel once the earlier waves are done.
 | 12 | T42 (manual) |
 | 13 | T25 (global verify) |
 
+GUI-first reordering (2026-10-08, user's call): T26 → T27 → T39a → T41 run before the rest of
+the storage work, so the storage page exists early with usage/cleanup shown but disabled.
+T39 and T46 later make it fully functional.
+
 ## Conventions (read before any task)
 - Build dir is `build/` (git-ignored). Configure once with
   `cmake -S . -B build -G Ninja`; later builds just `cmake --build build`.
@@ -834,15 +838,29 @@ Tasks in the same wave can run in parallel once the earlier waves are done.
   second run downloads nothing new; then with a later `PLASMAMAIL_SINCE` older mail is removed.
 - notes:
 
-### T39 — `MailController`: storage settings
+### T39 — `MailController`: storage usage, cleanup and sync
 - status: todo
-- depends on: T18, T37
+- depends on: T37, T39a
 - parallel-safe with: T38
 - files: src/app/mailcontroller.{h,cpp}
-- inputs: `StorageSettings`, `MessageStore`, `SyncManager`, `applyRetention`.
-- output: properties `storageEnabled`, `importSince`, `keepValue`, `keepUnit`, `sizeValue`,
-  `sizeUnit`, `storageUsedBytes`, `syncing`; invokables `saveStorageSettings(...)` (saves,
-  applies retention, starts sync) and `cleanUpNow()`. Sync runs after connecting when enabled.
+- inputs: `MessageStore`, `SyncManager`, `applyRetention`.
+- output: properties `storageUsedBytes`, `syncing`, `storageReady` (true once usage/cleanup
+  work); `saveStorageSettings(...)` now also applies retention and starts a sync; invokable
+  `cleanUpNow()`. Sync runs after connecting when enabled.
+- verify: `cmake --build build --target plasma-mail` succeeds.
+- notes: Split 2026-10-08: the settings properties moved to T39a.
+
+### T39a — `MailController`: storage settings properties
+- status: todo
+- depends on: T18, T26
+- parallel-safe with: T27
+- files: src/app/mailcontroller.{h,cpp}
+- inputs: `StorageSettings`.
+- output: properties `storageEnabled`, `importSince` (invalid date = all mail), `keepValue`,
+  `keepUnit`, `sizeValue`, `sizeUnit` (one `storageSettingsChanged` signal; units exposed as
+  ints matching the enums); invokable `saveStorageSettings(enabled, importSince, keepValue,
+  keepUnit, sizeValue, sizeUnit)` that only saves (no store yet); `defaultStorageSettings()`
+  returning a map with the defaults for "today", for the page's first switch-on.
 - verify: `cmake --build build --target plasma-mail` succeeds.
 - notes:
 
@@ -860,10 +878,10 @@ Tasks in the same wave can run in parallel once the earlier waves are done.
 
 ### T41 — Storage settings page
 - status: todo
-- depends on: T21, T39
-- parallel-safe with: T38, T40
+- depends on: T21, T39a
+- parallel-safe with: T27
 - files: src/qml/StorageSettingsPage.qml, src/qml/Main.qml
-- inputs: T39 properties.
+- inputs: T39a properties.
 - output: `Kirigami.ScrollablePage` + `FormLayout`: switch "Store mail on this computer";
   "Import mail from" with a date field and an "All mail" option; "Keep mail for" spin box +
   combo (days/weeks/months/years/forever); "Size limit" spin box + combo (MB/GB/unlimited);
@@ -873,9 +891,20 @@ Tasks in the same wave can run in parallel once the earlier waves are done.
   the number and the page reloads saved values after restart.
 - notes:
 
+### T46 — Storage page: show usage and enable "Clean up now"
+- status: todo
+- depends on: T39, T41
+- parallel-safe with: T40
+- files: src/qml/StorageSettingsPage.qml
+- inputs: T39 `storageUsedBytes`, `syncing`, `storageReady`, `cleanUpNow`.
+- output: "Currently used" shows `storageUsedBytes` formatted; "Clean up now" enabled when
+  `storageReady` and calls `cleanUpNow()`; busy indicator while `syncing`.
+- verify: offscreen launch as in T19 prints no QML warnings.
+- notes:
+
 ### T42 — Manual end-to-end check of local storage
 - status: todo
-- depends on: T24, T40, T41, Q1
+- depends on: T24, T40, T41, T46, Q1
 - parallel-safe with: none
 - files: none (record results; file new tasks for bugs)
 - inputs: the user's Yahoo account.
@@ -936,7 +965,7 @@ Tasks in the same wave can run in parallel once the earlier waves are done.
 
 ### T25 — Global verify
 - status: todo
-- depends on: T1–T24, T26–T45
+- depends on: T1–T24, T26–T46, T39a
 - parallel-safe with: none
 - files: none
 - inputs: —

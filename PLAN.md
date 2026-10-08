@@ -1266,9 +1266,23 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   disabled button shows no tooltip (no hover events), so a small footer note says "Sending mail
   comes in a later version." instead.
 
+### T63 — Accounts page as an account manager
+- status: todo
+- depends on: T61
+- parallel-safe with: none
+- files: src/qml/AccountSettingsPage.qml, src/qml/AccountDetailsPage.qml
+- inputs: user 2026-10-08: "account info under account name; at account page should be a list
+  of accounts only; front page should be used as accounts manager".
+- output: Settings → Accounts (the first page) lists the accounts only: a row per account with
+  avatar, name and, under it, address · provider. Clicking a row opens AccountDetailsPage (a page
+  layer in the settings window) with the details from T61 and Remove Account. Below the list an
+  "Add Account…" button, disabled with a note until multiple accounts exist (milestones 2–3).
+- verify: offscreen checks as in T19; screenshots of both pages reviewed.
+- notes:
+
 ### T25 — Global verify
 - status: todo
-- depends on: T1–T24, T26–T62, T39a
+- depends on: T1–T24, T26–T63, T39a
 - parallel-safe with: none
 - files: none
 - inputs: —

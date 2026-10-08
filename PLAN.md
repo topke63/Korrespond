@@ -1303,14 +1303,14 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   screenshot of the new build.
 
 ### T65 — `ImapClient::setFlagged`
-- status: todo
+- status: done
 - depends on: T57
 - parallel-safe with: none
 - files: src/engine/imapclient.{h,cpp}
 - inputs: user 2026-10-08: "add flag and unflag". Same pattern as `markSeen`.
 - output: `setFlagged(folder, uid, bool flagged)`: UID STORE +FLAGS / -FLAGS `\Flagged`.
 - verify: `cmake --build build` succeeds.
-- notes:
+- notes: Done 2026-10-08. Mirrors `markSeen`; RemoveFlags mode for unflag.
 
 ### T66 — `MailController`: flag / unflag
 - status: todo

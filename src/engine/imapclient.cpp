@@ -331,3 +331,20 @@ void ImapClient::markSeen(const QString &folder, qint64 uid)
     });
     store->start();
 }
+
+void ImapClient::setFlagged(const QString &folder, qint64 uid, bool flagged)
+{
+    session();
+    const quint64 generation = m_generation;
+    queueSelect(folder, generation);
+
+    auto store = new KIMAP::StoreJob(session());
+    store->setUidBased(true);
+    store->setSequenceSet(KIMAP::ImapSet(uid));
+    store->setFlags({"\\Flagged"});
+    store->setMode(flagged ? KIMAP::StoreJob::AppendFlags : KIMAP::StoreJob::RemoveFlags);
+    connect(store, &KJob::result, this, [this, generation](KJob *job) {
+        checkJob(job, generation);
+    });
+    store->start();
+}

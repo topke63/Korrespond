@@ -53,6 +53,8 @@ public:
     void fetchHeaders(const QString &folder, int limit, HeaderFilter filter = AllMessages);
     void fetchMessage(const QString &folder, qint64 uid);
     void markSeen(const QString &folder, qint64 uid);
+    // Sets or clears \\Flagged (shown as a star or flag by mail clients).
+    void setFlagged(const QString &folder, qint64 uid, bool flagged);
 
 Q_SIGNALS:
     void foldersListed(const QList<FolderInfo> &folders);

@@ -677,7 +677,7 @@ T39 and T46 later make it fully functional.
 - notes:
 
 ### T26 — `StorageSettings`: values, load/save, cutoff and byte limit
-- status: todo
+- status: done
 - depends on: T1
 - parallel-safe with: T2, T3, T7, T14
 - files: src/engine/storagesettings.h, src/engine/storagesettings.cpp
@@ -689,7 +689,9 @@ T39 and T46 later make it fully functional.
   `QDateTime cutoff(const QDateTime &now) const` (null = no cutoff);
   `qint64 maxBytes() const` (0 = unlimited).
 - verify: `cmake --build build --target plasmamail_engine` succeeds.
-- notes:
+- notes: Done 2026-10-08. Units are stored by name ("days"…"forever", "MB"/"GB"/"unlimited");
+  `ImportSince` is ISO date, empty = all mail, missing key = default. Values < 1 load as 1.
+  The import date counts from the start of that day in `now`'s time zone.
 
 ### T27 — Unit test for `StorageSettings`
 - status: todo

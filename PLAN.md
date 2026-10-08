@@ -760,8 +760,8 @@ T39 and T46 later make it fully functional.
   through a separate QSQLITE connection (test links Qt6::Sql). The test finds `.eml` files
   by scanning messages/ because the path scheme is private. Verified in a cloud container
   (no KF6 there) by building only messagestore + this test against Qt 6.4 with KDE's strict
-  defines and -Wall -Wextra -Werror, plus an ASan/UBSan run: 9/9 pass, no warnings. Not yet run
-  through `ctest` in this machine's real build.
+  defines and -Wall -Wextra -Werror, plus an ASan/UBSan run: 9/9 pass, no warnings. Then run
+  through `ctest` in this machine's real build on 2026-10-08: all 9 test executables pass.
 
 ### T30 — `MessageStore`: list, read and mark read
 - status: todo

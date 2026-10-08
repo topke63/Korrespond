@@ -1210,6 +1210,11 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   Unread and Flagged were empty with no error (the inbox had no unread/flagged mail), so a
   non-empty match is still unconfirmed — check when unread/flagged mail exists.
 
+  **Bug found by the user 2026-10-08, fixed:** clicking an account folder did nothing. The
+  account delegate redeclared `required property string path`, which hid `FolderRow.path`; the
+  component's click handler reads its own (empty) `path`, so `selectFolder("")` returned early.
+  Shared views worked because they set `path` directly. Delegate now uses `required property var
+  model`. Lesson: never redeclare a property an inline component already has.
 ### T60 — Settings window
 - status: done
 - depends on: T41, T59

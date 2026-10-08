@@ -170,18 +170,17 @@ Kirigami.OverlayDrawer {
                 Repeater {
                     model: accountHeader.expanded ? MailController.folderModel : null
 
+                    // Model data via `model`: redeclaring `path` here would hide FolderRow's own
+                    // `path`, which its click handler reads (that left folder clicks doing nothing).
                     delegate: FolderRow {
-                        required property string path
-                        required property string name
-                        required property string iconName
-                        required property string folderRole
-                        required property int depth
+                        required property var model
 
+                        path: model.path
                         // Indented under the account header.
-                        leftPadding: Kirigami.Units.gridUnit * 1.5 + depth * Kirigami.Units.gridUnit
-                        text: name
-                        icon.name: iconName
-                        icon.color: sidebar.roleColor(folderRole)
+                        leftPadding: Kirigami.Units.gridUnit * 1.5 + model.depth * Kirigami.Units.gridUnit
+                        text: model.name
+                        icon.name: model.iconName
+                        icon.color: sidebar.roleColor(model.folderRole)
                     }
                 }
 

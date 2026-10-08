@@ -556,7 +556,7 @@ Tasks in the same wave can run in parallel once the earlier waves are done.
   Sent 41 rows, Trash→INBOX quick switch ends on INBOX, refresh keeps 6 folders/50 rows.
 
 ### T18 — `MailController`: open a message
-- status: todo
+- status: done
 - depends on: T9, T17
 - parallel-safe with: none
 - files: src/app/mailcontroller.h, src/app/mailcontroller.cpp
@@ -567,7 +567,8 @@ Tasks in the same wave can run in parallel once the earlier waves are done.
   for a uid that is no longer current, and if the message was unread call `markSeen` and
   `MessageListModel::setUnread(uid, false)`.
 - verify: `cmake --build build --target plasma-mail` succeeds.
-- notes:
+- notes: Done 2026-10-08. Opening a message clears the previous one's properties at once, so
+  the view never shows a stale body; changing folder or removing the account closes it.
 
 ### T19 — App entry point and main window
 - status: todo

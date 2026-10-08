@@ -7,9 +7,16 @@
 #include "folderutils.h"
 
 #include <QAbstractListModel>
+#include <QDateTime>
 #include <QObject>
 #include <QQmlEngine>
 
+#include <memory>
+
+namespace KMime
+{
+class Message;
+}
 class FolderModel;
 class ImapClient;
 class MessageListModel;
@@ -30,6 +37,13 @@ class MailController : public QObject
     Q_PROPERTY(QAbstractListModel *messageModel READ messageModel CONSTANT)
     Q_PROPERTY(QString currentFolder READ currentFolder NOTIFY currentFolderChanged)
     Q_PROPERTY(QString currentFolderName READ currentFolderName NOTIFY currentFolderChanged)
+    Q_PROPERTY(qint64 currentUid READ currentUid NOTIFY currentMessageChanged)
+    Q_PROPERTY(QString messageSubject READ messageSubject NOTIFY currentMessageChanged)
+    Q_PROPERTY(QString messageFrom READ messageFrom NOTIFY currentMessageChanged)
+    Q_PROPERTY(QString messageTo READ messageTo NOTIFY currentMessageChanged)
+    Q_PROPERTY(QDateTime messageDate READ messageDate NOTIFY currentMessageChanged)
+    Q_PROPERTY(QString messageHtml READ messageHtml NOTIFY currentMessageChanged)
+    Q_PROPERTY(QStringList messageAttachments READ messageAttachments NOTIFY currentMessageChanged)
 
 public:
     explicit MailController(QObject *parent = nullptr);
@@ -42,6 +56,13 @@ public:
     [[nodiscard]] QAbstractListModel *messageModel() const;
     [[nodiscard]] QString currentFolder() const;
     [[nodiscard]] QString currentFolderName() const;
+    [[nodiscard]] qint64 currentUid() const;
+    [[nodiscard]] QString messageSubject() const;
+    [[nodiscard]] QString messageFrom() const;
+    [[nodiscard]] QString messageTo() const;
+    [[nodiscard]] QDateTime messageDate() const;
+    [[nodiscard]] QString messageHtml() const;
+    [[nodiscard]] QStringList messageAttachments() const;
 
     // Checks the credentials by logging in and listing folders; only then stores the password
     // in the keychain, saves the account and sets hasAccount. On failure nothing is saved and
@@ -61,6 +82,9 @@ public:
     Q_INVOKABLE void selectFolder(const QString &path);
     // Reloads the folder list and the current folder's messages.
     Q_INVOKABLE void refresh();
+    // Fetches message `uid` of the current folder and shows it; marks it read if it was unread.
+    // The message properties stay empty until it has arrived.
+    Q_INVOKABLE void openMessage(qint64 uid);
 
     // How many of the newest messages a folder shows.
     static constexpr int messageLimit = 50;
@@ -69,6 +93,7 @@ Q_SIGNALS:
     void accountChanged();
     void busyChanged();
     void currentFolderChanged();
+    void currentMessageChanged();
     void errorOccurred(const QString &message);
 
 private:
@@ -80,6 +105,9 @@ private:
     void resetRequests();
     void onFoldersListed(const QList<FolderInfo> &folders);
     void onHeadersFetched(const QString &folder, const QList<MessageSummary> &messages);
+    void onMessageFetched(const QString &folder, qint64 uid, const std::shared_ptr<KMime::Message> &message);
+    // Empties the message properties; with clearUid also forgets which message is open.
+    void clearMessage(bool clearUid);
 
     Account m_account; // the saved account; invalid when there is none
     Account m_pendingAccount; // being verified by setupAccount()
@@ -89,5 +117,13 @@ private:
     FolderModel *m_folderModel;
     MessageListModel *m_messageModel;
     QString m_currentFolder;
+    qint64 m_currentUid = 0; // 0 when no message is open
+    QString m_messageFolder; // folder of the open message
+    QString m_messageSubject;
+    QString m_messageFrom;
+    QString m_messageTo;
+    QDateTime m_messageDate;
+    QString m_messageHtml;
+    QStringList m_messageAttachments;
     int m_requests = 0;
 };

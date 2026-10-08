@@ -14,12 +14,12 @@
 - **Global verify**:
   `cmake -S . -B build -G Ninja && cmake --build build && ctest --test-dir build --output-on-failure`
 - **Open questions**:
-  - **Q1**: Does the user have a Yahoo app password ready (Yahoo → Account security →
+  - **Q1** (answered 2026-10-08: yes, ready; the user types it in themselves): Does the user have a Yahoo app password ready (Yahoo → Account security →
     2-step verification on → "Generate app password")? Needed only by T6 and T24, which are
     manual checks against the real server. Ask before starting those tasks.
-  - **Q2**: Which folders are stored locally? Proposal: all folders except Trash and Junk.
+  - **Q2** (answered: all except Trash and Junk): Which folders are stored locally? Proposal: all folders except Trash and Junk.
     Needed by T37.
-  - **Q3**: Are attachments stored too (whole message, counted in the size limit), or only
+  - **Q3** (answered: whole message): Are attachments stored too (whole message, counted in the size limit), or only
     the text, with attachments fetched from the server when needed? Proposal: whole message.
     Needed by T28 and T35.
 

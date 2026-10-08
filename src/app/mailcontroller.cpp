@@ -363,8 +363,35 @@ void MailController::selectFolder(const QString &path)
     if (folder.isEmpty()) {
         return; // a shared view before the folders (and so the inbox) are known
     }
+    if (storageActive() && m_messageModel->rowCount() == 0) {
+        m_messageModel->setMessages(storedMessages(path));
+    }
     beginRequest();
     m_client->fetchHeaders(folder, messageLimit, filterFor(path));
+}
+
+bool MailController::storageActive() const
+{
+    return m_storeReady && m_storage.enabled;
+}
+
+QList<MessageSummary> MailController::storedMessages(const QString &path) const
+{
+    const QString folder = imapFolderFor(path);
+    const ImapClient::HeaderFilter filter = filterFor(path);
+    if (filter == ImapClient::AllMessages) {
+        return m_store->messages(folder, messageLimit);
+    }
+    QList<MessageSummary> result;
+    for (const MessageSummary &message : m_store->messages(folder, -1)) {
+        if (filter == ImapClient::Unread ? message.unread : message.flagged) {
+            result.append(message);
+            if (result.size() == messageLimit) {
+                break;
+            }
+        }
+    }
+    return result;
 }
 
 void MailController::refresh()
@@ -398,6 +425,16 @@ void MailController::openMessage(qint64 uid)
     clearMessage(false);
     m_messageFlagged = m_messageModel->message(uid).flagged; // the parsed message carries no IMAP flags
     Q_EMIT currentMessageChanged(); // the flag shows while the message is still loading
+    if (storageActive()) {
+        if (const QByteArray raw = m_store->rawMessage(m_messageFolder, uid); !raw.isEmpty()) {
+            // Parsed like KIMAP does with fetched messages.
+            KMime::Message message;
+            message.setContent(KMime::CRLFtoLF(raw));
+            message.parse();
+            showMessage(m_messageFolder, uid, message);
+            return;
+        }
+    }
     beginRequest();
     m_client->fetchMessage(m_messageFolder, uid);
 }
@@ -426,13 +463,16 @@ void MailController::onMessageFetched(const QString &folder, qint64 uid, const s
     if (uid != m_currentUid || folder != m_messageFolder || !message) {
         return; // another message was opened while this one was loading
     }
+    showMessage(folder, uid, *message);
+}
 
+void MailController::showMessage(const QString &folder, qint64 uid, const KMime::Message &msg)
+{
     // The const getters return nullptr for missing headers instead of creating empty ones.
-    const KMime::Message &msg = *message;
     m_messageSubject = msg.subject() ? msg.subject()->asUnicodeString() : QString();
     m_messageFrom = msg.from() ? msg.from()->asUnicodeString() : QString(); // "Name <address>"
     m_messageTo = msg.to() ? msg.to()->displayString() : QString();
-    m_messageDate = msg.date() ? msg.date()->dateTime() : QDateTime();
+    m_messageDate = ::messageDate(msg); // falls back to the Received date
     const QPalette palette = QGuiApplication::palette();
     m_messageHtml = messageBodyHtml(msg, palette.color(QPalette::Text), palette.color(QPalette::Base));
     m_messageAttachments = attachmentNames(msg);
@@ -441,6 +481,9 @@ void MailController::onMessageFetched(const QString &folder, qint64 uid, const s
     if (folder == imapFolderFor(m_currentFolder) && m_messageModel->message(uid).unread) {
         m_client->markSeen(folder, uid);
         m_messageModel->setUnread(uid, false);
+        if (storageActive() && m_store->contains(folder, uid)) {
+            m_store->setUnread(folder, uid, false);
+        }
     }
 }
 

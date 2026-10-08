@@ -980,7 +980,7 @@ T39 and T46 later make it fully functional.
   `saveStorageSettings` clamps values to ≥ 1 and units to the enum range.
 
 ### T40 — `MailController`: read from local storage first
-- status: todo
+- status: done
 - depends on: T39
 - parallel-safe with: T38
 - files: src/app/mailcontroller.{h,cpp}
@@ -989,7 +989,15 @@ T39 and T46 later make it fully functional.
   refreshes from the server; `openMessage` parses the local `.eml` when present instead of
   fetching; marking read also updates the store.
 - verify: `cmake --build build --target plasma-mail` succeeds.
-- notes:
+- notes: Done 2026-10-08. The stored list shows only when the list is empty (a folder switch),
+  so a refresh of the same folder doesn't flash older data. Unread/Flagged views filter the
+  stored inbox locally. Local `.eml` is parsed like KIMAP does (`CRLFtoLF`, `parse()`), and
+  opening it needs no server request. The reader's date now uses `messageDate()` too (Received
+  fallback). **Not covered:** flagging doesn't update the store (no `MessageStore::setFlagged`),
+  and read/flag changes made elsewhere only reach the store when a message is re-downloaded,
+  which sync never does for stored uids. The server's list replaces the stored one within
+  seconds, so this shows only briefly; worth a later task. Builds, all 11 tests pass; not yet
+  run in the GUI (storage is off until T41's page).
 
 ### T41 — Storage settings page
 - status: done

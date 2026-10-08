@@ -115,11 +115,13 @@ public:
                                   int smtpPort = 465);
     // Disconnects, deletes the password from the keychain and the account from the config.
     Q_INVOKABLE void removeAccount();
-    // Shows the newest messages of `path` (clears the list first).
+    // Shows the newest messages of `path` (clears the list first). With storage on, the stored
+    // copies show at once and the server's list replaces them when it arrives.
     Q_INVOKABLE void selectFolder(const QString &path);
     // Reloads the folder list and the current folder's messages.
     Q_INVOKABLE void refresh();
-    // Fetches message `uid` of the current folder and shows it; marks it read if it was unread.
+    // Shows message `uid` of the current folder, from its local copy when there is one, else
+    // fetched from the server; marks it read if it was unread (on the server and locally).
     // The message properties stay empty until it has arrived.
     Q_INVOKABLE void openMessage(qint64 uid);
     // Flags or unflags message `uid` of the current list (or the open message): updates the list
@@ -166,6 +168,10 @@ private:
     [[nodiscard]] static bool isSharedView(const QString &path);
     void onHeadersFetched(const QString &folder, ImapClient::HeaderFilter filter, const QList<MessageSummary> &messages);
     void onMessageFetched(const QString &folder, qint64 uid, const std::shared_ptr<KMime::Message> &message);
+    void showMessage(const QString &folder, qint64 uid, const KMime::Message &message);
+    // The stored messages for a folder or shared-view path, filtered like the server's list.
+    [[nodiscard]] QList<MessageSummary> storedMessages(const QString &path) const;
+    [[nodiscard]] bool storageActive() const; // storage on and the store open
     // Empties the message properties; with clearUid also forgets which message is open.
     void clearMessage(bool clearUid);
     // Copies the chosen folders into local storage, if storage is on and no sync is running.

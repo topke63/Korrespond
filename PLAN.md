@@ -225,6 +225,9 @@ T39 and T46 later make it fully functional.
   - Kirigami prints "QML <Page>: Created graphical object was not placed in the graphics scene"
     for every page pushed as a `Component` (PageRow creates it with a non-Item parent, then
     reparents it). Harmless; ignore it in the offscreen checks.
+  - Kirigami may print "ScrollablePage.qml:277: TypeError: Cannot read property 'flickable' of
+    null" when a ScrollablePage is destroyed (closing the settings window or quitting). Kirigami
+    internal teardown binding; harmless.
 - Commit after each finished task: `T<n>: <title>`.
 - Local storage decisions:
   - Off by default. Settings per account, stored in `plasmamailrc` group `Storage`.

@@ -992,7 +992,8 @@ T39 and T46 later make it fully functional.
 - verify: `cmake --build build` succeeds; manual: wrong Yahoo password shows the new message.
 - notes: Done 2026-10-08. A login counts as rejected when the job text contains
   `AUTHENTICATIONFAILED` or ` NO `. Builds and offscreen checks pass; the message itself is
-  checked by the user's next Yahoo login attempt.
+  confirmed in the user's GUI run: a rejected Yahoo login shows the new
+  sentence as a passive notification.
 
 ### T25 — Global verify
 - status: todo

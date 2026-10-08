@@ -1646,14 +1646,16 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   pass; new files clang-format clean.
 
 ### T73 — Test for Google OAuth client settings
-- status: todo
+- status: done
 - depends on: T72
 - parallel-safe with: T68–T71, T74, T75
 - files: autotests/oauthsettingstest.cpp, autotests/CMakeLists.txt
 - inputs: T72; test mode config.
 - output: tests: empty → not configured; config values read; env vars override config.
 - verify: `ctest --test-dir build -R oauthsettingstest --output-on-failure`
-- notes:
+- notes: Done 2026-10-08. 6 tests: nothing set; from config (trimmed); both values needed;
+  each env var wins on its own; empty/blank env vars don't hide config; env only. `init()`
+  deletes the group and unsets both variables. 12/12 test executables pass.
 
 ### T74 — Link Qt NetworkAuth
 - status: todo

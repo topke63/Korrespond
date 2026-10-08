@@ -72,3 +72,10 @@ ecm_add_test(
     TEST_NAME messagedatetest
     LINK_LIBRARIES plasmamail_engine Qt6::Test
 )
+
+# Test for the Google OAuth client settings
+ecm_add_test(
+    oauthsettingstest.cpp
+    TEST_NAME oauthsettingstest
+    LINK_LIBRARIES plasmamail_engine Qt6::Test
+)

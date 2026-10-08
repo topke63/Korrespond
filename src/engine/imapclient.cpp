@@ -110,7 +110,9 @@ void ImapClient::queueSelect(const QString &folder)
 void ImapClient::listFolders()
 {
     auto job = new KIMAP::ListJob(session());
-    job->setOption(KIMAP::ListJob::IncludeFolderRoleFlags);
+    // Plain LIST: servers with SPECIAL-USE (RFC 6154) put \Sent, \Trash etc. in its answer.
+    // IncludeFolderRoleFlags would send XLIST, which only Gmail knows (Yahoo rejects it).
+    job->setOption(KIMAP::ListJob::IncludeUnsubscribed);
 
     auto folders = std::make_shared<QList<FolderInfo>>();
     connect(job, &KIMAP::ListJob::mailBoxesReceived, this,

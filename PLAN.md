@@ -318,7 +318,7 @@ Tasks in the same wave can run in parallel once the earlier waves are done.
   no warnings. Known issue split out as T45 (one error per queued job after a failed login).
 
 ### T6 — `imap-probe` command-line tool for manual engine checks
-- status: todo
+- status: done
 - depends on: T5, Q1
 - parallel-safe with: everything after T5 except T24
 - files: tools/imapprobe.cpp, tools/CMakeLists.txt (+ `add_subdirectory(tools)` in root CMake)
@@ -329,7 +329,17 @@ Tasks in the same wave can run in parallel once the earlier waves are done.
 - verify: (manual, needs Q1) `PLASMAMAIL_EMAIL=… PLASMAMAIL_PASSWORD=… build/bin/imap-probe`
   prints folders incl. Inbox/Sent and exits 0; with a wrong password it prints a login error
   and exits 1.
-- notes:
+- notes: Done 2026-10-08, verified against the user's Yahoo account (app password):
+  6 folders with correct roles (INBOX, Draft, Sent, Archive, Bulk=junk, Trash), newest 10 INBOX
+  headers, newest message fetched (18 KB), exit 0; the fetched unread message stays unread
+  (BODY.PEEK). Wrong password → one `Invalid credentials [AUTHENTICATIONFAILED]` line, exit 1.
+  If `PLASMAMAIL_PASSWORD` is unset the tool asks on the terminal without echo (keeps the
+  password out of shell history). **Engine bug found and fixed here:** `ListJob::
+  IncludeFolderRoleFlags` makes KIMAP send `XLIST` (Gmail-only); Yahoo answers `BAD … CLIENTBUG`.
+  `ImapClient::listFolders` now uses `IncludeUnsubscribed` (plain `LIST`); Yahoo returns the
+  RFC 6154 flags there even without advertising SPECIAL-USE. Yahoo has no `SPECIAL-USE`/`XLIST`
+  capability. Protocol debugging: `KIMAP_LOGFILE=<path>` writes the raw session — it contains
+  the LOGIN line with the password, delete it afterwards.
 
 ### T7 — Message body to safe HTML
 - status: done

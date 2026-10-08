@@ -30,6 +30,7 @@ add_definitions(-DTRANSLATION_DOMAIN=\"plasma-mail\")
 
 # Only build the main library for now
 add_subdirectory(src)
+add_subdirectory(tools)
 
 # Only build tests if they exist and BUILD_TESTING is enabled
 if(BUILD_TESTING)

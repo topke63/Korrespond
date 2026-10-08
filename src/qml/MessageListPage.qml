@@ -33,6 +33,23 @@ Kirigami.ScrollablePage {
 
     actions: [
         Kirigami.Action {
+            text: KI18n.i18nc("@action:intoolbar", "New Message")
+            icon.name: "mail-message-new"
+            displayHint: Kirigami.DisplayHint.IconOnly
+            tooltip: KI18n.i18nc("@info:tooltip", "Write a new message (Ctrl+N)")
+            shortcut: "Ctrl+N"
+            onTriggered: {
+                // A separate window per message; it destroys itself when closed.
+                const component = Qt.createComponent("PlasmaMail", "ComposeWindow");
+                const composer = component.createObject(applicationWindow());
+                if (composer) {
+                    composer.show();
+                } else {
+                    console.warn(component.errorString());
+                }
+            }
+        },
+        Kirigami.Action {
             text: KI18n.i18nc("@action:intoolbar", "Refresh")
             icon.name: "view-refresh"
             displayHint: Kirigami.DisplayHint.IconOnly

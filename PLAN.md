@@ -1249,7 +1249,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   delete the user's saved account); the dialog flow is unchanged from T21.
 
 ### T62 — Compose button and New Message window (no sending yet)
-- status: todo
+- status: done
 - depends on: T54
 - parallel-safe with: none
 - files: src/qml/ComposeWindow.qml, src/qml/MessageListPage.qml
@@ -1261,7 +1261,10 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   tooltip saying sending comes in a later version. Several windows can be open; each is
   destroyed when closed.
 - verify: offscreen checks as in T19; screenshot of the window reviewed.
-- notes:
+- notes: Done 2026-10-08. A `Kirigami.ApplicationWindow` created per click with the main window as
+  parent; `onClosing` asks before discarding typed text, then `destroy()`s. **Deviation:** a
+  disabled button shows no tooltip (no hover events), so a small footer note says "Sending mail
+  comes in a later version." instead.
 
 ### T25 — Global verify
 - status: todo

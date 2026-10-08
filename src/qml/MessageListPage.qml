@@ -4,6 +4,7 @@
 import QtQuick
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
+import org.kde.ki18n
 import org.kde.kirigami as Kirigami
 import PlasmaMail
 
@@ -41,7 +42,7 @@ Kirigami.ScrollablePage {
             required property string dateText
             required property bool unread
 
-            width: ListView.view.width
+            width: list.width
             highlighted: uid === MailController.currentUid
             onClicked: MailController.openMessage(uid)
 

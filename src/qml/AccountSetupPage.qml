@@ -4,6 +4,7 @@
 import QtQuick
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
+import org.kde.ki18n
 import org.kde.kirigami as Kirigami
 import PlasmaMail
 
@@ -44,7 +45,7 @@ Kirigami.ScrollablePage {
                 required property var modelData
                 required property int index
 
-                width: ListView.view.width
+                width: providerCombo.width
                 text: modelData.text
                 enabled: modelData.enabled
                 highlighted: providerCombo.highlightedIndex === index

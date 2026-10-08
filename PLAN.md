@@ -207,10 +207,16 @@ Tasks in the same wave can run in parallel once the earlier waves are done.
   - QtKeychain: `find_package(Qt6Keychain)`, target `Qt6Keychain::Qt6Keychain`,
     header `<qt6keychain/keychain.h>`.
   - QML i18n: `KLocalization::setupLocalizedContext(&engine)` from `<KLocalizedQmlContext>`,
-    then `KI18n.i18nc("@context", "text")` in QML. Needs `TRANSLATION_DOMAIN` defined (done in
-    root CMake).
+    then `KI18n.i18nc("@context", "text")` in QML. Every QML file using it needs
+    `import org.kde.ki18n` (without it `KI18n` is undefined at runtime; qmllint doesn't catch
+    it). Needs `TRANSLATION_DOMAIN` defined (done in root CMake).
   - QtWebEngine in QML needs `QtWebEngineQuick::initialize()` before the `QGuiApplication`
     is constructed.
+  - Qt logs to the systemd journal, not stderr, when stderr isn't a terminal. Offscreen
+    "no QML warnings" checks must set `QT_FORCE_STDERR_LOGGING=1` or they see nothing.
+  - Kirigami prints "QML <Page>: Created graphical object was not placed in the graphics scene"
+    for every page pushed as a `Component` (PageRow creates it with a non-Item parent, then
+    reparents it). Harmless; ignore it in the offscreen checks.
 - Commit after each finished task: `T<n>: <title>`.
 - Local storage decisions:
   - Off by default. Settings per account, stored in `plasmamailrc` group `Storage`.
@@ -579,7 +585,7 @@ Tasks in the same wave can run in parallel once the earlier waves are done.
   component name `plasma-mail`, `QQuickStyle` fallback to `org.kde.desktop`).
 - output: `Kirigami.ApplicationWindow` titled "Plasma Mail"; shows an empty placeholder page
   for now; `MailController.errorOccurred` shows `showPassiveNotification`.
-- verify: `cmake --build build && QT_QPA_PLATFORM=offscreen timeout 5 build/bin/plasma-mail; test $status -eq 124`
+- verify: `cmake --build build && QT_FORCE_STDERR_LOGGING=1 QT_QPA_PLATFORM=offscreen timeout 5 build/bin/plasma-mail; test $status -eq 124`
   (still running after 5 s = no startup crash) and no `qrc:` / `QML` warnings in the output.
 - notes: Done 2026-10-08. Load with `engine.loadFromModule("PlasmaMail", "Main")` (resource
   path is `qrc:/qt/qml/PlasmaMail/qml/Main.qml`); exits 1 if the QML fails to load. QML strings

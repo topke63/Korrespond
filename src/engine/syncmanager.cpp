@@ -48,6 +48,14 @@ void SyncManager::syncFolder(const QString &folder)
     startFolder(folder);
 }
 
+void SyncManager::stop()
+{
+    m_folder.clear();
+    m_pending.clear();
+    m_queue.clear();
+    m_syncingAll = false;
+}
+
 void SyncManager::syncAll(const QList<FolderInfo> &folders)
 {
     if (isSyncing()) {
@@ -158,8 +166,9 @@ void SyncManager::onRawFetchFinished(const QString &folder)
 
 void SyncManager::onClientError(const QString &message)
 {
+    Q_UNUSED(message)
     if (isSyncing()) {
-        fail(message);
+        fail({});
     }
 }
 
@@ -190,5 +199,9 @@ void SyncManager::fail(const QString &message)
     m_pending.clear();
     m_queue.clear();
     m_syncingAll = false;
-    Q_EMIT errorOccurred(message);
+    if (message.isEmpty()) {
+        Q_EMIT aborted();
+    } else {
+        Q_EMIT errorOccurred(message);
+    }
 }

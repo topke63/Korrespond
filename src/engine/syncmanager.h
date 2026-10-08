@@ -33,9 +33,14 @@ public:
     // the store ends up with the newest mail that fits. Emits folderSynced() or errorOccurred().
     void syncFolder(const QString &folder);
     // Runs syncFolder() for each chosen folder in turn (all but Trash and Junk), then emits
-    // syncFinished(). The first error stops the run; errorOccurred() is then the last signal.
+    // syncFinished(). The first error stops the run; errorOccurred() or aborted() is then the
+    // last signal.
     // Each folder may download up to maxBytes before retention trims the store.
     void syncAll(const QList<FolderInfo> &folders);
+
+    // Ends the running sync without a signal, e.g. before the client disconnects (a disconnect
+    // reports no error, so the run would otherwise wait forever). Late results are ignored.
+    void stop();
 
     // Whether syncAll() stores this folder's mail.
     [[nodiscard]] static bool isChosen(const FolderInfo &folder);
@@ -45,7 +50,10 @@ Q_SIGNALS:
     void progress(const QString &folder, int done, int total);
     void folderSynced(const QString &folder);
     void syncFinished();
+    // A local storage error stopped the run.
     void errorOccurred(const QString &message);
+    // An ImapClient error stopped the run. Not repeated here: whoever uses the client shows it.
+    void aborted();
 
 private:
     void onSearchFinished(const QString &folder, qint64 uidValidity, const QList<qint64> &uids);
@@ -55,6 +63,7 @@ private:
     void startFolder(const QString &folder);
     void fetchNextBatch();
     void finish();
+    // Stops the run; emits errorOccurred(message), or aborted() when message is empty.
     void fail(const QString &message);
 
     ImapClient *m_client;

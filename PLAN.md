@@ -940,7 +940,7 @@ T39 and T46 later make it fully functional.
   removed them. `ctest --test-dir build`: all 11 test executables pass.
 
 ### T39 — `MailController`: storage usage, cleanup and sync
-- status: todo
+- status: done
 - depends on: T37, T39a
 - parallel-safe with: T38
 - files: src/app/mailcontroller.{h,cpp}
@@ -949,7 +949,19 @@ T39 and T46 later make it fully functional.
   work); `saveStorageSettings(...)` now also applies retention and starts a sync; invokable
   `cleanUpNow()`. Sync runs after connecting when enabled.
 - verify: `cmake --build build --target plasma-mail` succeeds.
-- notes: Split 2026-10-08: the settings properties moved to T39a.
+- notes: Split 2026-10-08: the settings properties moved to T39a. Done 2026-10-08: the store
+  lives in `QStandardPaths::AppDataLocation`; `storageReady` is CONSTANT (the store opens once,
+  at startup). SyncManager shares the controller's `ImapClient`; its batches leave gaps, so
+  UI requests are not stuck behind a long sync. Sync starts after every folder list (connect
+  and refresh) for the saved account only, never while a new account is being verified.
+  **SyncManager changes:** client errors now end a run with `aborted()` instead of
+  `errorOccurred` (the controller already shows the client's error); new `stop()` because a
+  disconnect (`setAccount`, `removeAccount`) reports no error and the run would wait forever.
+  Store errors are only logged (qWarning), since mail still works from the server. Turning
+  storage off stops a running sync, then retention deletes the copies. Removing the account,
+  or saving a different one, deletes the local copies. `cmake --build build --target
+  plasma-mail` succeeds and all 11 tests pass; not yet run in the GUI (storage is off in the
+  user's config, and the settings page arrives in T41).
 
 ### T39a — `MailController`: storage settings properties
 - status: done

@@ -22,7 +22,9 @@ class Message;
 }
 class FolderModel;
 class MessageListModel;
+class MessageStore;
 class SecretStore;
+class SyncManager;
 
 // The only object the QML UI talks to. Owns the engine objects for the single account.
 class MailController : public QObject
@@ -59,6 +61,12 @@ class MailController : public QObject
     Q_PROPERTY(int keepUnit READ keepUnit NOTIFY storageSettingsChanged)
     Q_PROPERTY(int sizeValue READ sizeValue NOTIFY storageSettingsChanged)
     Q_PROPERTY(int sizeUnit READ sizeUnit NOTIFY storageSettingsChanged)
+    // Bytes the local copies take on disk; 0 when storage is off or not ready.
+    Q_PROPERTY(qint64 storageUsedBytes READ storageUsedBytes NOTIFY storageUsageChanged)
+    // True while mail is being copied from the server into local storage.
+    Q_PROPERTY(bool syncing READ syncing NOTIFY syncingChanged)
+    // False when the local store could not be opened; usage, cleanup and sync then do nothing.
+    Q_PROPERTY(bool storageReady READ storageReady CONSTANT)
 
 public:
     explicit MailController(QObject *parent = nullptr);
@@ -89,6 +97,9 @@ public:
     [[nodiscard]] int keepUnit() const;
     [[nodiscard]] int sizeValue() const;
     [[nodiscard]] int sizeUnit() const;
+    [[nodiscard]] qint64 storageUsedBytes() const;
+    [[nodiscard]] bool syncing() const;
+    [[nodiscard]] bool storageReady() const;
 
     // Checks the credentials by logging in and listing folders; only then stores the password
     // in the keychain, saves the account and sets hasAccount. On failure nothing is saved and
@@ -114,11 +125,13 @@ public:
     // Flags or unflags message `uid` of the current list (or the open message): updates the list
     // and the open message at once, then stores the flag on the server.
     Q_INVOKABLE void setFlagged(qint64 uid, bool flagged);
-    // Saves the local storage settings (arguments as the properties). Only saves for now; the
-    // store, retention and sync arrive in T39.
+    // Saves the local storage settings (arguments as the properties), applies them to the local
+    // copies at once (turning storage off deletes them) and starts a sync when storage is on.
     Q_INVOKABLE void saveStorageSettings(bool enabled, const QString &importSince, int keepValue, int keepUnit, int sizeValue, int sizeUnit);
     // The values storage starts with when first turned on, as a map with the property names.
     Q_INVOKABLE QVariantMap defaultStorageSettings() const;
+    // Applies the storage limits now, removing local copies that are too old or too many.
+    Q_INVOKABLE void cleanUpNow();
 
     // Reserved paths of the shared views (not valid IMAP folder names we would ever list).
     static constexpr auto allInboxesPath = "plasmamail:inboxes";
@@ -134,6 +147,8 @@ Q_SIGNALS:
     void currentFolderChanged();
     void currentMessageChanged();
     void storageSettingsChanged();
+    void storageUsageChanged();
+    void syncingChanged();
     void errorOccurred(const QString &message);
 
 private:
@@ -153,6 +168,11 @@ private:
     void onMessageFetched(const QString &folder, qint64 uid, const std::shared_ptr<KMime::Message> &message);
     // Empties the message properties; with clearUid also forgets which message is open.
     void clearMessage(bool clearUid);
+    // Copies the chosen folders into local storage, if storage is on and no sync is running.
+    void startSync();
+    void applyStorageLimits();
+    void updateStorageUsage();
+    void setSyncing(bool syncing);
 
     Account m_account; // the saved account; invalid when there is none
     Account m_pendingAccount; // being verified by setupAccount()
@@ -172,5 +192,11 @@ private:
     QStringList m_messageAttachments;
     bool m_messageFlagged = false;
     StorageSettings m_storage;
+    std::unique_ptr<MessageStore> m_store;
+    bool m_storeReady = false;
+    SyncManager *m_sync;
+    QList<FolderInfo> m_folders; // last folder list, for syncing
+    qint64 m_storageUsedBytes = 0;
+    bool m_syncing = false;
     int m_requests = 0;
 };

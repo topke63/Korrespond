@@ -7,13 +7,17 @@
 #include "imapclient.h"
 #include "messagelistmodel.h"
 #include "messagerenderer.h"
+#include "messagestore.h"
+#include "retention.h"
 #include "secretstore.h"
+#include "syncmanager.h"
 
 #include <KLocalizedString>
 #include <KMime/Message>
 
 #include <QGuiApplication>
 #include <QPalette>
+#include <QStandardPaths>
 
 #include <algorithm>
 
@@ -25,6 +29,8 @@ MailController::MailController(QObject *parent)
     , m_secrets(new SecretStore(QString::fromLatin1(AccountSecrets::service), this))
     , m_folderModel(new FolderModel(this))
     , m_messageModel(new MessageListModel(this))
+    , m_store(std::make_unique<MessageStore>(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation)))
+    , m_sync(new SyncManager(m_client, m_store.get(), this))
 {
     connect(m_client, &ImapClient::foldersListed, this, &MailController::onFoldersListed);
     connect(m_client, &ImapClient::headersFetched, this, &MailController::onHeadersFetched);
@@ -43,12 +49,38 @@ MailController::MailController(QObject *parent)
         Q_EMIT errorOccurred(message);
     });
 
+    // Store errors are logged, not shown: the mail itself still works from the server.
+    connect(m_sync, &SyncManager::progress, this, &MailController::updateStorageUsage);
+    connect(m_sync, &SyncManager::syncFinished, this, [this] {
+        setSyncing(false);
+        updateStorageUsage();
+    });
+    connect(m_sync, &SyncManager::aborted, this, [this] {
+        setSyncing(false);
+        updateStorageUsage();
+    });
+    connect(m_sync, &SyncManager::errorOccurred, this, [this](const QString &message) {
+        qWarning("Local storage sync failed: %s", qPrintable(message));
+        setSyncing(false);
+        updateStorageUsage();
+    });
+
     m_storage = StorageSettings::load();
+    m_sync->setSettings(m_storage);
+    m_storeReady = m_store->open();
+    if (!m_storeReady) {
+        qWarning("Cannot open the local message store: %s", qPrintable(m_store->lastError()));
+    }
+    updateStorageUsage();
     m_account = Account::load();
     connectSavedAccount();
 }
 
-MailController::~MailController() = default;
+// SyncManager uses the store, so it goes first.
+MailController::~MailController()
+{
+    delete m_sync;
+}
 
 bool MailController::hasAccount() const
 {
@@ -232,7 +264,76 @@ void MailController::saveStorageSettings(bool enabled, const QString &importSinc
     settings.sizeUnit = static_cast<StorageSettings::SizeUnit>(std::clamp(sizeUnit, int(StorageSettings::MB), int(StorageSettings::Unlimited)));
     settings.save();
     m_storage = settings;
+    m_sync->setSettings(settings);
+    if (!settings.enabled && m_syncing) {
+        m_sync->stop(); // no point downloading what is deleted next
+        setSyncing(false);
+    }
     Q_EMIT storageSettingsChanged();
+    applyStorageLimits();
+    startSync();
+}
+
+qint64 MailController::storageUsedBytes() const
+{
+    return m_storageUsedBytes;
+}
+
+bool MailController::syncing() const
+{
+    return m_syncing;
+}
+
+bool MailController::storageReady() const
+{
+    return m_storeReady;
+}
+
+void MailController::cleanUpNow()
+{
+    applyStorageLimits();
+}
+
+void MailController::applyStorageLimits()
+{
+    if (!m_storeReady) {
+        return;
+    }
+    // A running sync applies the limits itself when it finishes each folder.
+    if (!m_syncing) {
+        const RetentionResult result = applyRetention(*m_store, m_storage, QDateTime::currentDateTime());
+        if (!result.ok) {
+            qWarning("Local storage cleanup failed: %s", qPrintable(m_store->lastError()));
+        }
+    }
+    updateStorageUsage();
+}
+
+void MailController::startSync()
+{
+    // Only for the saved account: a new one is synced once it has been saved.
+    if (!m_storeReady || !m_storage.enabled || m_syncing || m_folders.isEmpty() || !m_account.isValid() || m_pendingAccount.isValid()) {
+        return;
+    }
+    setSyncing(true);
+    m_sync->syncAll(m_folders);
+}
+
+void MailController::updateStorageUsage()
+{
+    const qint64 used = m_storeReady ? m_store->totalSize() : 0;
+    if (used != m_storageUsedBytes) {
+        m_storageUsedBytes = used;
+        Q_EMIT storageUsageChanged();
+    }
+}
+
+void MailController::setSyncing(bool syncing)
+{
+    if (syncing != m_syncing) {
+        m_syncing = syncing;
+        Q_EMIT syncingChanged();
+    }
 }
 
 QVariantMap MailController::defaultStorageSettings() const
@@ -395,6 +496,8 @@ void MailController::setupAccount(const QString &provider,
 
 void MailController::removeAccount()
 {
+    m_sync->stop();
+    setSyncing(false);
     m_client->disconnectFromServer();
     resetRequests();
     m_pendingAccount = {};
@@ -414,6 +517,12 @@ void MailController::removeAccount()
     }
     Account::remove();
     m_account = {};
+    m_folders.clear();
+    // The local copies belong to the removed account.
+    if (m_storeReady && !m_store->clear()) {
+        qWarning("Cannot delete the local copies: %s", qPrintable(m_store->lastError()));
+    }
+    updateStorageUsage();
     m_folderModel->setFolders({});
     m_messageModel->clear();
     clearMessage(true);
@@ -451,6 +560,9 @@ void MailController::connectSavedAccount()
 
 void MailController::connectAccount(const Account &account, const QString &password)
 {
+    // setAccount() disconnects, which a running sync would never hear about.
+    m_sync->stop();
+    setSyncing(false);
     m_client->setAccount(account, password);
     beginRequest();
     m_client->listFolders();
@@ -459,6 +571,7 @@ void MailController::connectAccount(const Account &account, const QString &passw
 void MailController::onFoldersListed(const QList<FolderInfo> &folders)
 {
     endRequest();
+    m_folders = folders;
     m_folderModel->setFolders(folders);
     const bool currentStillExists = isSharedView(m_currentFolder) || std::any_of(folders.cbegin(), folders.cend(), [this](const FolderInfo &f) {
         return f.path == m_currentFolder;
@@ -475,6 +588,7 @@ void MailController::onFoldersListed(const QList<FolderInfo> &folders)
     }
 
     if (!m_pendingAccount.isValid()) {
+        startSync();
         return;
     }
     // The login worked: now store the new account. If another account was set up before,
@@ -495,10 +609,16 @@ void MailController::onFoldersListed(const QList<FolderInfo> &folders)
             }
             if (previous.isValid() && previous.email != account.email) {
                 m_secrets->deletePassword(previous.email);
+                // The local copies are the previous account's mail.
+                if (m_storeReady && !m_store->clear()) {
+                    qWarning("Cannot delete the local copies: %s", qPrintable(m_store->lastError()));
+                }
+                updateStorageUsage();
             }
             account.save();
             m_account = account;
             Q_EMIT accountChanged();
+            startSync();
         },
         Qt::SingleShotConnection);
     m_secrets->writePassword(account.email, password);

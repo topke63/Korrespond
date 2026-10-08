@@ -43,6 +43,7 @@ MailController::MailController(QObject *parent)
         Q_EMIT errorOccurred(message);
     });
 
+    m_storage = StorageSettings::load();
     m_account = Account::load();
     connectSavedAccount();
 }
@@ -117,6 +118,62 @@ QString MailController::messageHtml() const
 QStringList MailController::messageAttachments() const
 {
     return m_messageAttachments;
+}
+
+bool MailController::storageEnabled() const
+{
+    return m_storage.enabled;
+}
+
+QString MailController::importSince() const
+{
+    return m_storage.importSince.isValid() ? m_storage.importSince.toString(Qt::ISODate) : QString();
+}
+
+int MailController::keepValue() const
+{
+    return m_storage.keepValue;
+}
+
+int MailController::keepUnit() const
+{
+    return m_storage.keepUnit;
+}
+
+int MailController::sizeValue() const
+{
+    return m_storage.sizeValue;
+}
+
+int MailController::sizeUnit() const
+{
+    return m_storage.sizeUnit;
+}
+
+void MailController::saveStorageSettings(bool enabled, const QString &importSince, int keepValue, int keepUnit, int sizeValue, int sizeUnit)
+{
+    StorageSettings settings;
+    settings.enabled = enabled;
+    settings.importSince = QDate::fromString(importSince, Qt::ISODate); // empty → null = all mail
+    settings.keepValue = std::max(1, keepValue);
+    settings.keepUnit = static_cast<StorageSettings::KeepUnit>(std::clamp(keepUnit, int(StorageSettings::Days), int(StorageSettings::Forever)));
+    settings.sizeValue = std::max(1, sizeValue);
+    settings.sizeUnit = static_cast<StorageSettings::SizeUnit>(std::clamp(sizeUnit, int(StorageSettings::MB), int(StorageSettings::Unlimited)));
+    settings.save();
+    m_storage = settings;
+    Q_EMIT storageSettingsChanged();
+}
+
+QVariantMap MailController::defaultStorageSettings() const
+{
+    const StorageSettings settings = StorageSettings::defaults(QDate::currentDate());
+    return {
+        {u"importSince"_s, settings.importSince.toString(Qt::ISODate)},
+        {u"keepValue"_s, settings.keepValue},
+        {u"keepUnit"_s, int(settings.keepUnit)},
+        {u"sizeValue"_s, settings.sizeValue},
+        {u"sizeUnit"_s, int(settings.sizeUnit)},
+    };
 }
 
 void MailController::selectFolder(const QString &path)

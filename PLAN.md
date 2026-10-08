@@ -854,18 +854,20 @@ T39 and T46 later make it fully functional.
 - notes: Split 2026-10-08: the settings properties moved to T39a.
 
 ### T39a — `MailController`: storage settings properties
-- status: todo
+- status: done
 - depends on: T18, T26
 - parallel-safe with: T27
 - files: src/app/mailcontroller.{h,cpp}
 - inputs: `StorageSettings`.
-- output: properties `storageEnabled`, `importSince` (invalid date = all mail), `keepValue`,
+- output: properties `storageEnabled`, `importSince` (ISO date string, empty = all mail), `keepValue`,
   `keepUnit`, `sizeValue`, `sizeUnit` (one `storageSettingsChanged` signal; units exposed as
   ints matching the enums); invokable `saveStorageSettings(enabled, importSince, keepValue,
   keepUnit, sizeValue, sizeUnit)` that only saves (no store yet); `defaultStorageSettings()`
   returning a map with the defaults for "today", for the page's first switch-on.
 - verify: `cmake --build build --target plasma-mail` succeeds.
-- notes:
+- notes: Done 2026-10-08. **Deviation:** `importSince` is an ISO `"yyyy-MM-dd"` string, not a
+  `QDate`: a QDate becomes a JS `Date` at midnight and time-zone conversion can shift it a day.
+  `saveStorageSettings` clamps values to ≥ 1 and units to the enum range.
 
 ### T40 — `MailController`: read from local storage first
 - status: todo

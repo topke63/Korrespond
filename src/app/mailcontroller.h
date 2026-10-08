@@ -5,11 +5,13 @@
 
 #include "account.h"
 #include "folderutils.h"
+#include "storagesettings.h"
 
 #include <QAbstractListModel>
 #include <QDateTime>
 #include <QObject>
 #include <QQmlEngine>
+#include <QVariantMap>
 
 #include <memory>
 
@@ -44,6 +46,14 @@ class MailController : public QObject
     Q_PROPERTY(QDateTime messageDate READ messageDate NOTIFY currentMessageChanged)
     Q_PROPERTY(QString messageHtml READ messageHtml NOTIFY currentMessageChanged)
     Q_PROPERTY(QStringList messageAttachments READ messageAttachments NOTIFY currentMessageChanged)
+    // Local storage settings. importSince is an ISO date ("yyyy-MM-dd"), empty = all mail; the
+    // units are StorageSettings::KeepUnit / SizeUnit as ints.
+    Q_PROPERTY(bool storageEnabled READ storageEnabled NOTIFY storageSettingsChanged)
+    Q_PROPERTY(QString importSince READ importSince NOTIFY storageSettingsChanged)
+    Q_PROPERTY(int keepValue READ keepValue NOTIFY storageSettingsChanged)
+    Q_PROPERTY(int keepUnit READ keepUnit NOTIFY storageSettingsChanged)
+    Q_PROPERTY(int sizeValue READ sizeValue NOTIFY storageSettingsChanged)
+    Q_PROPERTY(int sizeUnit READ sizeUnit NOTIFY storageSettingsChanged)
 
 public:
     explicit MailController(QObject *parent = nullptr);
@@ -63,6 +73,12 @@ public:
     [[nodiscard]] QDateTime messageDate() const;
     [[nodiscard]] QString messageHtml() const;
     [[nodiscard]] QStringList messageAttachments() const;
+    [[nodiscard]] bool storageEnabled() const;
+    [[nodiscard]] QString importSince() const;
+    [[nodiscard]] int keepValue() const;
+    [[nodiscard]] int keepUnit() const;
+    [[nodiscard]] int sizeValue() const;
+    [[nodiscard]] int sizeUnit() const;
 
     // Checks the credentials by logging in and listing folders; only then stores the password
     // in the keychain, saves the account and sets hasAccount. On failure nothing is saved and
@@ -85,6 +101,11 @@ public:
     // Fetches message `uid` of the current folder and shows it; marks it read if it was unread.
     // The message properties stay empty until it has arrived.
     Q_INVOKABLE void openMessage(qint64 uid);
+    // Saves the local storage settings (arguments as the properties). Only saves for now; the
+    // store, retention and sync arrive in T39.
+    Q_INVOKABLE void saveStorageSettings(bool enabled, const QString &importSince, int keepValue, int keepUnit, int sizeValue, int sizeUnit);
+    // The values storage starts with when first turned on, as a map with the property names.
+    Q_INVOKABLE QVariantMap defaultStorageSettings() const;
 
     // How many of the newest messages a folder shows.
     static constexpr int messageLimit = 50;
@@ -94,6 +115,7 @@ Q_SIGNALS:
     void busyChanged();
     void currentFolderChanged();
     void currentMessageChanged();
+    void storageSettingsChanged();
     void errorOccurred(const QString &message);
 
 private:
@@ -125,5 +147,6 @@ private:
     QDateTime m_messageDate;
     QString m_messageHtml;
     QStringList m_messageAttachments;
+    StorageSettings m_storage;
     int m_requests = 0;
 };

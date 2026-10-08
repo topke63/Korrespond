@@ -1151,9 +1151,56 @@ body below. Message previews in the list (needs fetching body text) are out of s
   Separator, spacer, `Kirigami.SearchField`). No Breeze `mail-move` icon: Move uses `folder`.
   Disabled buttons show greyed, as intended.
 
+### Sidebar by account with shared folders (2026-10-08)
+User: "folders on left side panel should be sorted by accounts. On top should be common inbox
+and maybe two more folders." Chosen (user): **All Inboxes, Unread, Flagged** on top, then one
+section per account with its folders. Only one account exists until milestones 2–3, so the
+shared views cover that account's Inbox; with more accounts they will merge every Inbox.
+Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every folder.
+
+### T57 — `ImapClient`: filtered header fetch
+- status: todo
+- depends on: T5
+- parallel-safe with: none
+- files: src/engine/imapclient.{h,cpp}
+- inputs: KIMAP `SearchJob` (`Term(Seen).setNegated(true)` / `Term(Flagged)`, UID based).
+- output: `enum HeaderFilter { AllMessages, Unread, Flagged }`; `fetchHeaders(folder, limit,
+  filter = AllMessages)`: AllMessages as before; the others SEARCH, take the newest `limit`
+  UIDs and UID FETCH their headers. `headersFetched(folder, filter, messages)` carries the
+  filter so callers can tell results apart. `MessageSummary.flagged` filled from `\Flagged`.
+  MailController's slot gets the new signature (ignores the filter until T58).
+- verify: `cmake --build build` succeeds; tests pass.
+- notes:
+
+### T58 — `MailController`: shared views
+- status: todo
+- depends on: T57
+- parallel-safe with: none
+- files: src/app/mailcontroller.{h,cpp}
+- inputs: T57.
+- output: constant property `sharedFolders` (list of maps: `path`, `name`, `iconName`) for
+  "All Inboxes", "Unread", "Flagged", with reserved paths `plasmamail:inboxes`,
+  `plasmamail:unread`, `plasmamail:flagged`. `selectFolder` accepts them: each maps to the
+  inbox plus a filter; `currentFolderName` returns their names; opening/marking messages uses
+  the real folder. After connecting, the start view is All Inboxes instead of Inbox.
+- verify: `cmake --build build --target plasma-mail` succeeds.
+- notes:
+
+### T59 — Sidebar sections: shared folders, then per account
+- status: todo
+- depends on: T58
+- parallel-safe with: none
+- files: src/qml/FolderSidebar.qml
+- inputs: `sharedFolders`, `folderModel`, `accountEmail`.
+- output: the sidebar's title bar shows "Mail" and the account menu; below it a section with
+  All Inboxes (blue), Unread (accent), Flagged (orange); then an account section headed by the
+  account's avatar and address (click to collapse) listing its folders as now.
+- verify: offscreen checks as in T19; screenshot reviewed.
+- notes:
+
 ### T25 — Global verify
 - status: todo
-- depends on: T1–T24, T26–T56, T39a
+- depends on: T1–T24, T26–T59, T39a
 - parallel-safe with: none
 - files: none
 - inputs: —

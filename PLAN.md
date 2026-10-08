@@ -24,15 +24,14 @@
     Needed by T28 and T35.
 
 ## Later milestones (not planned yet, do not start)
-2. Gmail via OAuth2 (Qt NetworkAuth, loopback + PKCE, XOAUTH2 SASL plugin `libkdexoauth2` is
-   installed), Gmail extensions (X-GM-THRID, X-GM-LABELS, All Mail de-duplication).
+2. Gmail via OAuth2, alongside Yahoo: **planned below as "Milestone 2"** (multiple accounts +
+   Google sign-in). Gmail extensions (X-GM-THRID threads, X-GM-LABELS) stay for later.
 3. Outlook/Microsoft via OAuth2 (reuses milestone 2 code).
 4. Compose / reply / forward over SMTP (KPim6::SMTP is installed).
-5. IDLE, notifications, multiple accounts, background sync timer.
-   Multiple accounts must include (user requests 2026-10-08): Settings → Accounts as the account
-   manager (T63) with a working "Add Account…"; **reordering accounts** there (drag handle or
-   move up/down), saved in the config and **mirrored in the sidebar's account sections**; the
-   shared views (All Inboxes, Unread, Flagged, T58) merging every account's inbox.
+5. IDLE, notifications, background sync timer, and **reordering accounts** (user request
+   2026-10-08: drag handle or move up/down in Settings → Accounts, saved in the config and
+   mirrored in the sidebar's account sections). The rest of multiple accounts (account manager
+   with "Add Account…", shared views merging every inbox) moved into Milestone 2.
 
 ## Build plan
 
@@ -1532,6 +1531,409 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - verify: `rm -rf build && cmake -S . -B build -G Ninja && cmake --build build && ctest --test-dir build --output-on-failure`
 - notes: 2026-10-08: verify command run (`rm -rf build`, configure, build, ctest): clean build,
   no warnings, all 11 test executables pass. Stays todo until the manual T24 and T53 are done.
+
+---
+
+# Milestone 2 — Google account alongside Yahoo (OAuth2)
+
+- **Goal**: The app holds several accounts at once. The user adds a Gmail account next to Yahoo by
+  signing in with Google in the browser (OAuth2, no password stored); both accounts show in the
+  sidebar with their folders, All Inboxes / Unread / Flagged merge both inboxes, and both
+  reconnect at startup without asking (Gmail via a stored refresh token).
+- **Out of scope**: Outlook, sending mail, reordering accounts (milestone 5), Gmail threads and
+  labels (X-GM-THRID/X-GM-LABELS), IDLE, Google app passwords. Never print or log access or refresh
+  tokens; never commit the OAuth client ID/secret (they live in the user's plasmamailrc or env).
+- **Global verify**: `rm -rf build && cmake --preset dev && cmake --build --preset dev && ctest --preset dev`
+- **Decisions (user, 2026-10-08)**: Google is added **alongside** Yahoo (multi-account now, not
+  replace); sign-in is **OAuth2 browser login** (not an app password).
+- **Design decisions** (made while planning; change only with the user):
+  - An account's id is its email address (already the keychain key). Accounts keep the order
+    they were added in; the sidebar shows them in that order.
+  - For OAuth accounts the keychain entry under the email holds the **refresh token** instead of
+    a password. Access tokens live only in memory and are refreshed before they expire.
+  - Each account gets its own local store in `<AppData>/accounts/<sha1(email)>/`. The existing
+    single store (`<AppData>/mail.sqlite` + `messages/`) is moved into the first account's folder.
+    Storage settings stay global and apply to every account.
+  - Gmail: All Mail (`\All`), Starred (`\Flagged`) and Important (`\Important`) are not stored
+    locally; they repeat mail from other folders. They still open from the sidebar.
+  - Google sign-in: authorization code flow with PKCE (S256), redirect to
+    `http://127.0.0.1:<random port>/`, scope `https://mail.google.com/`, `access_type=offline`,
+    `prompt=consent` (so a refresh token is always returned), `login_hint=<email>`.
+- **Open questions**:
+  - **Q4**: Has the user created a Google OAuth client? Steps: console.cloud.google.com → new
+    project → "Google Auth Platform" / OAuth consent screen: External, app name "Plasma Mail",
+    add their Gmail address as a test user (or publish "In production", unverified, fine for
+    personal use) → Clients → Create client → type **Desktop app** → copy client ID and secret
+    into `~/.config/plasmamailrc`:
+    `[GoogleOAuth]` `ClientId=…` `ClientSecret=…` (or env `PLASMAMAIL_GOOGLE_CLIENT_ID` /
+    `PLASMAMAIL_GOOGLE_CLIENT_SECRET`). Needed by T80 and T95 (manual checks only).
+
+### T68 — `Account`: several accounts in the config
+- status: todo
+- depends on: none
+- parallel-safe with: T70, T72, T74
+- files: src/engine/account.h, src/engine/account.cpp
+- inputs: today's single `[Account]` group (`Account::load/save/remove`), KConfig `plasmamailrc`.
+- output: field `QString authMethod` ("password" or "oauth"; "password" when missing);
+  `static QList<Account> loadAll()` (order kept; group `[Accounts]` key `Order=<email list>`, one
+  group `[Account <email>]` each); `static void saveAll(const QList<Account>&)`. If only the old
+  `[Account]` group exists, `loadAll()` returns it as the single account and `saveAll` deletes
+  the old group. `load/save/remove` stay (callers move in T85) but are marked deprecated in comments.
+- verify: `cmake --build build --target plasmamail_engine` succeeds.
+- notes:
+
+### T69 — Tests for several accounts in the config
+- status: todo
+- depends on: T68
+- parallel-safe with: T70–T75
+- files: autotests/accounttest.cpp
+- inputs: T68 API; the test already uses `QStandardPaths::setTestModeEnabled(true)`.
+- output: tests: save two accounts → loadAll returns both in order with all fields incl.
+  authMethod; an old `[Account]` group migrates and disappears after saveAll; empty config →
+  empty list; saving one account less removes its group.
+- verify: `ctest --test-dir build -R accounttest --output-on-failure`
+- notes:
+
+### T70 — Gmail folder roles and which folders are stored
+- status: todo
+- depends on: none
+- parallel-safe with: T68, T72, T74
+- files: src/engine/folderutils.cpp, src/engine/syncmanager.cpp
+- inputs: `folderRoleFromFlags` (maps `\\all`, `\\flagged` already), `SyncManager::isChosen`.
+- output: `\\important` maps to role "important" (sorted after "all"); `isChosen` also skips
+  "all", "flagged" and "important".
+- verify: `cmake --build build --target plasmamail_engine` succeeds.
+- notes:
+
+### T71 — Tests for Gmail folder roles
+- status: todo
+- depends on: T70
+- parallel-safe with: T68, T69, T72–T75
+- files: autotests/folderutilstest.cpp
+- inputs: T70.
+- output: tests: Gmail-style LIST flags (`[Gmail]/All Mail` `\\All`, `[Gmail]/Important`
+  `\\Important`, `[Gmail]/Starred` `\\Flagged`) get roles all/important/flagged; `isChosen` is
+  false for those three, trash and junk, true for inbox/sent/drafts/archive/plain folders.
+- verify: `ctest --test-dir build -R folderutilstest --output-on-failure`
+- notes:
+
+### T72 — Google OAuth client settings
+- status: todo
+- depends on: none
+- parallel-safe with: T68, T70, T74
+- files: src/engine/oauthsettings.h, src/engine/oauthsettings.cpp (+ one line in src/CMakeLists.txt)
+- inputs: Q4's config keys and env vars.
+- output: `struct GoogleOAuthSettings { QString clientId, clientSecret; bool isConfigured() const;
+  static GoogleOAuthSettings load(); }`; env vars win over the config file.
+- verify: `cmake --build build --target plasmamail_engine` succeeds.
+- notes:
+
+### T73 — Test for Google OAuth client settings
+- status: todo
+- depends on: T72
+- parallel-safe with: T68–T71, T74, T75
+- files: autotests/oauthsettingstest.cpp, autotests/CMakeLists.txt
+- inputs: T72; test mode config.
+- output: tests: empty → not configured; config values read; env vars override config.
+- verify: `ctest --test-dir build -R oauthsettingstest --output-on-failure`
+- notes:
+
+### T74 — Link Qt NetworkAuth
+- status: todo
+- depends on: none
+- parallel-safe with: T68–T73
+- files: CMakeLists.txt, src/CMakeLists.txt
+- inputs: `qt6-networkauth` 6.11 is installed.
+- output: `NetworkAuth` in the root `find_package(Qt6 …)`; `plasmamail_engine` links `Qt6::NetworkAuth`.
+- verify: `cmake --preset dev && cmake --build --preset dev` succeeds.
+- notes:
+
+### T75 — `OAuthClient`: Google sign-in in the browser
+- status: todo
+- depends on: T72, T74
+- parallel-safe with: T68–T71
+- files: src/engine/oauthclient.h, src/engine/oauthclient.cpp (+ one line in src/CMakeLists.txt)
+- inputs: Milestone 2 design (PKCE, loopback, scope, params); `QOAuth2AuthorizationCodeFlow`,
+  `QOAuthHttpServerReplyHandler` (listen on 127.0.0.1, port 0), `QDesktopServices::openUrl`.
+- output: `void signIn(const QString &email)`; signals `signedIn(QString accessToken, QString
+  refreshToken, QDateTime expiresAt)` and `failed(QString message)` (readable, no tokens). The
+  browser page after the redirect says the user can close it.
+- verify: `cmake --build build --target plasmamail_engine` succeeds (live check in T80).
+- notes:
+
+### T76 — `OAuthClient`: refresh the access token
+- status: todo
+- depends on: T75
+- parallel-safe with: T68–T71
+- files: src/engine/oauthclient.h, src/engine/oauthclient.cpp
+- inputs: T75; `QOAuth2AuthorizationCodeFlow::setRefreshToken/refreshTokens`.
+- output: `void refresh(const QString &refreshToken)` emitting `accessTokenChanged(QString token,
+  QDateTime expiresAt)` or `failed(QString)`; while a token is in use it refreshes on its own
+  about 5 minutes before expiry and emits `accessTokenChanged` again. A revoked refresh token
+  gives a failed() message that tells the user to sign in again.
+- verify: `cmake --build build --target plasmamail_engine` succeeds (live check in T80).
+- notes:
+
+### T77 — `ImapClient`: XOAUTH2 login
+- status: todo
+- depends on: T68
+- parallel-safe with: T69–T76
+- files: src/engine/imapclient.h, src/engine/imapclient.cpp
+- inputs: `Account::authMethod`; `KIMAP::LoginJob::XOAuth2` (needs the installed SASL plugin
+  `/usr/lib/sasl2/libkdexoauth2.so`).
+- output: an "oauth" account logs in with `XOAuth2` using the access token as password;
+  `void setAccessToken(const QString&)` replaces the token for future sessions without
+  dropping the current one. Login errors for OAuth say to sign in again, not "wrong password".
+- verify: `cmake --build build --target plasmamail_engine` succeeds (live check in T80).
+- notes:
+
+### T78 — Link the OAuth client into `imap-probe`
+- status: todo
+- depends on: T76
+- parallel-safe with: T77
+- files: tools/CMakeLists.txt
+- inputs: `imap-probe` is a console app; OAuth needs `QDesktopServices` (Qt6::Gui).
+- output: `imap-probe` links what `OAuthClient` needs (engine already public-links Gui/NetworkAuth;
+  confirm and adjust only if needed); `imap-probe` uses `QGuiApplication` only with `--google`.
+- verify: `cmake --build build --target imap-probe` succeeds.
+- notes:
+
+### T79 — `imap-probe --google`
+- status: todo
+- depends on: T76, T77, T78
+- parallel-safe with: T81–T84
+- files: tools/imapprobe.cpp
+- inputs: env `PLASMAMAIL_EMAIL`, T72 settings; T75/T76/T77.
+- output: `--google` signs in through the browser, then lists folders with roles and the newest
+  10 INBOX headers like the Yahoo mode; then refreshes the token once and lists folders again
+  over a new session. Prints only "signed in" / "token refreshed", never tokens.
+- verify: build succeeds; live run is T80.
+- notes:
+
+### T80 — Manual check: Google sign-in with `imap-probe`
+- status: todo
+- depends on: T79, Q4
+- parallel-safe with: T81–T92
+- files: none (record results; new tasks for bugs)
+- inputs: the user's Gmail address and OAuth client (Q4); the user signs in in their browser.
+- output: confirmed in notes: browser opens, consent works, folders incl. `[Gmail]/…` with
+  roles, newest headers, refresh + second session work, no token in the output.
+- verify: (manual, with the user) `PLASMAMAIL_EMAIL=… build/bin/imap-probe --google` exits 0.
+- notes:
+
+### T81 — Move the old single store into an account folder
+- status: todo
+- depends on: none
+- parallel-safe with: T68–T80
+- files: src/engine/messagestore.h, src/engine/messagestore.cpp
+- inputs: store layout (`mail.sqlite` + `messages/` under the base dir; paths in rows are
+  relative, so the files can move).
+- output: `static QString accountDir(const QString &appDataDir, const QString &email)`
+  (`<appData>/accounts/<sha1 hex of lower-cased email>`); `static bool moveLegacyStore(const
+  QString &appDataDir, const QString &accountDir)`: moves `mail.sqlite` and `messages/` if they
+  exist and the target has no store yet; true when there was nothing to do.
+- verify: `cmake --build build --target plasmamail_engine` succeeds.
+- notes:
+
+### T82 — Tests for the store move
+- status: todo
+- depends on: T81
+- parallel-safe with: T68–T80
+- files: autotests/messagestoretest.cpp
+- inputs: T81.
+- output: tests: a store with a message moves and opens in the new folder with its message and
+  file; nothing to move → true, no folders created; target already has a store → nothing moved.
+- verify: `ctest --test-dir build -R messagestoretest --output-on-failure`
+- notes:
+
+### T83 — `AccountSession`: one account's client, folders and store
+- status: todo
+- depends on: T68, T81
+- parallel-safe with: T69–T80
+- files: src/app/accountsession.h, src/app/accountsession.cpp (+ one line in src/CMakeLists.txt)
+- inputs: what `MailController` does today per account: `ImapClient`, `FolderModel`,
+  `MessageStore`, `SyncManager`, folder list saving, `startSync`, usage (mailcontroller.cpp).
+- output: QObject owning those for one `Account`; `connectWithSecret(QString)`, `folders()`,
+  `client()`, `store()`, `folderModel()`, `storageUsedBytes()`; it saves folder lists and starts
+  syncs itself when storage is on; signals forward the client's. Not used by the controller yet.
+- verify: `cmake --build build --target plasma-mail` succeeds.
+- notes:
+
+### T84 — `AccountListModel` for the sidebar and settings
+- status: todo
+- depends on: T83
+- parallel-safe with: T85
+- files: src/models/accountlistmodel.h, src/models/accountlistmodel.cpp (+ CMake line)
+- inputs: T83.
+- output: list model over `AccountSession*` with roles `email`, `displayName`, `provider`
+  (readable name), `server`, `folderModel` (QObject*); `setSessions(QList<AccountSession*>)`.
+- verify: `cmake --build build --target plasma-mail` succeeds.
+- notes:
+
+### T85 — `MailController`: run every saved account through `AccountSession`
+- status: todo
+- depends on: T83, T84
+- parallel-safe with: none
+- files: src/app/mailcontroller.h, src/app/mailcontroller.cpp
+- inputs: T68 `loadAll`, T81 store move (first account only), T83, T84.
+- output: one `AccountSession` per saved account, all connecting at startup (password accounts
+  only for now); property `accounts` (AccountListModel); `hasAccount` = any account. The
+  existing QML API keeps working against the **first** account (folderModel, selectFolder(path),
+  openMessage(uid), setFlagged, storage) so the app behaves as before with one account.
+- verify: build succeeds, all tests pass, `run it again` shows Yahoo exactly as before.
+- notes:
+
+### T86 — Messages carry their account
+- status: todo
+- depends on: none
+- parallel-safe with: T68–T84
+- files: src/engine/imapclient.h, src/models/messagelistmodel.h, src/models/messagelistmodel.cpp
+- inputs: `MessageSummary`, `MessageListModel` (rows keyed by uid).
+- output: `MessageSummary::account` (email); model role `account`; `message(account, uid)`,
+  `setUnread(account, uid, …)`, `setFlagged(account, uid, …)` (uid alone is not unique across
+  accounts). Old uid-only overloads removed; callers updated in T87.
+- verify: `cmake --build build --target plasmamail_models` succeeds.
+- notes:
+
+### T87 — Tests for messages from two accounts
+- status: todo
+- depends on: T86
+- parallel-safe with: T68–T85
+- files: autotests/messagelistmodeltest.cpp
+- inputs: T86.
+- output: tests: two accounts with the same uid stay separate rows; setUnread/setFlagged change
+  only the row of the given account; the `account` role returns the email.
+- verify: `ctest --test-dir build -R messagelistmodeltest --output-on-failure`
+- notes:
+
+### T88 — `MailController`: folders and messages per account
+- status: todo
+- depends on: T85, T86
+- parallel-safe with: none
+- files: src/app/mailcontroller.h, src/app/mailcontroller.cpp
+- inputs: T85, T86.
+- output: property `currentAccount`; `selectFolder(account, path)`, `openMessage(account, uid)`,
+  `setFlagged(account, uid, flagged)`; every request goes to that account's session; summaries
+  get `account` set. Old one-argument versions removed (QML updated in T93/T94).
+- verify: `cmake --build build --target plasma-mail` succeeds.
+- notes:
+
+### T89 — `MailController`: shared views merge every account
+- status: todo
+- depends on: T88
+- parallel-safe with: none
+- files: src/app/mailcontroller.cpp
+- inputs: T88; shared views today read the first inbox (`imapFolderFor`).
+- output: All Inboxes / Unread / Flagged ask every account's inbox (and stored copies first),
+  merge newest date first, keep the newest `messageLimit`; a late answer from one account
+  re-merges without dropping the other's rows.
+- verify: build succeeds; manual in T95.
+- notes:
+
+### T90 — `MailController`: add and remove accounts
+- status: todo
+- depends on: T88
+- parallel-safe with: T89
+- files: src/app/mailcontroller.h, src/app/mailcontroller.cpp
+- inputs: T85; today's `setupAccount` replaces the account and clears the store.
+- output: `setupAccount(...)` (password) verifies and **adds** an account (an existing email is
+  refused); `removeAccount(account)` removes only that account: session, keychain entry, its
+  store folder, config entry. Other accounts keep running.
+- verify: build succeeds; manual in T95.
+- notes:
+
+### T91 — `MailController`: storage over all accounts
+- status: todo
+- depends on: T88
+- parallel-safe with: T89, T90
+- files: src/app/mailcontroller.cpp
+- inputs: T83 (per-session store/sync).
+- output: `storageUsedBytes` = sum over accounts; `syncing` = any session syncing;
+  `cleanUpNow` and `saveStorageSettings` apply to every session; `storageReady` = all stores open.
+- verify: build succeeds; all tests pass.
+- notes:
+
+### T92 — `MailController`: Google accounts (sign-in, startup, refresh)
+- status: todo
+- depends on: T76, T77, T90
+- parallel-safe with: T93, T94
+- files: src/app/mailcontroller.h, src/app/mailcontroller.cpp (may use src/app/accountsession.cpp)
+- inputs: T75/T76 `OAuthClient`, T77 `setAccessToken`, T72 `isConfigured`.
+- output: `setupGoogleAccount(email, displayName)`: browser sign-in → verify by listing folders →
+  refresh token into the keychain → account saved with authMethod "oauth". At startup an "oauth"
+  account reads its refresh token, gets an access token, connects; new tokens go to the client.
+  Property `googleConfigured` for the setup page.
+- verify: build succeeds; manual in T95.
+- notes:
+
+### T93 — Sidebar: one section per account
+- status: todo
+- depends on: T88
+- parallel-safe with: T94, T96
+- files: src/qml/FolderSidebar.qml
+- inputs: `MailController.accounts` (T84), `selectFolder(account, path)`, `currentAccount`.
+- output: a Repeater over accounts, each with its own header (avatar, email, expand arrow) and
+  its folders; clicking a folder selects it for that account; highlight checks account + path.
+- verify: offscreen start prints no new QML warnings; `run it again` reviewed by the user.
+- notes:
+
+### T94 — Message list and message view pass the account
+- status: todo
+- depends on: T88
+- parallel-safe with: T93, T96
+- files: src/qml/MessageListPage.qml, src/qml/MessagePage.qml
+- inputs: model role `account` (T86), T88 API, `MailController.currentMessageAccount` (add in
+  T88 if missing).
+- output: rows open/flag with `(account, uid)`; the selected row checks account + uid; the
+  message view flags with its message's account.
+- verify: offscreen start prints no new QML warnings.
+- notes:
+
+### T96 — Settings → Accounts lists every account
+- status: todo
+- depends on: T90
+- parallel-safe with: T93, T94
+- files: src/qml/AccountSettingsPage.qml, src/qml/AccountDetailsPage.qml
+- inputs: `MailController.accounts`; `removeAccount(account)`.
+- output: one row per account; "Add Account…" opens the setup page as a layer; the details
+  page shows the chosen account and removes only it.
+- verify: offscreen start prints no new QML warnings; manual in T95.
+- notes:
+
+### T97 — Setup page: Sign in with Google
+- status: todo
+- depends on: T92
+- parallel-safe with: T93, T94, T96
+- files: src/qml/AccountSetupPage.qml
+- inputs: `setupGoogleAccount`, `googleConfigured`.
+- output: Gmail enabled in the provider list; for Gmail the password field is replaced by a
+  "Sign in with Google" button and a note that the browser opens; if not configured, a note
+  points to the `[GoogleOAuth]` settings (Q4) instead. Usable both first-run and from "Add Account…".
+- verify: offscreen start prints no new QML warnings.
+- notes:
+
+### T95 — Manual end-to-end check: Gmail next to Yahoo
+- status: todo
+- depends on: T80, T89, T91, T93, T94, T96, T97
+- parallel-safe with: none
+- files: none (record results; new tasks for bugs)
+- inputs: the user's Gmail and Yahoo accounts, Q4 client.
+- output: confirmed in notes: Add Account → Gmail → browser sign-in → Gmail section appears
+  under Yahoo with its folders; All Inboxes shows both, newest first; opening and flagging work
+  in each account; restart reconnects both without a browser; with storage on, Gmail's All
+  Mail/Starred/Important are not stored; removing Gmail leaves Yahoo untouched.
+- verify: manual, with the user.
+- notes:
+
+### T98 — Global verify (Milestone 2)
+- status: todo
+- depends on: T68–T97
+- parallel-safe with: none
+- files: none
+- inputs: —
+- output: clean build and passing tests.
+- verify: `rm -rf build && cmake --preset dev && cmake --build --preset dev && ctest --preset dev`
+- notes:
 
 ---
 

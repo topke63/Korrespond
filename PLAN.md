@@ -1265,7 +1265,7 @@ body below. Message previews in the list (needs fetching body text) are out of s
   Refined 2026-10-08 (T53 direction): level-1 bold subject, 2.5-grid-unit `SenderAvatar`,
   small dim address/"To" line, wider margins. Sidebar uses `SenderAvatar` too.
 ### T53 — Visual review with the user
-- status: todo
+- status: done
 - depends on: T49–T52
 - parallel-safe with: none
 - files: none (feedback becomes new tasks)
@@ -1275,6 +1275,7 @@ body below. Message previews in the list (needs fetching body text) are out of s
 - notes: 2026-10-08 user direction: "Mimestream's clean look with Mailspring's avatars", done as
   tighter spacing/typography in T51/T52 (no new tasks). Previews / smart grouping (Spark) not
   requested; add as new tasks only if the user asks.
+  **Verdict 2026-10-08 (user): "the look is good".**
 
 ### T54 — Mimestream visual pass
 - status: done
@@ -1522,7 +1523,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   an empty avatar. Server round trip still to be checked by the user (flag in app → webmail).
 
 ### T25 — Global verify
-- status: todo
+- status: done
 - depends on: T1–T24, T26–T67, T39a
 - parallel-safe with: none
 - files: none
@@ -1530,7 +1531,8 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - output: clean build and passing tests.
 - verify: `rm -rf build && cmake -S . -B build -G Ninja && cmake --build build && ctest --test-dir build --output-on-failure`
 - notes: 2026-10-08: verify command run (`rm -rf build`, configure, build, ctest): clean build,
-  no warnings, all 11 test executables pass. Stays todo until the manual T24 and T53 are done.
+  no warnings, all 11 test executables pass. Marked done after T24 and T53 (only PLAN.md
+  changed since that run). **Milestone 1 complete.**
 
 ---
 

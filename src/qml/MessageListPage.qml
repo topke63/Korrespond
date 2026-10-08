@@ -11,6 +11,16 @@ import PlasmaMail
 Kirigami.ScrollablePage {
     id: page
 
+    // Opens `uid` in the column after this page, reusing the message page if it is shown.
+    function openMessage(uid) {
+        MailController.openMessage(uid);
+        if (Kirigami.ColumnView.index === applicationWindow().pageStack.depth - 1) {
+            applicationWindow().pageStack.push(messagePage);
+        } else {
+            applicationWindow().pageStack.currentIndex = Kirigami.ColumnView.index + 1;
+        }
+    }
+
     title: MailController.currentFolderName
 
     actions: [
@@ -26,6 +36,20 @@ Kirigami.ScrollablePage {
     header: QQC2.ProgressBar {
         visible: MailController.busy
         indeterminate: true
+    }
+
+    // The open message belongs to the folder being left.
+    Connections {
+        target: MailController
+        function onCurrentFolderChanged() {
+            applicationWindow().pageStack.pop(page);
+        }
+    }
+
+    Component {
+        id: messagePage
+
+        MessagePage {}
     }
 
     ListView {
@@ -44,7 +68,7 @@ Kirigami.ScrollablePage {
 
             width: list.width
             highlighted: uid === MailController.currentUid
-            onClicked: MailController.openMessage(uid)
+            onClicked: page.openMessage(uid)
 
             contentItem: RowLayout {
                 spacing: Kirigami.Units.largeSpacing

@@ -641,7 +641,7 @@ Tasks in the same wave can run in parallel once the earlier waves are done.
   now pushes this page when an account exists. Empty subject shows "(no subject)".
 
 ### T23 — Message page with sandboxed HTML view
-- status: todo
+- status: done
 - depends on: T18, T22
 - parallel-safe with: T20, T21
 - files: src/qml/MessagePage.qml, src/qml/MessageListPage.qml
@@ -652,7 +652,12 @@ Tasks in the same wave can run in parallel once the earlier waves are done.
   `settings.localContentCanAccessRemoteUrls: false`; clicked links open with
   `Qt.openUrlExternally` and the navigation is rejected. MessageListPage pushes it on click.
 - verify: offscreen launch as in T19 prints no QML warnings.
-- notes:
+- notes: Done 2026-10-08. Navigations other than our own `about:`/`data:` load are rejected;
+  link clicks and new-window requests open in the browser. Also sets
+  `localContentCanAccessFileUrls: false`. Clicking another message reuses the open message
+  page; changing folder pops it. Verified offscreen by temporarily pushing MessagePage at
+  startup: no QML warnings (only Chromium's Vulkan/GPUInfo lines, from the offscreen platform).
+  Link handling and image blocking are not checked offscreen: covered by T24.
 
 ### T24 — Manual end-to-end check with Yahoo
 - status: todo

@@ -130,6 +130,10 @@ qmllint -I build/src src/qml/*.qml          # lint QML (after T19; T19 notes the
 # run against a throw-away profile (doesn't touch your real config/mail)
 env XDG_CONFIG_HOME=(mktemp -d) XDG_DATA_HOME=(mktemp -d) build/bin/plasma-mail
 
+# dev: save a screenshot of the app window (not the screen) after 6 s and quit (T48);
+# PLASMAMAIL_SCREENSHOT_OPEN=1 opens the newest message first
+env PLASMAMAIL_SCREENSHOT=/tmp/shot.png build/bin/plasma-mail
+
 # protocol debugging (prints IMAP traffic; never paste its output publicly: it has your mail)
 env QT_LOGGING_RULES="org.kde.pim.kimap*=true" build/bin/plasma-mail
 
@@ -1005,7 +1009,7 @@ a message view with a large subject, a sender header (avatar, name, address, dat
 body below. Message previews in the list (needs fetching body text) are out of scope for now.
 
 ### T48 — Dev screenshot hook
-- status: todo
+- status: done
 - depends on: T19
 - parallel-safe with: none
 - files: src/app/main.cpp
@@ -1015,7 +1019,9 @@ body below. Message previews in the list (needs fetching body text) are out of s
   the app window only, never the screen) and quits. With `PLASMAMAIL_SCREENSHOT_OPEN=1` it first
   opens the newest message of the current folder. Dev-only; documented in the commands section.
 - verify: offscreen run with a fake account writes a PNG and exits 0.
-- notes:
+- notes: Done 2026-10-08. Gets the controller with `engine.singletonInstance` and the uid via the
+  model's "uid" role name. Offscreen screenshots use a light fallback palette; run on the real
+  display for the user's Breeze colors.
 
 ### T49 — Folder sidebar
 - status: todo

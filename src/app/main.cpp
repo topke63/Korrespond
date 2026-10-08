@@ -5,12 +5,53 @@
 #include <KLocalizedQmlContext>
 #include <KLocalizedString>
 
+#include "mailcontroller.h"
+
+#include <QAbstractItemModel>
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQuickStyle>
+#include <QQuickWindow>
+#include <QTimer>
 #include <QtWebEngineQuick>
 
 using namespace Qt::StringLiterals;
+
+// Dev only: PLASMAMAIL_SCREENSHOT=<file.png> saves the app window (never the screen) after
+// PLASMAMAIL_SCREENSHOT_DELAY ms (default 6000) and quits. PLASMAMAIL_SCREENSHOT_OPEN=1 first
+// opens the newest message of the current folder, halfway through the delay.
+static void scheduleScreenshot(QQmlApplicationEngine &engine)
+{
+    const QString file = qEnvironmentVariable("PLASMAMAIL_SCREENSHOT");
+    if (file.isEmpty()) {
+        return;
+    }
+    bool ok = false;
+    int delay = qEnvironmentVariableIntValue("PLASMAMAIL_SCREENSHOT_DELAY", &ok);
+    if (!ok || delay <= 0) {
+        delay = 6000;
+    }
+
+    if (qEnvironmentVariableIntValue("PLASMAMAIL_SCREENSHOT_OPEN") == 1) {
+        QTimer::singleShot(delay / 2, &engine, [&engine] {
+            auto controller = engine.singletonInstance<MailController *>("PlasmaMail", "MailController");
+            QAbstractItemModel *model = controller ? controller->messageModel() : nullptr;
+            if (!model || model->rowCount() == 0) {
+                return;
+            }
+            const int uidRole = model->roleNames().key("uid");
+            controller->openMessage(model->index(0, 0).data(uidRole).toLongLong());
+        });
+    }
+    QTimer::singleShot(delay, &engine, [&engine, file] {
+        auto window = engine.rootObjects().isEmpty() ? nullptr : qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
+        const bool saved = window && window->grabWindow().save(file);
+        if (!saved) {
+            qWarning("Could not save the screenshot to %s", qPrintable(file));
+        }
+        QCoreApplication::exit(saved ? 0 : 1);
+    });
+}
 
 int main(int argc, char *argv[])
 {
@@ -40,6 +81,7 @@ int main(int argc, char *argv[])
         },
         Qt::QueuedConnection);
     engine.loadFromModule("PlasmaMail", "Main");
+    scheduleScreenshot(engine);
 
     return app.exec();
 }

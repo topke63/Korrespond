@@ -1023,7 +1023,7 @@ T39 and T46 later make it fully functional.
   even an empty page; harmless.
 
 ### T46 — Storage page: show usage and enable "Clean up now"
-- status: todo
+- status: done
 - depends on: T39, T41
 - parallel-safe with: T40
 - files: src/qml/StorageSettingsPage.qml
@@ -1031,7 +1031,13 @@ T39 and T46 later make it fully functional.
 - output: "Currently used" shows `storageUsedBytes` formatted; "Clean up now" enabled when
   `storageReady` and calls `cleanUpNow()`; busy indicator while `syncing`.
 - verify: offscreen launch as in T19 prints no QML warnings.
-- notes:
+- notes: Done 2026-10-08. Size via `org.kde.coreaddons` `Format.formatByteSize`; a small busy
+  indicator and "Downloading…" while `syncing`; "Not available" text when the store didn't
+  open. "Clean Up Now" uses the saved limits (Apply already cleans up with new ones), so it is
+  enabled only when storage is on and the store is ready. Verified offscreen by temporarily
+  pushing the page at startup (reverted): no warnings from the page. **Pre-existing, not from
+  this task:** every offscreen start prints "Created graphical object was not placed in the
+  graphics scene" for MessageListPage (Main.qml:112) and MessagePage (Main.qml:118).
 
 ### T42 — Manual end-to-end check of local storage
 - status: todo

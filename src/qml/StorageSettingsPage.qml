@@ -4,6 +4,7 @@
 import QtQuick
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
+import org.kde.coreaddons as KCoreAddons
 import org.kde.ki18n
 import org.kde.kirigami as Kirigami
 import org.kde.kirigamiaddons.dateandtime as DateAndTime
@@ -151,11 +152,26 @@ Kirigami.ScrollablePage {
             }
         }
 
-        // Filled in by T46 once the local store exists.
-        QQC2.Label {
+        RowLayout {
             Kirigami.FormData.label: KI18n.i18nc("@label", "Currently used:")
-            text: KI18n.i18nc("@info", "Not available yet")
-            enabled: false
+
+            QQC2.Label {
+                text: MailController.storageReady
+                    ? KCoreAddons.Format.formatByteSize(MailController.storageUsedBytes)
+                    : KI18n.i18nc("@info", "Not available: the local store could not be opened")
+                enabled: MailController.storageReady
+            }
+            QQC2.BusyIndicator {
+                // Same height as the text, so the row doesn't grow while syncing.
+                Layout.preferredHeight: Kirigami.Units.iconSizes.small
+                Layout.preferredWidth: Kirigami.Units.iconSizes.small
+                running: MailController.syncing
+                visible: running
+            }
+            QQC2.Label {
+                text: KI18n.i18nc("@info", "Downloading…")
+                visible: MailController.syncing
+            }
         }
 
         QQC2.Label {
@@ -173,7 +189,9 @@ Kirigami.ScrollablePage {
             QQC2.Button {
                 text: KI18n.i18nc("@action:button", "Clean Up Now")
                 icon.name: "edit-clear-history"
-                enabled: false // needs the local store (T46)
+                // Uses the saved limits; Apply already cleans up with the new ones.
+                enabled: MailController.storageReady && MailController.storageEnabled
+                onClicked: MailController.cleanUpNow()
             }
             QQC2.Button {
                 text: KI18n.i18nc("@action:button", "Defaults")

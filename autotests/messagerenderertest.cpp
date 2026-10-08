@@ -23,6 +23,14 @@ static QString cspMeta()
     return u"<meta http-equiv=\"Content-Security-Policy\" content=\""_s + QLatin1StringView(messageContentSecurityPolicy) + u"\">"_s;
 }
 
+static QString preview(const QByteArray &raw, int maxLength = 150)
+{
+    KMime::Message msg;
+    msg.setContent(raw);
+    msg.parse();
+    return messagePreview(msg, maxLength);
+}
+
 class MessageRendererTest : public QObject
 {
     Q_OBJECT
@@ -207,6 +215,59 @@ private Q_SLOTS:
         msg.setContent(raw);
         msg.parse();
         QCOMPARE(attachmentNames(msg), expected);
+    }
+
+    void testPreviewPlain()
+    {
+        // Line breaks and runs of spaces become single spaces; quoted lines are skipped.
+        QCOMPARE(preview("Subject: a\nContent-Type: text/plain\n\nHello  Bob,\n\n> old text\n>> older\nSee you\ttomorrow.\n"),
+                 u"Hello Bob, See you tomorrow."_s);
+    }
+
+    void testPreviewPrefersPlainOverHtml()
+    {
+        const QByteArray raw(
+            "Subject: a\nMIME-Version: 1.0\nContent-Type: multipart/alternative; boundary=B\n\n"
+            "--B\nContent-Type: text/plain\n\nplain words\n"
+            "--B\nContent-Type: text/html\n\n<p>html words</p>\n--B--\n");
+        QCOMPARE(preview(raw), u"plain words"_s);
+    }
+
+    void testPreviewFromHtml()
+    {
+        const QByteArray raw(
+            "Subject: a\nContent-Type: text/html\n\n"
+            "<html><head><style>p { color: red; }</style><title>T</title></head>"
+            "<body><p>Big <b>sale</b> &amp; more</p><img src=\"https://example.org/x.png\"><p>Second</p></body></html>\n");
+        const QString text = preview(raw);
+        QVERIFY2(text.startsWith(u"Big sale & more"_s), qPrintable(text));
+        QVERIFY2(text.contains(u"Second"_s), qPrintable(text));
+        QVERIFY2(!text.contains(u"color"_s) && !text.contains(u'<'), qPrintable(text)); // no CSS, no tags
+        QVERIFY2(!text.contains(QChar::ObjectReplacementCharacter), qPrintable(text)); // the image
+    }
+
+    void testPreviewDropsInvisibleCharacters()
+    {
+        // Zero-width non-joiner and soft hyphen padding, as newsletters put before the text.
+        QCOMPARE(preview("Subject: a\nContent-Type: text/plain; charset=utf-8\n\n\u200c\u00ad\u200c\u00adSale today\n"), u"Sale today"_s);
+    }
+
+    void testPreviewTruncates()
+    {
+        const QString text = preview("Subject: a\nContent-Type: text/plain\n\n" + QByteArray(300, 'x') + "\n", 20);
+        QCOMPARE(text.size(), 20);
+        QVERIFY(text.endsWith(u'…'));
+        QCOMPARE(preview("Subject: a\nContent-Type: text/plain\n\n" + QByteArray(20, 'y') + "\n", 20), QString(20, u'y')); // fits
+    }
+
+    void testPreviewEmpty()
+    {
+        QVERIFY(preview("Subject: a\nContent-Type: text/plain\n\n").isEmpty());
+        QVERIFY(preview("Subject: a\nContent-Type: text/plain\n\n> only a quote\n").isEmpty());
+        QVERIFY(preview("Subject: a\nMIME-Version: 1.0\nContent-Type: multipart/mixed; boundary=B\n\n"
+                        "--B\nContent-Type: application/pdf\nContent-Disposition: attachment; filename=a.pdf\n"
+                        "Content-Transfer-Encoding: base64\n\nJVBERg==\n--B--\n")
+                    .isEmpty());
     }
 };
 

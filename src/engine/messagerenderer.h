@@ -21,6 +21,11 @@ inline constexpr auto messageContentSecurityPolicy = "default-src 'none'; style-
 // with http(s) URLs made clickable and shown in the given colors.
 QString messageBodyHtml(const KMime::Message &msg, const QColor &text, const QColor &background);
 
+// A short plain-text excerpt of the body for the message list: the text/plain part, else the
+// text of the HTML part; quoted ("> ") lines skipped, whitespace collapsed, at most maxLength
+// characters (an ellipsis marks a cut). Empty when there is no text.
+QString messagePreview(const KMime::Message &msg, int maxLength = 150);
+
 // Display names of the message's attachments, in order: the Content-Disposition filename,
 // else the Content-Type name, else a translated "Unnamed attachment".
 QStringList attachmentNames(const KMime::Message &msg);

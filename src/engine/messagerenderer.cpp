@@ -7,6 +7,7 @@
 #include <KMime/Message>
 
 #include <QRegularExpression>
+#include <QTextDocumentFragment>
 
 using namespace Qt::StringLiterals;
 
@@ -64,6 +65,45 @@ QString messageBodyHtml(const KMime::Message &msg, const QColor &text, const QCo
         plain = msg.textContent();
     }
     return plainTextHtml(plain ? plain->decodedText() : QString(), text, background);
+}
+
+QString messagePreview(const KMime::Message &msg, int maxLength)
+{
+    QString text;
+    const KMime::Content *plain = msg.mainBodyPart("text/plain");
+    if (plain && (!plain->contentType() || plain->contentType()->isPlainText())) {
+        text = plain->decodedText();
+    } else if (const KMime::Content *html = msg.mainBodyPart("text/html"); html && html->contentType() && html->contentType()->isHTMLText()) {
+        // Only parses; QTextDocumentFragment never loads the mail's resources.
+        text = QTextDocumentFragment::fromHtml(html->decodedText()).toPlainText();
+    } else if (const KMime::Content *content = msg.textContent()) {
+        text = content->decodedText();
+    }
+
+    // Images in HTML become U+FFFC; mailing lists hide zero-width "preheader" padding.
+    text.removeIf([](QChar c) {
+        return c == QChar::ObjectReplacementCharacter || c.category() == QChar::Other_Format;
+    });
+
+    QString preview;
+    const QStringList lines = text.split(u'\n');
+    for (const QString &line : lines) {
+        const QString trimmed = line.trimmed();
+        if (trimmed.isEmpty() || trimmed.startsWith(u'>')) {
+            continue;
+        }
+        if (!preview.isEmpty()) {
+            preview += u' ';
+        }
+        preview += trimmed.simplified();
+        if (preview.size() > maxLength) {
+            break;
+        }
+    }
+    if (preview.size() > maxLength) {
+        preview = preview.left(maxLength - 1).trimmed() + u'…';
+    }
+    return preview;
 }
 
 QStringList attachmentNames(const KMime::Message &msg)

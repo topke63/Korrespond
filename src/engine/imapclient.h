@@ -31,6 +31,7 @@ struct MessageSummary {
     QDateTime date;
     bool unread = false;
     bool flagged = false;
+    QString preview; // body excerpt; only messages in local storage have one
 };
 
 // When the message was sent: its Date header, else the date of the newest Received header

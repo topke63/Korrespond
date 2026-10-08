@@ -1274,7 +1274,7 @@ body below. Message previews in the list (needs fetching body text) are out of s
   `Kirigami.Icon { isMask: true }` so the role color applies.
 
 ### T55 — Message previews in the list
-- status: todo
+- status: done
 - depends on: T40, T54
 - parallel-safe with: T41–T46
 - files: src/engine/messagestore.{h,cpp} (preview column), src/models/messagelistmodel.{h,cpp}
@@ -1286,7 +1286,17 @@ body below. Message previews in the list (needs fetching body text) are out of s
   collapsed) per message, computed when the message is stored; `MessageSummary.preview` filled
   from the store; `preview` model role shown dimmed as the third row line when not empty.
 - verify: unit test for preview extraction; screenshot reviewed.
-- notes:
+- notes: Done 2026-10-08. `messagePreview()` in messagerenderer: text/plain part first, else
+  the HTML part via `QTextDocumentFragment` (parses only, loads nothing); quoted `>` lines
+  skipped; U+FFFC image placeholders and format characters (zero-width preheader padding)
+  removed; whitespace collapsed; cut at 150 with "…". `MessageStore::addMessage` computes it
+  (`preview` column, schema 3); existing stores get the column on open, and any schema bump
+  recomputes all previews from the .eml files (bump again when `messagePreview` improves).
+  `previews(folder)` lets the controller put previews into the server's list, which has no
+  body text. QML: dimmed third line, up to 2 lines, hidden when empty. Tests: 6 preview cases
+  in messagerenderertest; store previews, v1 migration and recompute in messagestoretest; all
+  11 pass. Screenshot (real display) reviewed: stored INBOX rows show previews, others stay
+  two lines; first version showed U+FFFC boxes from images, fixed.
 
 ### T56 — Message toolbar (look only)
 - status: done

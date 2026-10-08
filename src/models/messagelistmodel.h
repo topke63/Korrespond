@@ -21,6 +21,7 @@ public:
         DateTextRole,
         UnreadRole,
         FlaggedRole,
+        PreviewRole,
     };
 
     explicit MessageListModel(QObject *parent = nullptr);

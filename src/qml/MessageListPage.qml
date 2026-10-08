@@ -72,7 +72,7 @@ Kirigami.ScrollablePage {
 
         model: MailController.messageModel
 
-        // Mimestream-like rows: unread dot, sender + date, subject; hairline dividers and a soft
+        // Mimestream-like rows: unread dot, sender + date, subject, preview of stored mail; hairline dividers and a soft
         // neutral selection (avatars are only in the message view).
         delegate: QQC2.ItemDelegate {
             id: row
@@ -84,6 +84,7 @@ Kirigami.ScrollablePage {
             required property string dateText
             required property bool unread
             required property bool flagged
+            required property string preview
 
             width: list.width
             topInset: 1
@@ -178,6 +179,17 @@ Kirigami.ScrollablePage {
                         textFormat: Text.PlainText
                         elide: Text.ElideRight
                         opacity: row.unread ? 1 : 0.85
+                    }
+                    // Only stored messages have a preview; the row stays two lines otherwise.
+                    QQC2.Label {
+                        Layout.fillWidth: true
+                        visible: row.preview.length > 0
+                        text: row.preview
+                        textFormat: Text.PlainText
+                        wrapMode: Text.Wrap
+                        maximumLineCount: 2
+                        elide: Text.ElideRight
+                        color: Kirigami.Theme.disabledTextColor
                     }
                 }
             }

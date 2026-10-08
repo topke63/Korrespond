@@ -434,7 +434,17 @@ void MailController::onHeadersFetched(const QString &folder, ImapClient::HeaderF
     if (folder != imapFolderFor(m_currentFolder) || filter != filterFor(m_currentFolder)) {
         return; // the user switched folders while this was loading
     }
-    m_messageModel->setMessages(messages);
+    if (!storageActive()) {
+        m_messageModel->setMessages(messages);
+        return;
+    }
+    // The server sends no body text; previews come from the local copies.
+    const QHash<qint64, QString> previews = m_store->previews(folder);
+    QList<MessageSummary> withPreviews = messages;
+    for (MessageSummary &message : withPreviews) {
+        message.preview = previews.value(message.uid);
+    }
+    m_messageModel->setMessages(withPreviews);
 }
 
 void MailController::openMessage(qint64 uid)

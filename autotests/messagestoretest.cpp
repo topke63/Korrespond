@@ -450,6 +450,90 @@ private Q_SLOTS:
         QVERIFY(store.setFolders({}));
     }
 
+    void testPreviews()
+    {
+        QTemporaryDir dir;
+        MessageStore store(dir.path());
+        QVERIFY(store.open());
+        QVERIFY(store.addMessage(u"INBOX"_s, 7, summary(1), "Subject: a\r\nContent-Type: text/plain\r\n\r\nHello\r\nthere\r\n"));
+        QVERIFY(store.addMessage(u"INBOX"_s, 7, summary(2), "Subject: b\r\nContent-Type: text/plain\r\n\r\n"));
+        const QList<MessageSummary> list = store.messages(u"INBOX"_s, -1); // same date: uid 2 first
+        QCOMPARE(list.size(), 2);
+        QCOMPARE(list.at(0).preview, QString());
+        QCOMPARE(list.at(1).preview, u"Hello there"_s);
+
+        const QHash<qint64, QString> previews = store.previews(u"INBOX"_s);
+        QCOMPARE(previews.size(), 1); // messages without text have no entry
+        QCOMPARE(previews.value(1), u"Hello there"_s);
+        QVERIFY(store.previews(u"Sent"_s).isEmpty());
+    }
+
+    void testMigrationFromVersion1()
+    {
+        QTemporaryDir dir;
+        // A version 1 store: no preview column, one message with its file.
+        QVERIFY(QDir().mkpath(dir.filePath(u"messages/f"_s)));
+        QFile eml(dir.filePath(u"messages/f/7-1.eml"_s));
+        QVERIFY(eml.open(QIODevice::WriteOnly));
+        eml.write("Subject: old\r\nContent-Type: text/plain\r\n\r\nStored before previews\r\n");
+        eml.close();
+        {
+            QSqlDatabase db = QSqlDatabase::addDatabase(u"QSQLITE"_s, u"messagestoretest-v1"_s);
+            db.setDatabaseName(dir.filePath(u"mail.sqlite"_s));
+            QVERIFY(db.open());
+            QSqlQuery query(db);
+            QVERIFY(query.exec(
+                u"CREATE TABLE messages (folder TEXT NOT NULL, uidvalidity INTEGER NOT NULL, uid INTEGER NOT NULL, "
+                "subject TEXT, sender TEXT, date INTEGER, unread INTEGER NOT NULL, flagged INTEGER NOT NULL DEFAULT 0, "
+                "size INTEGER NOT NULL, path TEXT NOT NULL, PRIMARY KEY(folder, uid))"_s));
+            QVERIFY(query.exec(u"INSERT INTO messages VALUES ('INBOX', 7, 1, 'old', 'a', 1, 1, 0, 10, 'messages/f/7-1.eml')"_s));
+            QVERIFY(query.exec(u"PRAGMA user_version = 1"_s));
+            db.close();
+        }
+        QSqlDatabase::removeDatabase(u"messagestoretest-v1"_s);
+
+        MessageStore store(dir.path());
+        QVERIFY2(store.open(), qPrintable(store.lastError()));
+        const QList<MessageSummary> list = store.messages(u"INBOX"_s, -1);
+        QCOMPARE(list.size(), 1);
+        QCOMPARE(list.first().subject, u"old"_s); // existing data kept
+        QCOMPARE(list.first().preview, u"Stored before previews"_s);
+        QVERIFY(store.addMessage(u"INBOX"_s, 7, summary(2), rawMessage("new"))); // new column usable
+    }
+
+    void testOutdatedPreviewsRecomputed()
+    {
+        QTemporaryDir dir;
+        {
+            MessageStore store(dir.path());
+            QVERIFY(store.open());
+            QVERIFY(store.addMessage(u"INBOX"_s, 7, summary(1), "Subject: a\r\nContent-Type: text/plain\r\n\r\nFresh text\r\n"));
+        }
+        const auto setStale = [&dir](int version) {
+            {
+                QSqlDatabase db = QSqlDatabase::addDatabase(u"QSQLITE"_s, u"messagestoretest-stale"_s);
+                db.setDatabaseName(dir.filePath(u"mail.sqlite"_s));
+                QVERIFY(db.open());
+                QSqlQuery query(db);
+                QVERIFY(query.exec(u"UPDATE messages SET preview = 'stale'"_s));
+                QVERIFY(query.exec(u"PRAGMA user_version = %1"_s.arg(version)));
+                db.close();
+            }
+            QSqlDatabase::removeDatabase(u"messagestoretest-stale"_s);
+        };
+
+        setStale(2); // older than the code: recomputed
+        {
+            MessageStore store(dir.path());
+            QVERIFY(store.open());
+            QCOMPARE(store.messages(u"INBOX"_s, -1).first().preview, u"Fresh text"_s);
+        }
+        setStale(1000); // not older: left alone (no work on every start)
+        MessageStore store(dir.path());
+        QVERIFY(store.open());
+        QCOMPARE(store.messages(u"INBOX"_s, -1).first().preview, u"stale"_s);
+    }
+
     void testRemovalNotOpen()
     {
         QTemporaryDir dir;
@@ -462,6 +546,7 @@ private Q_SLOTS:
         QVERIFY(!store.clear());
         QVERIFY(!store.setFolders({}));
         QVERIFY(store.folders().isEmpty());
+        QVERIFY(store.previews(u"INBOX"_s).isEmpty());
         QVERIFY(!store.lastError().isEmpty());
     }
 };

@@ -3,6 +3,10 @@
 
 #include "messagestore.h"
 
+#include "messagerenderer.h"
+
+#include <KMime/Message>
+
 #include <QCryptographicHash>
 #include <QDir>
 #include <QFile>
@@ -17,7 +21,9 @@
 using namespace Qt::StringLiterals;
 
 // Bump when the schema changes; open() can then migrate older databases.
-static constexpr int schemaVersion = 1;
+// 2: messages.preview. 3: previews without image placeholders. Every bump recomputes the
+// previews, so a better messagePreview() reaches messages stored before it.
+static constexpr int schemaVersion = 3;
 
 MessageStore::MessageStore(const QString &baseDir)
     : m_baseDir(baseDir)
@@ -64,20 +70,98 @@ bool MessageStore::open()
         u"CREATE TABLE IF NOT EXISTS messages ("
         "folder TEXT NOT NULL, uidvalidity INTEGER NOT NULL, uid INTEGER NOT NULL, "
         "subject TEXT, sender TEXT, date INTEGER, unread INTEGER NOT NULL, flagged INTEGER NOT NULL DEFAULT 0, "
-        "size INTEGER NOT NULL, path TEXT NOT NULL, "
+        "size INTEGER NOT NULL, path TEXT NOT NULL, preview TEXT, "
         "PRIMARY KEY(folder, uid))"_s)
         && query.exec(u"CREATE INDEX IF NOT EXISTS messages_date ON messages(folder, date)"_s)
         // position keeps the server list's order (special folders first).
         && query.exec(
             u"CREATE TABLE IF NOT EXISTS folders ("
             "position INTEGER PRIMARY KEY, path TEXT NOT NULL, name TEXT NOT NULL, role TEXT NOT NULL, depth INTEGER NOT NULL)"_s)
+        && updatePreviews()
         && query.exec(u"PRAGMA user_version = %1"_s.arg(schemaVersion));
     if (!ok) {
-        m_lastError = query.lastError().text();
+        if (query.lastError().isValid()) { // else updatePreviews() set m_lastError
+            m_lastError = query.lastError().text();
+        }
         db.close();
         return false;
     }
     return true;
+}
+
+bool MessageStore::updatePreviews()
+{
+    QSqlDatabase db = QSqlDatabase::database(m_connectionName, false);
+    QSqlQuery query(db);
+    if (!query.exec(u"PRAGMA user_version"_s) || !query.next()) {
+        m_lastError = query.lastError().text();
+        return false;
+    }
+    const bool outdated = query.value(0).toInt() < schemaVersion;
+    if (!query.exec(u"PRAGMA table_info(messages)"_s)) {
+        m_lastError = query.lastError().text();
+        return false;
+    }
+    bool hasPreview = false;
+    while (query.next()) {
+        hasPreview = hasPreview || query.value(1).toString() == u"preview"_s;
+    }
+    if (!hasPreview && !query.exec(u"ALTER TABLE messages ADD COLUMN preview TEXT"_s)) {
+        m_lastError = query.lastError().text();
+        return false;
+    }
+
+    // NULL = not computed yet ("" means computed, no text).
+    if (outdated && !query.exec(u"UPDATE messages SET preview = NULL"_s)) {
+        m_lastError = query.lastError().text();
+        return false;
+    }
+    if (!query.exec(u"SELECT folder, uid, path FROM messages WHERE preview IS NULL"_s)) {
+        m_lastError = query.lastError().text();
+        return false;
+    }
+    QList<std::tuple<QString, qint64, QString>> previews;
+    while (query.next()) {
+        QFile file(m_baseDir + u'/' + query.value(2).toString());
+        const QByteArray raw = file.open(QIODevice::ReadOnly) ? file.readAll() : QByteArray();
+        previews.append({query.value(0).toString(), query.value(1).toLongLong(), previewOf(raw)});
+    }
+    if (previews.isEmpty()) {
+        return true;
+    }
+    if (!db.transaction()) {
+        m_lastError = db.lastError().text();
+        return false;
+    }
+    query.prepare(u"UPDATE messages SET preview = ? WHERE folder = ? AND uid = ?"_s);
+    for (const auto &[folder, uid, preview] : std::as_const(previews)) {
+        query.addBindValue(preview);
+        query.addBindValue(folder);
+        query.addBindValue(uid);
+        if (!query.exec()) {
+            m_lastError = query.lastError().text();
+            db.rollback();
+            return false;
+        }
+    }
+    if (!db.commit()) {
+        m_lastError = db.lastError().text();
+        return false;
+    }
+    return true;
+}
+
+QString MessageStore::previewOf(const QByteArray &raw)
+{
+    if (raw.isEmpty()) {
+        return u""_s; // not NULL: computed, nothing to show
+    }
+    // Parsed like KIMAP does with fetched messages.
+    KMime::Message message;
+    message.setContent(KMime::CRLFtoLF(raw));
+    message.parse();
+    const QString preview = messagePreview(message);
+    return preview.isNull() ? u""_s : preview;
 }
 
 bool MessageStore::isOpen() const
@@ -110,8 +194,8 @@ bool MessageStore::addMessage(const QString &folder, qint64 uidValidity, const M
 
     QSqlQuery query(QSqlDatabase::database(m_connectionName, false));
     query.prepare(
-        u"INSERT OR REPLACE INTO messages (folder, uidvalidity, uid, subject, sender, date, unread, flagged, size, path) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"_s);
+        u"INSERT OR REPLACE INTO messages (folder, uidvalidity, uid, subject, sender, date, unread, flagged, size, path, preview) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"_s);
     query.addBindValue(folder);
     query.addBindValue(uidValidity);
     query.addBindValue(summary.uid);
@@ -122,6 +206,7 @@ bool MessageStore::addMessage(const QString &folder, qint64 uidValidity, const M
     query.addBindValue(summary.flagged);
     query.addBindValue(qint64(raw.size()));
     query.addBindValue(relPath);
+    query.addBindValue(previewOf(raw));
     if (!query.exec()) {
         m_lastError = query.lastError().text();
         // The file only belongs to us if no row pointed at it before.
@@ -153,7 +238,7 @@ QList<MessageSummary> MessageStore::messages(const QString &folder, int limit) c
     QSqlQuery query(QSqlDatabase::database(m_connectionName, false));
     // SQLite treats LIMIT -1 as "no limit". uid breaks ties, so equal dates keep a stable order.
     query.prepare(
-        u"SELECT uid, subject, sender, date, unread, flagged FROM messages WHERE folder = ? "
+        u"SELECT uid, subject, sender, date, unread, flagged, preview FROM messages WHERE folder = ? "
         "ORDER BY date IS NULL, date DESC, uid DESC LIMIT ?"_s);
     query.addBindValue(folder);
     query.addBindValue(limit < 0 ? -1 : limit);
@@ -171,7 +256,28 @@ QList<MessageSummary> MessageStore::messages(const QString &folder, int limit) c
         }
         summary.unread = query.value(4).toBool();
         summary.flagged = query.value(5).toBool();
+        summary.preview = query.value(6).toString();
         result.append(summary);
+    }
+    return result;
+}
+
+QHash<qint64, QString> MessageStore::previews(const QString &folder) const
+{
+    QHash<qint64, QString> result;
+    if (!isOpen()) {
+        m_lastError = u"Message store is not open"_s;
+        return result;
+    }
+    QSqlQuery query(QSqlDatabase::database(m_connectionName, false));
+    query.prepare(u"SELECT uid, preview FROM messages WHERE folder = ? AND preview <> ''"_s);
+    query.addBindValue(folder);
+    if (!query.exec()) {
+        m_lastError = query.lastError().text();
+        return result;
+    }
+    while (query.next()) {
+        result.insert(query.value(0).toLongLong(), query.value(1).toString());
     }
     return result;
 }

@@ -418,6 +418,38 @@ private Q_SLOTS:
         QVERIFY(store.contains(u"INBOX"_s, 3));
     }
 
+    void testFolders()
+    {
+        QTemporaryDir dir;
+        QList<FolderInfo> list;
+        {
+            MessageStore store(dir.path());
+            QVERIFY(store.open());
+            QVERIFY(store.folders().isEmpty());
+            FolderInfo inbox{u"INBOX"_s, u"INBOX"_s, u"inbox"_s, 0};
+            FolderInfo work{u"Work/Projects"_s, u"Projects"_s, QString(), 1}; // null role
+            FolderInfo sent{u"Sent"_s, u"Sent"_s, u"sent"_s, 0};
+            list = {inbox, sent, work};
+            QVERIFY(store.setFolders({inbox}));
+            QVERIFY2(store.setFolders(list), qPrintable(store.lastError())); // replaces
+        }
+        // Survives reopening, in the same order.
+        MessageStore store(dir.path());
+        QVERIFY(store.open());
+        const QList<FolderInfo> stored = store.folders();
+        QCOMPARE(stored.size(), 3);
+        for (qsizetype i = 0; i < list.size(); ++i) {
+            QCOMPARE(stored.at(i).path, list.at(i).path);
+            QCOMPARE(stored.at(i).name, list.at(i).name);
+            QCOMPARE(stored.at(i).role, list.at(i).role.isNull() ? u""_s : list.at(i).role);
+            QCOMPARE(stored.at(i).depth, list.at(i).depth);
+        }
+
+        QVERIFY(store.clear());
+        QVERIFY(store.folders().isEmpty());
+        QVERIFY(store.setFolders({}));
+    }
+
     void testRemovalNotOpen()
     {
         QTemporaryDir dir;
@@ -428,6 +460,8 @@ private Q_SLOTS:
         QCOMPARE(store.removeFolder(u"INBOX"_s), -1);
         QCOMPARE(store.storedUidValidity(u"INBOX"_s), qint64(0));
         QVERIFY(!store.clear());
+        QVERIFY(!store.setFolders({}));
+        QVERIFY(store.folders().isEmpty());
         QVERIFY(!store.lastError().isEmpty());
     }
 };

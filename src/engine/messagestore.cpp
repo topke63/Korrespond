@@ -67,6 +67,10 @@ bool MessageStore::open()
         "size INTEGER NOT NULL, path TEXT NOT NULL, "
         "PRIMARY KEY(folder, uid))"_s)
         && query.exec(u"CREATE INDEX IF NOT EXISTS messages_date ON messages(folder, date)"_s)
+        // position keeps the server list's order (special folders first).
+        && query.exec(
+            u"CREATE TABLE IF NOT EXISTS folders ("
+            "position INTEGER PRIMARY KEY, path TEXT NOT NULL, name TEXT NOT NULL, role TEXT NOT NULL, depth INTEGER NOT NULL)"_s)
         && query.exec(u"PRAGMA user_version = %1"_s.arg(schemaVersion));
     if (!ok) {
         m_lastError = query.lastError().text();
@@ -309,7 +313,7 @@ bool MessageStore::clear()
         return false;
     }
     QSqlQuery query(QSqlDatabase::database(m_connectionName, false));
-    if (!query.exec(u"DELETE FROM messages"_s)) {
+    if (!query.exec(u"DELETE FROM messages"_s) || !query.exec(u"DELETE FROM folders"_s)) {
         m_lastError = query.lastError().text();
         return false;
     }
@@ -319,6 +323,61 @@ bool MessageStore::clear()
         return false;
     }
     return true;
+}
+
+bool MessageStore::setFolders(const QList<FolderInfo> &folders)
+{
+    if (!isOpen()) {
+        m_lastError = u"Message store is not open"_s;
+        return false;
+    }
+    QSqlDatabase db = QSqlDatabase::database(m_connectionName, false);
+    if (!db.transaction()) {
+        m_lastError = db.lastError().text();
+        return false;
+    }
+    QSqlQuery query(db);
+    bool ok = query.exec(u"DELETE FROM folders"_s);
+    query.prepare(u"INSERT INTO folders (position, path, name, role, depth) VALUES (?, ?, ?, ?, ?)"_s);
+    for (qsizetype i = 0; ok && i < folders.size(); ++i) {
+        const FolderInfo &folder = folders.at(i);
+        query.addBindValue(qint64(i));
+        query.addBindValue(folder.path);
+        // A null QString binds as NULL, which the NOT NULL columns refuse.
+        query.addBindValue(folder.name.isNull() ? u""_s : folder.name);
+        query.addBindValue(folder.role.isNull() ? u""_s : folder.role);
+        query.addBindValue(folder.depth);
+        ok = query.exec();
+    }
+    if (!ok || !db.commit()) {
+        m_lastError = ok ? db.lastError().text() : query.lastError().text();
+        db.rollback();
+        return false;
+    }
+    return true;
+}
+
+QList<FolderInfo> MessageStore::folders() const
+{
+    QList<FolderInfo> result;
+    if (!isOpen()) {
+        m_lastError = u"Message store is not open"_s;
+        return result;
+    }
+    QSqlQuery query(QSqlDatabase::database(m_connectionName, false));
+    if (!query.exec(u"SELECT path, name, role, depth FROM folders ORDER BY position"_s)) {
+        m_lastError = query.lastError().text();
+        return result;
+    }
+    while (query.next()) {
+        FolderInfo folder;
+        folder.path = query.value(0).toString();
+        folder.name = query.value(1).toString();
+        folder.role = query.value(2).toString();
+        folder.depth = query.value(3).toInt();
+        result.append(folder);
+    }
+    return result;
 }
 
 int MessageStore::removeStored(const QList<StoredFile> &files)

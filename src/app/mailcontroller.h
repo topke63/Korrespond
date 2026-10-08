@@ -176,6 +176,8 @@ private:
     void clearMessage(bool clearUid);
     // Copies the chosen folders into local storage, if storage is on and no sync is running.
     void startSync();
+    // With storage on: shows the stored folder list and All Inboxes before connecting.
+    void showStoredMail();
     void applyStorageLimits();
     void updateStorageUsage();
     void setSyncing(bool syncing);
@@ -204,5 +206,6 @@ private:
     QList<FolderInfo> m_folders; // last folder list, for syncing
     qint64 m_storageUsedBytes = 0;
     bool m_syncing = false;
+    bool m_showingStored = false; // the view came from the store; refresh it once connected
     int m_requests = 0;
 };

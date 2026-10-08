@@ -73,6 +73,7 @@ MailController::MailController(QObject *parent)
     }
     updateStorageUsage();
     m_account = Account::load();
+    showStoredMail();
     connectSavedAccount();
 }
 
@@ -307,6 +308,23 @@ void MailController::applyStorageLimits()
         }
     }
     updateStorageUsage();
+}
+
+void MailController::showStoredMail()
+{
+    if (!storageActive() || !m_account.isValid()) {
+        return;
+    }
+    const QList<FolderInfo> folders = m_store->folders();
+    if (folders.isEmpty()) {
+        return;
+    }
+    // Not m_folders: sync waits for the server's own list.
+    m_folderModel->setFolders(folders);
+    m_currentFolder = QLatin1StringView(allInboxesPath);
+    m_messageModel->setMessages(storedMessages(m_currentFolder));
+    m_showingStored = true;
+    Q_EMIT currentFolderChanged();
 }
 
 void MailController::startSync()
@@ -561,6 +579,7 @@ void MailController::removeAccount()
     Account::remove();
     m_account = {};
     m_folders.clear();
+    m_showingStored = false;
     // The local copies belong to the removed account.
     if (m_storeReady && !m_store->clear()) {
         qWarning("Cannot delete the local copies: %s", qPrintable(m_store->lastError()));
@@ -616,6 +635,10 @@ void MailController::onFoldersListed(const QList<FolderInfo> &folders)
     endRequest();
     m_folders = folders;
     m_folderModel->setFolders(folders);
+    const bool wasShowingStored = std::exchange(m_showingStored, false);
+    if (storageActive() && !m_pendingAccount.isValid() && !m_store->setFolders(folders)) {
+        qWarning("Cannot store the folder list: %s", qPrintable(m_store->lastError()));
+    }
     const bool currentStillExists = isSharedView(m_currentFolder) || std::any_of(folders.cbegin(), folders.cend(), [this](const FolderInfo &f) {
         return f.path == m_currentFolder;
     });
@@ -628,6 +651,9 @@ void MailController::onFoldersListed(const QList<FolderInfo> &folders)
         selectFolder(QLatin1StringView(allInboxesPath));
     } else {
         Q_EMIT currentFolderChanged(); // the display name may have changed
+        if (wasShowingStored) {
+            selectFolder(m_currentFolder); // now ask the server too
+        }
     }
 
     if (!m_pendingAccount.isValid()) {

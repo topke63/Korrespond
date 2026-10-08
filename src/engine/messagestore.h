@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "folderutils.h"
 #include "imapclient.h"
 
 #include <QByteArray>
@@ -55,8 +56,13 @@ public:
     // The UIDVALIDITY folder's messages were stored under; 0 when none are stored (servers
     // never use 0).
     [[nodiscard]] qint64 storedUidValidity(const QString &folder) const;
-    // Removes every message, including stray .eml files no row points at.
+    // Removes every message, including stray .eml files no row points at, and the folder list.
     bool clear();
+
+    // The server's folder list, kept so the stored mail can be shown before connecting
+    // (e.g. offline). setFolders() replaces the previous list; folders() keeps its order.
+    bool setFolders(const QList<FolderInfo> &folders);
+    [[nodiscard]] QList<FolderInfo> folders() const;
 
     // Human-readable reason for the last failed call (for logs, not shown in the UI).
     [[nodiscard]] QString lastError() const;

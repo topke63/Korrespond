@@ -1039,9 +1039,31 @@ T39 and T46 later make it fully functional.
   this task:** every offscreen start prints "Created graphical object was not placed in the
   graphics scene" for MessageListPage (Main.qml:112) and MessagePage (Main.qml:118).
 
+### T46a — Remember the folder list for offline starts
+- status: done
+- depends on: T40, T46
+- parallel-safe with: none
+- files: src/engine/messagestore.{h,cpp}, autotests/messagestoretest.cpp,
+  src/app/mailcontroller.{h,cpp}, PLAN.md (T42 depends on this)
+- inputs: found while preparing T42: offline, the folder list never arrives, so the inbox path
+  is unknown and nothing is shown, stored or not.
+- output: `MessageStore::setFolders(QList<FolderInfo>)` / `folders()` (a `folders` table, in
+  list order; `clear()` empties it too). The controller saves each folder list when storage is
+  on, and at startup with storage on shows the stored folders and the stored All Inboxes
+  before connecting; the first real folder list then refreshes the current view from the
+  server. Test cases for the store part.
+- verify: `ctest --test-dir build --output-on-failure`; offscreen start prints no new warnings.
+- notes: Done 2026-10-08. The `folders` table is created with `IF NOT EXISTS`, so existing
+  stores gain it without a schema bump. Null names or roles are stored as "" (NOT NULL
+  columns). The stored list is not put in `m_folders`, so a sync still waits for the server's
+  own list. Folder lists from a new account still being verified are not saved. Offline, picking
+  another folder shows its stored mail, then reports the connection error. All 11 tests pass;
+  offscreen start shows only the two known warnings. The stored-start path itself is first
+  exercised in T42 (storage is off in the user's config).
+
 ### T42 — Manual end-to-end check of local storage
 - status: todo
-- depends on: T24, T40, T41, T46, Q1
+- depends on: T24, T40, T41, T46, T46a, Q1
 - parallel-safe with: none
 - files: none (record results; file new tasks for bugs)
 - inputs: the user's Yahoo account.

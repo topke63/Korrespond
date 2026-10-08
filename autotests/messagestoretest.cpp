@@ -204,6 +204,103 @@ private Q_SLOTS:
         QVERIFY(storeA.contains(u"INBOX"_s, 1));
         QVERIFY(!storeB.contains(u"INBOX"_s, 1));
     }
+
+    void testMessagesNewestFirst()
+    {
+        QTemporaryDir dir;
+        MessageStore store(dir.path());
+        QVERIFY(store.open());
+        const QDateTime base = QDateTime(QDate(2026, 10, 8), QTime(12, 0), QTimeZone::UTC);
+        MessageSummary older = summary(10, u"Older"_s);
+        older.date = base.addDays(-1);
+        MessageSummary newest = summary(5, u"Newest"_s); // smaller uid, later date: date wins
+        newest.date = base.addDays(1);
+        newest.unread = false;
+        newest.flagged = true;
+        MessageSummary middle = summary(7, u"Middle"_s);
+        MessageSummary undated = summary(99, u"Undated"_s);
+        undated.date = QDateTime();
+        for (const MessageSummary &m : {older, undated, newest, middle}) {
+            QVERIFY(store.addMessage(u"INBOX"_s, 7, m, rawMessage("x")));
+        }
+        QVERIFY(store.addMessage(u"Sent"_s, 7, summary(1, u"Other folder"_s), rawMessage("x")));
+
+        const QList<MessageSummary> all = store.messages(u"INBOX"_s, -1);
+        QCOMPARE(all.size(), 4);
+        QCOMPARE(all.at(0).subject, u"Newest"_s);
+        QCOMPARE(all.at(1).subject, u"Middle"_s);
+        QCOMPARE(all.at(2).subject, u"Older"_s);
+        QCOMPARE(all.at(3).subject, u"Undated"_s); // no date sorts last
+        QVERIFY(!all.at(3).date.isValid());
+
+        // Every field comes back as it was added.
+        const MessageSummary &n = all.at(0);
+        QCOMPARE(n.uid, qint64(5));
+        QCOMPARE(n.from, newest.from);
+        QCOMPARE(n.date, newest.date);
+        QCOMPARE(n.unread, false);
+        QCOMPARE(n.flagged, true);
+        QCOMPARE(all.at(1).unread, true);
+        QCOMPARE(all.at(1).flagged, false);
+
+        const QList<MessageSummary> two = store.messages(u"INBOX"_s, 2);
+        QCOMPARE(two.size(), 2);
+        QCOMPARE(two.at(0).uid, qint64(5));
+        QCOMPARE(two.at(1).uid, qint64(7));
+        QVERIFY(store.messages(u"INBOX"_s, 0).isEmpty());
+        QVERIFY(store.messages(u"Drafts"_s, -1).isEmpty());
+    }
+
+    void testRawMessage()
+    {
+        QTemporaryDir dir;
+        MessageStore store(dir.path());
+        QVERIFY(store.open());
+        const QByteArray raw = rawMessage("Body");
+        QVERIFY(store.addMessage(u"INBOX"_s, 7, summary(42), raw));
+        QCOMPARE(store.rawMessage(u"INBOX"_s, 42), raw);
+        QVERIFY(store.rawMessage(u"INBOX"_s, 43).isEmpty());
+        QVERIFY(store.rawMessage(u"Sent"_s, 42).isEmpty());
+
+        // A file deleted behind the store's back reads as empty, not as stale data.
+        QVERIFY(QFile::remove(emlFiles(dir.path()).first()));
+        QVERIFY(store.rawMessage(u"INBOX"_s, 42).isEmpty());
+    }
+
+    void testSetUnread()
+    {
+        QTemporaryDir dir;
+        MessageStore store(dir.path());
+        QVERIFY(store.open());
+        QVERIFY(store.addMessage(u"INBOX"_s, 7, summary(42), rawMessage("x"))); // unread
+        QVERIFY(store.addMessage(u"INBOX"_s, 7, summary(43), rawMessage("y")));
+
+        QVERIFY(store.setUnread(u"INBOX"_s, 42, false));
+        QList<MessageSummary> list = store.messages(u"INBOX"_s, -1);
+        QCOMPARE(list.size(), 2);
+        for (const MessageSummary &m : list) {
+            QCOMPARE(m.unread, m.uid != 42); // only 42 changed
+        }
+
+        QVERIFY(store.setUnread(u"INBOX"_s, 42, true));
+        list = store.messages(u"INBOX"_s, -1);
+        for (const MessageSummary &m : list) {
+            QVERIFY(m.unread);
+        }
+
+        QVERIFY(!store.setUnread(u"INBOX"_s, 44, false)); // not stored
+        QVERIFY(!store.lastError().isEmpty());
+        QVERIFY(!store.setUnread(u"Sent"_s, 42, false));
+    }
+
+    void testListingNotOpen()
+    {
+        QTemporaryDir dir;
+        MessageStore store(dir.path());
+        QVERIFY(store.messages(u"INBOX"_s, -1).isEmpty());
+        QVERIFY(store.rawMessage(u"INBOX"_s, 1).isEmpty());
+        QVERIFY(!store.setUnread(u"INBOX"_s, 1, false));
+    }
 };
 
 QTEST_GUILESS_MAIN(MessageStoreTest)

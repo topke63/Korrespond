@@ -6,6 +6,7 @@
 #include "imapclient.h"
 
 #include <QByteArray>
+#include <QList>
 #include <QString>
 
 // Local copies of messages: an SQLite index (mail.sqlite) plus one raw .eml file per message
@@ -29,6 +30,15 @@ public:
     // replaces the index row for (folder, uid). On failure nothing is changed.
     bool addMessage(const QString &folder, qint64 uidValidity, const MessageSummary &summary, const QByteArray &raw);
     [[nodiscard]] bool contains(const QString &folder, qint64 uid) const;
+
+    // Up to limit stored messages of folder, newest date first; messages without a date come
+    // last. limit < 0 means all of them.
+    [[nodiscard]] QList<MessageSummary> messages(const QString &folder, int limit) const;
+    // The stored .eml bytes; empty when the message isn't stored or its file can't be read.
+    [[nodiscard]] QByteArray rawMessage(const QString &folder, qint64 uid) const;
+    // Updates the local read state, e.g. after the message was marked seen on the server.
+    // Returns false when the message isn't stored.
+    bool setUnread(const QString &folder, qint64 uid, bool unread);
 
     // Human-readable reason for the last failed call (for logs, not shown in the UI).
     [[nodiscard]] QString lastError() const;

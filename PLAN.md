@@ -764,7 +764,7 @@ T39 and T46 later make it fully functional.
   through `ctest` in this machine's real build on 2026-10-08: all 9 test executables pass.
 
 ### T30 — `MessageStore`: list, read and mark read
-- status: todo
+- status: done
 - depends on: T29
 - parallel-safe with: T26, T27
 - files: src/engine/messagestore.{h,cpp}, autotests/messagestoretest.cpp
@@ -773,7 +773,9 @@ T39 and T46 later make it fully functional.
   `QByteArray rawMessage(folder, uid) const`, `void setUnread(folder, uid, bool)`, plus test
   cases for each.
 - verify: `ctest --test-dir build -R messagestoretest --output-on-failure`
-- notes:
+- notes: `setUnread` returns bool (false when the message isn't stored) instead of void.
+  Results sort newest date first, undated last, uid breaks ties. Verified with
+  `ctest --test-dir build -R messagestoretest` on 2026-10-08: passes.
 
 ### T31 — `MessageStore`: size accounting and removal
 - status: todo

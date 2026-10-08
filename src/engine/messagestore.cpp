@@ -11,6 +11,7 @@
 #include <QSqlDatabase>
 #include <QSqlError>
 #include <QSqlQuery>
+#include <QTimeZone>
 #include <QUuid>
 
 using namespace Qt::StringLiterals;
@@ -136,6 +137,75 @@ bool MessageStore::addMessage(const QString &folder, qint64 uidValidity, const M
 bool MessageStore::contains(const QString &folder, qint64 uid) const
 {
     return !storedPath(folder, uid).isEmpty();
+}
+
+QList<MessageSummary> MessageStore::messages(const QString &folder, int limit) const
+{
+    QList<MessageSummary> result;
+    if (!isOpen()) {
+        m_lastError = u"Message store is not open"_s;
+        return result;
+    }
+    QSqlQuery query(QSqlDatabase::database(m_connectionName, false));
+    // SQLite treats LIMIT -1 as "no limit". uid breaks ties, so equal dates keep a stable order.
+    query.prepare(
+        u"SELECT uid, subject, sender, date, unread, flagged FROM messages WHERE folder = ? "
+        "ORDER BY date IS NULL, date DESC, uid DESC LIMIT ?"_s);
+    query.addBindValue(folder);
+    query.addBindValue(limit < 0 ? -1 : limit);
+    if (!query.exec()) {
+        m_lastError = query.lastError().text();
+        return result;
+    }
+    while (query.next()) {
+        MessageSummary summary;
+        summary.uid = query.value(0).toLongLong();
+        summary.subject = query.value(1).toString();
+        summary.from = query.value(2).toString();
+        if (!query.value(3).isNull()) {
+            summary.date = QDateTime::fromMSecsSinceEpoch(query.value(3).toLongLong(), QTimeZone::UTC);
+        }
+        summary.unread = query.value(4).toBool();
+        summary.flagged = query.value(5).toBool();
+        result.append(summary);
+    }
+    return result;
+}
+
+QByteArray MessageStore::rawMessage(const QString &folder, qint64 uid) const
+{
+    const QString relPath = storedPath(folder, uid);
+    if (relPath.isEmpty()) {
+        return {};
+    }
+    QFile file(m_baseDir + u'/' + relPath);
+    if (!file.open(QIODevice::ReadOnly)) {
+        m_lastError = file.errorString();
+        return {};
+    }
+    return file.readAll();
+}
+
+bool MessageStore::setUnread(const QString &folder, qint64 uid, bool unread)
+{
+    if (!isOpen()) {
+        m_lastError = u"Message store is not open"_s;
+        return false;
+    }
+    QSqlQuery query(QSqlDatabase::database(m_connectionName, false));
+    query.prepare(u"UPDATE messages SET unread = ? WHERE folder = ? AND uid = ?"_s);
+    query.addBindValue(unread);
+    query.addBindValue(folder);
+    query.addBindValue(uid);
+    if (!query.exec()) {
+        m_lastError = query.lastError().text();
+        return false;
+    }
+    if (query.numRowsAffected() != 1) {
+        m_lastError = u"Message %1 in %2 is not stored"_s.arg(uid).arg(folder);
+        return false;
+    }
+    return true;
 }
 
 QString MessageStore::lastError() const

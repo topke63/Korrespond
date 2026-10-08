@@ -7,6 +7,7 @@ import QtQuick.Layouts
 import QtWebEngine
 import org.kde.ki18n
 import org.kde.kirigami as Kirigami
+import org.kde.kirigamiaddons.components as Components
 import PlasmaMail
 
 Kirigami.Page {
@@ -18,8 +19,19 @@ Kirigami.Page {
         view.loadHtml(html, "about:blank");
     }
 
-    title: MailController.messageSubject.length > 0 ? MailController.messageSubject
-                                                    : KI18n.i18nc("@title", "(no subject)")
+    readonly property bool hasMessage: MailController.currentUid > 0
+    // "Name <address>" split for the sender block; a bare address is used as the name.
+    readonly property var sender: {
+        const from = MailController.messageFrom.trim();
+        const match = from.match(/^"?(.*?)"?\s*<([^>]+)>$/);
+        if (!match) {
+            return { name: from, address: "" };
+        }
+        return { name: match[1].length > 0 ? match[1] : match[2], address: match[2] };
+    }
+
+    // The subject is shown large in the page itself, like Geary; the title bar stays clean.
+    title: ""
     padding: 0
     onHtmlChanged: showHtml()
     Component.onCompleted: showHtml()
@@ -28,32 +40,72 @@ Kirigami.Page {
         anchors.fill: parent
         spacing: 0
 
-        Kirigami.FormLayout {
+        // Subject, sender and attachments above the body.
+        ColumnLayout {
             Layout.fillWidth: true
-            Layout.margins: Kirigami.Units.largeSpacing
-            visible: MailController.currentUid > 0
+            Layout.margins: Kirigami.Units.gridUnit
+            Layout.bottomMargin: Kirigami.Units.largeSpacing
+            visible: page.hasMessage
+            spacing: Kirigami.Units.largeSpacing
 
-            QQC2.Label {
-                Kirigami.FormData.label: KI18n.i18nc("@label", "From:")
+            Kirigami.Heading {
                 Layout.fillWidth: true
-                text: MailController.messageFrom
+                level: 2
                 wrapMode: Text.Wrap
                 textFormat: Text.PlainText
+                text: MailController.messageSubject.length > 0 ? MailController.messageSubject
+                                                               : KI18n.i18nc("@title", "(no subject)")
             }
-            QQC2.Label {
-                Kirigami.FormData.label: KI18n.i18nc("@label", "To:")
+
+            RowLayout {
                 Layout.fillWidth: true
-                text: MailController.messageTo
-                wrapMode: Text.Wrap
-                textFormat: Text.PlainText
+                spacing: Kirigami.Units.largeSpacing
+
+                Components.Avatar {
+                    Layout.alignment: Qt.AlignTop
+                    Layout.preferredWidth: Kirigami.Units.iconSizes.large
+                    Layout.preferredHeight: Kirigami.Units.iconSizes.large
+                    name: page.sender.name
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 0
+
+                    RowLayout {
+                        Layout.fillWidth: true
+
+                        QQC2.Label {
+                            text: page.sender.name
+                            textFormat: Text.PlainText
+                            font.weight: Font.DemiBold
+                        }
+                        QQC2.Label {
+                            Layout.fillWidth: true
+                            text: page.sender.address
+                            textFormat: Text.PlainText
+                            color: Kirigami.Theme.disabledTextColor
+                            elide: Text.ElideRight
+                        }
+                        QQC2.Label {
+                            text: isNaN(MailController.messageDate) ? ""
+                                : MailController.messageDate.toLocaleString(Qt.locale(), Locale.ShortFormat)
+                            color: Kirigami.Theme.disabledTextColor
+                            font: Kirigami.Theme.smallFont
+                        }
+                    }
+                    QQC2.Label {
+                        Layout.fillWidth: true
+                        visible: MailController.messageTo.length > 0
+                        text: KI18n.i18nc("@label recipients of a message", "To: %1", MailController.messageTo)
+                        textFormat: Text.PlainText
+                        color: Kirigami.Theme.disabledTextColor
+                        elide: Text.ElideRight
+                    }
+                }
             }
-            QQC2.Label {
-                Kirigami.FormData.label: KI18n.i18nc("@label", "Date:")
-                text: isNaN(MailController.messageDate) ? ""
-                    : MailController.messageDate.toLocaleString(Qt.locale(), Locale.ShortFormat)
-            }
+
             Flow {
-                Kirigami.FormData.label: KI18n.i18nc("@label", "Attachments:")
                 Layout.fillWidth: true
                 visible: MailController.messageAttachments.length > 0
                 spacing: Kirigami.Units.smallSpacing
@@ -77,6 +129,7 @@ Kirigami.Page {
 
         Kirigami.Separator {
             Layout.fillWidth: true
+            visible: page.hasMessage
         }
 
         Item {
@@ -89,6 +142,7 @@ Kirigami.Page {
                 id: view
 
                 anchors.fill: parent
+                visible: page.hasMessage
                 backgroundColor: Kirigami.Theme.backgroundColor
                 settings.javascriptEnabled: false
                 settings.autoLoadImages: false
@@ -106,6 +160,16 @@ Kirigami.Page {
                     }
                 }
                 onNewWindowRequested: request => Qt.openUrlExternally(request.requestedUrl)
+                // Mail pages log every blocked remote image/font; blocking is intended, so stay quiet.
+                onJavaScriptConsoleMessage: (level, message, lineNumber, sourceID) => {}
+            }
+
+            Kirigami.PlaceholderMessage {
+                anchors.centerIn: parent
+                width: parent.width - Kirigami.Units.gridUnit * 4
+                visible: !page.hasMessage
+                icon.name: "mail-message"
+                text: KI18n.i18nc("@info:placeholder", "No message selected")
             }
 
             QQC2.BusyIndicator {

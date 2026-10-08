@@ -1071,7 +1071,7 @@ body below. Message previews in the list (needs fetching body text) are out of s
   inset to start at the text. Refresh is icon-only with a tooltip mentioning F5.
 
 ### T52 — Message view
-- status: todo
+- status: done
 - depends on: T50
 - parallel-safe with: T51
 - files: src/qml/MessagePage.qml
@@ -1081,7 +1081,11 @@ body below. Message previews in the list (needs fetching body text) are out of s
   form layout. Placeholder ("No message selected") when nothing is open. Security settings of
   T23 unchanged.
 - verify: offscreen checks as in T19; screenshot with an open message reviewed.
-- notes:
+- notes: Done 2026-10-08. **Deviation:** also changed one line in mailcontroller.cpp:
+  `messageFrom` is now `from()->asUnicodeString()` ("Name <address>") instead of
+  `displayString()` (name only), so the page can show the address. The page title is empty; the
+  subject is a level-2 heading in the page. WebEngine console messages are dropped
+  (`onJavaScriptConsoleMessage`), so blocked remote loads no longer flood the log.
 
 ### T53 — Visual review with the user
 - status: todo

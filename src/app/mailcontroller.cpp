@@ -234,7 +234,7 @@ void MailController::onMessageFetched(const QString &folder, qint64 uid, const s
     // The const getters return nullptr for missing headers instead of creating empty ones.
     const KMime::Message &msg = *message;
     m_messageSubject = msg.subject() ? msg.subject()->asUnicodeString() : QString();
-    m_messageFrom = msg.from() ? msg.from()->displayString() : QString();
+    m_messageFrom = msg.from() ? msg.from()->asUnicodeString() : QString(); // "Name <address>"
     m_messageTo = msg.to() ? msg.to()->displayString() : QString();
     m_messageDate = msg.date() ? msg.date()->dateTime() : QDateTime();
     const QPalette palette = QGuiApplication::palette();

@@ -882,7 +882,7 @@ T39 and T46 later make it fully functional.
   2026-10-08; first real run is the T38 probe.
 
 ### T37 — `SyncManager`: sync all chosen folders
-- status: todo
+- status: done
 - depends on: T36, Q2
 - parallel-safe with: none
 - files: src/engine/syncmanager.{h,cpp}
@@ -890,7 +890,12 @@ T39 and T46 later make it fully functional.
 - output: `void syncAll(const QList<FolderInfo>&)` runs `syncFolder` one folder at a time for
   the chosen folders; signal `syncFinished()`.
 - verify: `cmake --build build --target plasmamail_engine` succeeds.
-- notes:
+- notes: Chosen folders per Q2: every role except "trash" and "junk" (static
+  `SyncManager::isChosen`). The first error stops the whole run (an IMAP error drops the
+  session, so carrying on would repeat it); `errorOccurred` is then the last signal, without
+  `syncFinished`. The `maxBytes` download budget is per folder, so one run downloads at most
+  folders × `maxBytes` before retention trims the store. Gmail's "all" and "flagged" folders
+  would duplicate mail; revisit in milestone 2. Builds with no warnings on 2026-10-08.
 
 ### T38 — `imap-probe --sync` for a manual storage check
 - status: todo

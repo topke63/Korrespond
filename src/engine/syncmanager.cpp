@@ -34,12 +34,43 @@ bool SyncManager::isSyncing() const
     return !m_folder.isEmpty();
 }
 
+bool SyncManager::isChosen(const FolderInfo &folder)
+{
+    return folder.role != u"trash"_s && folder.role != u"junk"_s;
+}
+
 void SyncManager::syncFolder(const QString &folder)
 {
     if (isSyncing()) {
         Q_EMIT errorOccurred(u"A sync is already running."_s);
         return;
     }
+    startFolder(folder);
+}
+
+void SyncManager::syncAll(const QList<FolderInfo> &folders)
+{
+    if (isSyncing()) {
+        Q_EMIT errorOccurred(u"A sync is already running."_s);
+        return;
+    }
+    m_queue.clear();
+    for (const FolderInfo &folder : folders) {
+        if (isChosen(folder)) {
+            m_queue.append(folder.path);
+        }
+    }
+    m_syncingAll = true;
+    if (m_queue.isEmpty()) {
+        m_syncingAll = false;
+        Q_EMIT syncFinished();
+        return;
+    }
+    startFolder(m_queue.takeFirst());
+}
+
+void SyncManager::startFolder(const QString &folder)
+{
     m_folder = folder;
     m_pending.clear();
     m_total = m_done = 0;
@@ -138,15 +169,26 @@ void SyncManager::finish()
     const QString folder = m_folder;
     m_folder.clear();
     if (!result.ok) {
-        Q_EMIT errorOccurred(m_store->lastError());
+        fail(m_store->lastError());
         return;
     }
     Q_EMIT folderSynced(folder);
+    if (!m_syncingAll) {
+        return;
+    }
+    if (!m_queue.isEmpty()) {
+        startFolder(m_queue.takeFirst());
+        return;
+    }
+    m_syncingAll = false;
+    Q_EMIT syncFinished();
 }
 
 void SyncManager::fail(const QString &message)
 {
     m_folder.clear();
     m_pending.clear();
+    m_queue.clear();
+    m_syncingAll = false;
     Q_EMIT errorOccurred(message);
 }

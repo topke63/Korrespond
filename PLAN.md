@@ -976,9 +976,27 @@ T39 and T46 later make it fully functional.
   right password then always failed. Verified on Yahoo: wrong password → exactly one error;
   wrong then right password on the same client works; imap-probe still succeeds.
 
+### T47 — Readable login error; strip spaces from Yahoo app passwords
+- status: done
+- depends on: T20, T45
+- parallel-safe with: none
+- files: src/engine/imapclient.{h,cpp}, src/qml/AccountSetupPage.qml
+- inputs: found in the first GUI run (2026-10-08): a rejected login showed
+  "Login failed: Login failed, server replied: A000002 NO LOGIN Invalid credentials
+  [ AUTHENTICATIONFAILED ]".
+- output: a rejected login (server `NO`/`AUTHENTICATIONFAILED`) shows one translated sentence
+  without IMAP protocol text; for Yahoo it adds that an app password is needed, not the normal
+  password. Other login failures show "Could not log in: <reason>" once. The setup page removes
+  all whitespace from the password for Yahoo only (app passwords never contain spaces; normal
+  passwords for other providers may).
+- verify: `cmake --build build` succeeds; manual: wrong Yahoo password shows the new message.
+- notes: Done 2026-10-08. A login counts as rejected when the job text contains
+  `AUTHENTICATIONFAILED` or ` NO `. Builds and offscreen checks pass; the message itself is
+  checked by the user's next Yahoo login attempt.
+
 ### T25 — Global verify
 - status: todo
-- depends on: T1–T24, T26–T46, T39a
+- depends on: T1–T24, T26–T47, T39a
 - parallel-safe with: none
 - files: none
 - inputs: —

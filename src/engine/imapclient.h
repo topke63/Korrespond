@@ -59,6 +59,8 @@ private:
     // Returns the session, creating it (and queueing the login) if needed. Each new session
     // gets a new generation number; callbacks carry the number they were created for.
     KIMAP::Session *session();
+    // One readable sentence for a failed LoginJob, without IMAP protocol text.
+    [[nodiscard]] QString loginErrorMessage(const QString &jobError) const;
     // True while callbacks of `generation` should still be acted on: it is the current
     // session and no failure has been reported for it yet.
     [[nodiscard]] bool isCurrent(quint64 generation) const;

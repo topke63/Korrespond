@@ -21,8 +21,11 @@ Kirigami.ScrollablePage {
         if (!canConnect) {
             return;
         }
+        // Yahoo app passwords never contain spaces, but are easy to paste with some.
+        const password = providerCombo.currentValue === "yahoo" ? passwordField.text.replace(/\s/g, "")
+                                                                 : passwordField.text;
         MailController.setupAccount(providerCombo.currentValue, emailField.text.trim(),
-                                    nameField.text.trim(), passwordField.text,
+                                    nameField.text.trim(), password,
                                     isCustom ? hostField.text.trim() : "", portField.value);
     }
 

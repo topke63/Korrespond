@@ -10,6 +10,7 @@
 #include <KIMAP/SelectJob>
 #include <KIMAP/Session>
 #include <KIMAP/StoreJob>
+#include <KLocalizedString>
 #include <KMime/Message>
 
 #include <algorithm>
@@ -64,6 +65,21 @@ void ImapClient::fail(quint64 generation, const QString &message)
     Q_EMIT errorOccurred(message);
 }
 
+// KIMAP's text looks like "Login failed, server replied: A000002 NO LOGIN Invalid credentials
+// [ AUTHENTICATIONFAILED ]". A NO reply means the server refused the credentials.
+QString ImapClient::loginErrorMessage(const QString &jobError) const
+{
+    const bool rejected = jobError.contains("AUTHENTICATIONFAILED"_L1) || jobError.contains(" NO "_L1);
+    if (!rejected) {
+        return i18n("Could not log in: %1", jobError);
+    }
+    if (m_account.provider == "yahoo"_L1) {
+        return i18n("Yahoo did not accept the email address or password. Yahoo needs an app password here, "
+                    "not your normal password.");
+    }
+    return i18n("The server did not accept the email address or password.");
+}
+
 KIMAP::Session *ImapClient::session()
 {
     if (m_session) {
@@ -90,7 +106,7 @@ KIMAP::Session *ImapClient::session()
     login->setAuthenticationMode(KIMAP::LoginJob::ClearText);
     connect(login, &KJob::result, this, [this, generation](KJob *job) {
         if (job->error()) {
-            fail(generation, u"Login failed: %1"_s.arg(job->errorString()));
+            fail(generation, loginErrorMessage(job->errorString()));
         }
     });
     login->start();

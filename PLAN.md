@@ -156,7 +156,9 @@ cmake --preset asan && cmake --build --preset asan && ctest --preset asan
 - Passwords: never logged, never written to config, never in command-line arguments.
 - HTML mail: JavaScript off, remote images off, CSP meta tag, links open in the external
   browser, `loadHtml` with base URL `about:blank`.
-- The app never deletes or moves mail on the server in milestone 1 (only `\Seen` is set).
+- The app never deletes or moves mail on the server in milestone 1. The only flags it changes are
+  `\Seen` (set when a message is opened) and `\Flagged` (set/cleared by the user, T65–T67;
+  user decision 2026-10-08).
 
 ### Execution order (waves)
 Tasks in the same wave can run in parallel once the earlier waves are done.
@@ -1300,9 +1302,45 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   window is inactive. Flag = orange `flag` icon before the date. Confirmed in the user's own
   screenshot of the new build.
 
+### T65 — `ImapClient::setFlagged`
+- status: todo
+- depends on: T57
+- parallel-safe with: none
+- files: src/engine/imapclient.{h,cpp}
+- inputs: user 2026-10-08: "add flag and unflag". Same pattern as `markSeen`.
+- output: `setFlagged(folder, uid, bool flagged)`: UID STORE +FLAGS / -FLAGS `\Flagged`.
+- verify: `cmake --build build` succeeds.
+- notes:
+
+### T66 — `MailController`: flag / unflag
+- status: todo
+- depends on: T65, T64
+- parallel-safe with: none
+- files: src/app/mailcontroller.{h,cpp}, src/models/messagelistmodel.{h,cpp} (+ model test)
+- inputs: T65.
+- output: `MessageListModel::setFlagged(uid, bool)` (emits FlaggedRole); controller property
+  `messageFlagged` (open message, part of `currentMessageChanged`) and invokable
+  `setFlagged(uid, bool)`: updates the list and the open message at once, then stores the flag
+  on the server in the uid's folder (the shared views map to the inbox).
+- verify: `ctest --test-dir build -R messagelistmodeltest`; build succeeds.
+- notes:
+
+### T67 — Flag controls in the UI
+- status: todo
+- depends on: T66, T56
+- parallel-safe with: none
+- files: src/qml/MessagePage.qml, src/qml/MessageListPage.qml
+- inputs: T66.
+- output: the message toolbar gets a working Flag/Unflag toggle (orange when flagged), first
+  enabled toolbar button; shortcut Ctrl+Shift+F toggles the open message. In the list, hovering a
+  row shows a flag button before the date; clicking it toggles that message (flagged rows keep the
+  orange flag visible). Flagged view: unflagged rows stay until the next refresh (like Unread).
+- verify: offscreen checks as in T19; manual: flag in the app, see it in Yahoo webmail, and back.
+- notes:
+
 ### T25 — Global verify
 - status: todo
-- depends on: T1–T24, T26–T64, T39a
+- depends on: T1–T24, T26–T67, T39a
 - parallel-safe with: none
 - files: none
 - inputs: —

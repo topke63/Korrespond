@@ -1103,9 +1103,38 @@ body below. Message previews in the list (needs fetching body text) are out of s
   tighter spacing/typography in T51/T52 (no new tasks). Previews / smart grouping (Spark) not
   requested; add as new tasks only if the user asks.
 
+### T54 — Mimestream visual pass
+- status: todo
+- depends on: T51, T52
+- parallel-safe with: none
+- files: src/qml/MessageListPage.qml, src/qml/FolderSidebar.qml
+- inputs: user's Mimestream screenshot (2026-10-08, "like this"): no avatars in the list,
+  thin row dividers, soft neutral selection, bold titles, colored role icons in the sidebar.
+- output: list rows without avatars (unread dot + sender/date line + subject line, room for a
+  preview line from T55), inset hairline dividers, neutral rounded selection/hover; sidebar with
+  a small "Folders" section label, icons tinted by `folderRole` (inbox blue, drafts teal, sent
+  green, archive purple, junk amber, trash red, others neutral), the same neutral selection, and
+  compact rows. Avatars stay in the message view.
+- verify: offscreen checks as in T19; screenshot reviewed.
+- notes:
+
+### T55 — Message previews in the list
+- status: todo
+- depends on: T54
+- parallel-safe with: none
+- files: src/engine/imapclient.{h,cpp}, src/models/messagelistmodel.{h,cpp} (+ list delegate line)
+- inputs: Mimestream/Spark-style third line in each row. Needs a fetch strategy decision
+  (see notes) before starting.
+- output: `MessageSummary.preview` (first ~150 characters of the plain text, whitespace
+  collapsed), a `preview` model role, shown dimmed as the third row line.
+- verify: unit test for the preview text extraction; screenshot reviewed.
+- notes: Open decision: (a) fetch each listed message's first text part with BODYSTRUCTURE +
+  a partial body fetch (light, more code), or (b) take previews from local storage once the
+  store exists (no extra traffic, only for stored mail).
+
 ### T25 — Global verify
 - status: todo
-- depends on: T1–T24, T26–T53, T39a
+- depends on: T1–T24, T26–T55, T39a
 - parallel-safe with: none
 - files: none
 - inputs: —

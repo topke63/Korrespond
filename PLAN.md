@@ -722,7 +722,7 @@ T39 and T46 later make it fully functional.
   without int overflow, and "all mail" surviving save→load (not reverting to the default date).
 
 ### T28 — `MessageStore`: open database, add and look up messages
-- status: todo
+- status: done
 - depends on: T5, Q3
 - parallel-safe with: T26, T27
 - files: src/engine/messagestore.h, src/engine/messagestore.cpp
@@ -733,7 +733,14 @@ T39 and T46 later make it fully functional.
   `bool addMessage(folder, uidValidity, const MessageSummary&, const QByteArray &raw)`
   writes the `.eml` then the row; `bool contains(folder, uid) const`.
 - verify: `cmake --build build --target plasmamail_engine` succeeds.
-- notes:
+- notes: Done 2026-10-08. Schema as planned plus a `flagged` column (MessageSummary gained
+  `flagged` in T65). `date` is msecs since epoch UTC (NULL if unknown), indexed on (folder, date);
+  `PRAGMA user_version = 1`. The `.eml` path is stored relative to baseDir:
+  `messages/<sha1(folder)>/<uidvalidity>-<uid>.eml`, written atomically with QSaveFile before the
+  row (`INSERT OR REPLACE`); if the row fails, a newly written file is removed; re-adding a uid
+  under a new UIDVALIDITY deletes the old file. Each instance has its own QSqlDatabase connection
+  name (UUID), removed in the destructor. `lastError()` gives the reason for a failed call.
+  `open()` is idempotent. Verified: engine builds with no warnings, full build + all 8 tests pass.
 
 ### T29 — Unit test for `MessageStore` add/contains
 - status: todo

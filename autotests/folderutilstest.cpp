@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 #include "folderutils.h"
+#include "syncmanager.h"
 
 #include <QTest>
 
@@ -55,6 +56,14 @@ private Q_SLOTS:
 
         // Test lowercase inbox path
         QTest::newRow("inbox_lowercase") << u"inbox"_s << QList<QByteArray>() << u"inbox"_s;
+
+        // Gmail: special folders live under [Gmail]/ and carry other flags as well
+        QTest::newRow("gmail_all") << u"[Gmail]/All Mail"_s << QList<QByteArray>{"\\HasNoChildren", "\\All"} << u"all"_s;
+        QTest::newRow("gmail_important") << u"[Gmail]/Important"_s << QList<QByteArray>{"\\HasNoChildren", "\\Important"} << u"important"_s;
+        QTest::newRow("gmail_starred") << u"[Gmail]/Starred"_s << QList<QByteArray>{"\\HasNoChildren", "\\Flagged"} << u"flagged"_s;
+        QTest::newRow("gmail_sent") << u"[Gmail]/Sent Mail"_s << QList<QByteArray>{"\\HasNoChildren", "\\Sent"} << u"sent"_s;
+        QTest::newRow("gmail_spam") << u"[Gmail]/Spam"_s << QList<QByteArray>{"\\HasNoChildren", "\\Junk"} << u"junk"_s;
+        QTest::newRow("gmail_label") << u"Receipts"_s << QList<QByteArray>{"\\HasNoChildren"} << QString();
     }
 
     void testFolderRoleFromFlags()
@@ -123,6 +132,51 @@ private Q_SLOTS:
         sortFolders(folders);
 
         QCOMPARE(folders, expected);
+    }
+
+    void testSortImportantAfterAllMail()
+    {
+        QList<FolderInfo> folders = {
+            {u"[Gmail]/Trash"_s, u"Trash"_s, u"trash"_s, 1},
+            {u"[Gmail]/Important"_s, u"Important"_s, u"important"_s, 1},
+            {u"[Gmail]/Spam"_s, u"Spam"_s, u"junk"_s, 1},
+            {u"[Gmail]/All Mail"_s, u"All Mail"_s, u"all"_s, 1},
+        };
+        sortFolders(folders);
+        QStringList roles;
+        for (const FolderInfo &folder : folders) {
+            roles << folder.role;
+        }
+        QCOMPARE(roles, (QStringList{u"all"_s, u"important"_s, u"junk"_s, u"trash"_s}));
+    }
+
+    void testWhichFoldersAreStored_data()
+    {
+        QTest::addColumn<QString>("role");
+        QTest::addColumn<bool>("stored");
+
+        QTest::newRow("inbox") << u"inbox"_s << true;
+        QTest::newRow("sent") << u"sent"_s << true;
+        QTest::newRow("drafts") << u"drafts"_s << true;
+        QTest::newRow("archive") << u"archive"_s << true;
+        QTest::newRow("plain folder") << QString() << true;
+        QTest::newRow("trash") << u"trash"_s << false;
+        QTest::newRow("junk") << u"junk"_s << false;
+        // Gmail folders that only repeat mail from other folders
+        QTest::newRow("all") << u"all"_s << false;
+        QTest::newRow("flagged") << u"flagged"_s << false;
+        QTest::newRow("important") << u"important"_s << false;
+    }
+
+    void testWhichFoldersAreStored()
+    {
+        QFETCH(QString, role);
+        QFETCH(bool, stored);
+
+        FolderInfo folder;
+        folder.path = u"Some folder"_s;
+        folder.role = role;
+        QCOMPARE(SyncManager::isChosen(folder), stored);
     }
 };
 

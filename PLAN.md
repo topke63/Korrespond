@@ -1618,7 +1618,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   FolderModel yet (default folder icon). Builds; all 11 tests pass.
 
 ### T71 — Tests for Gmail folder roles
-- status: todo
+- status: done
 - depends on: T70
 - parallel-safe with: T68, T69, T72–T75
 - files: autotests/folderutilstest.cpp
@@ -1627,7 +1627,10 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   `\\Important`, `[Gmail]/Starred` `\\Flagged`) get roles all/important/flagged; `isChosen` is
   false for those three, trash and junk, true for inbox/sent/drafts/archive/plain folders.
 - verify: `ctest --test-dir build -R folderutilstest --output-on-failure`
-- notes:
+- notes: Done 2026-10-08. 6 Gmail rows in testFolderRoleFromFlags (All Mail, Important,
+  Starred, Sent Mail, Spam, a plain label; each with `\HasNoChildren` too), a sort test (all →
+  important → junk → trash), and testWhichFoldersAreStored (10 roles). folderutilstest
+  37/37; all 11 test executables pass.
 
 ### T72 — Google OAuth client settings
 - status: todo

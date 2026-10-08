@@ -8,9 +8,19 @@
 // Environment: PLASMAMAIL_PROVIDER (yahoo, gmail, outlook; default yahoo), PLASMAMAIL_EMAIL,
 // PLASMAMAIL_PASSWORD (optional: if unset, the password is asked for on the terminal without
 // echo, so it never ends up in shell history). The password is never printed.
+//
+//   PLASMAMAIL_EMAIL=you@yahoo.com PLASMAMAIL_STORE_DIR=/tmp/store build/bin/imap-probe --sync
+//
+// --sync stores the chosen folders in a local store instead, then prints messages stored per
+// folder and the total size. Also reads PLASMAMAIL_STORE_DIR (required), PLASMAMAIL_SINCE
+// (yyyy-MM-dd, default all mail) and PLASMAMAIL_MAX_MB (default unlimited). Mail is kept
+// forever otherwise. Only reads from the server.
 
 #include "account.h"
 #include "imapclient.h"
+#include "messagestore.h"
+#include "storagesettings.h"
+#include "syncmanager.h"
 
 #include <KMime/Message>
 
@@ -51,9 +61,15 @@ static void print(const QString &text)
     std::cout << text.toStdString() << std::endl;
 }
 
+static QString megabytes(qint64 bytes)
+{
+    return QString::number(double(bytes) / (1024 * 1024), 'f', 2);
+}
+
 int main(int argc, char *argv[])
 {
     QCoreApplication app(argc, argv);
+    const bool syncMode = app.arguments().contains(u"--sync"_s);
 
     const QString provider = qEnvironmentVariable("PLASMAMAIL_PROVIDER", u"yahoo"_s);
     Account account;
@@ -75,6 +91,40 @@ int main(int argc, char *argv[])
         return 1;
     }
 
+    // --sync: storage settings from the environment, checked before connecting.
+    const QString storeDir = qEnvironmentVariable("PLASMAMAIL_STORE_DIR");
+    StorageSettings settings;
+    settings.enabled = true;
+    settings.keepUnit = StorageSettings::Forever;
+    settings.sizeUnit = StorageSettings::Unlimited;
+    if (syncMode) {
+        if (storeDir.isEmpty()) {
+            std::cerr << "Set PLASMAMAIL_STORE_DIR to a directory for the local store." << std::endl;
+            return 1;
+        }
+        if (qEnvironmentVariableIsSet("PLASMAMAIL_SINCE")) {
+            settings.importSince = QDate::fromString(qEnvironmentVariable("PLASMAMAIL_SINCE"), Qt::ISODate);
+            if (!settings.importSince.isValid()) {
+                std::cerr << "PLASMAMAIL_SINCE must be a date like 2026-01-31." << std::endl;
+                return 1;
+            }
+        }
+        if (qEnvironmentVariableIsSet("PLASMAMAIL_MAX_MB")) {
+            bool ok = false;
+            settings.sizeValue = qEnvironmentVariableIntValue("PLASMAMAIL_MAX_MB", &ok);
+            if (!ok || settings.sizeValue < 1) {
+                std::cerr << "PLASMAMAIL_MAX_MB must be a whole number of megabytes, at least 1." << std::endl;
+                return 1;
+            }
+            settings.sizeUnit = StorageSettings::MB;
+        }
+    }
+    MessageStore store(storeDir);
+    if (syncMode && !store.open()) {
+        std::cerr << "ERROR: cannot open the store: " << store.lastError().toStdString() << std::endl;
+        return 1;
+    }
+
     print(u"Connecting to %1:%2 as %3"_s.arg(account.imapHost).arg(account.imapPort).arg(account.email));
 
     ImapClient client;
@@ -86,9 +136,43 @@ int main(int argc, char *argv[])
         std::cerr << "ERROR: " << message.toStdString() << std::endl;
         QCoreApplication::exit(1);
     });
-    QTimer::singleShot(timeoutMs, &app, [] {
+    // A sync can take long; the timeout restarts on every sign of progress.
+    QTimer timeout;
+    timeout.setSingleShot(true);
+    timeout.setInterval(timeoutMs);
+    QObject::connect(&timeout, &QTimer::timeout, &app, [] {
         std::cerr << "ERROR: no answer within " << timeoutMs / 1000 << " s" << std::endl;
         QCoreApplication::exit(1);
+    });
+    timeout.start();
+
+    SyncManager sync(&client, &store);
+    sync.setSettings(settings);
+    QList<FolderInfo> syncFolders;
+    QObject::connect(&sync, &SyncManager::progress, &app, [&timeout](const QString &folder, int done, int total) {
+        timeout.start();
+        if (done == 0 || done == total || done % 20 == 0) {
+            print(u"  %1: %2 / %3"_s.arg(folder).arg(done).arg(total));
+        }
+    });
+    QObject::connect(&sync, &SyncManager::folderSynced, &app, [&timeout](const QString &folder) {
+        timeout.start();
+        print(u"  %1: done"_s.arg(folder));
+    });
+    QObject::connect(&sync, &SyncManager::errorOccurred, &app, [](const QString &message) {
+        std::cerr << "ERROR: " << message.toStdString() << std::endl;
+        QCoreApplication::exit(1);
+    });
+    QObject::connect(&sync, &SyncManager::syncFinished, &app, [&] {
+        print(u"\nStored in %1:"_s.arg(storeDir));
+        for (const FolderInfo &folder : std::as_const(syncFolders)) {
+            if (SyncManager::isChosen(folder)) {
+                print(u"  %1: %2 messages"_s.arg(folder.path).arg(store.messages(folder.path, -1).size()));
+            }
+        }
+        print(u"Total: %1 MB"_s.arg(megabytes(store.totalSize())));
+        print(u"OK"_s);
+        QCoreApplication::exit(0);
     });
 
     QObject::connect(&client, &ImapClient::foldersListed, &app, [&](const QList<FolderInfo> &folders) {
@@ -98,6 +182,13 @@ int main(int argc, char *argv[])
             if (folder.role == "inbox"_L1) {
                 inbox = folder.path;
             }
+        }
+        if (syncMode) {
+            syncFolders = folders;
+            print(u"\nSyncing (since %1, limit %2):"_s.arg(settings.importSince.isValid() ? settings.importSince.toString(Qt::ISODate) : u"all mail"_s,
+                                                       settings.maxBytes() > 0 ? u"%1 MB"_s.arg(settings.sizeValue) : u"none"_s));
+            sync.syncAll(folders);
+            return;
         }
         if (inbox.isEmpty()) {
             std::cerr << "ERROR: no inbox in the folder list" << std::endl;

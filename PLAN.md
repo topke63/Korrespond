@@ -898,7 +898,7 @@ T39 and T46 later make it fully functional.
   would duplicate mail; revisit in milestone 2. Builds with no warnings on 2026-10-08.
 
 ### T38 — `imap-probe --sync` for a manual storage check
-- status: todo
+- status: done
 - depends on: T6, T37, Q1
 - parallel-safe with: T39–T41
 - files: tools/imapprobe.cpp
@@ -907,6 +907,29 @@ T39 and T46 later make it fully functional.
 - output: `--sync` syncs all chosen folders and prints messages stored per folder and total MB.
 - verify: (manual, needs Q1) run twice with `PLASMAMAIL_MAX_MB=5`: total stays ≤ 5 MB, the
   second run downloads nothing new; then with a later `PLASMAMAIL_SINCE` older mail is removed.
+- notes: Done 2026-10-08, run by the user against Yahoo (since 2026-01-01, 5 MB): run 1 stored
+  INBOX 54 + Sent 6 = 2.48 MB (Trash/Bulk skipped, Draft/Archive empty); run 2 downloaded
+  nothing; run 3 with since 2026-09-01 left INBOX 11 + Sent 6 = 0.18 MB. The size limit was
+  never reached, so eviction was not exercised against the server (the unit tests cover it).
+  **Found:** 6 INBOX and all 6 Sent messages were stored undated: they have no `Date:` header
+  (Yahoo webmail doesn't add one). KIMAP fetches INTERNALDATE but loses it (parses it as
+  RFC 2822, then `parse()` replaces the headers). The user chose to fall back to the newest
+  `Received:` header and treat undated messages as newest for size eviction (T38a); a separate
+  INTERNALDATE fetch was not chosen. Code: keep time is forever, so only `PLASMAMAIL_SINCE` and
+  `PLASMAMAIL_MAX_MB` limit the store; the 60 s timeout restarts on every progress signal.
+
+### T38a — Dates for messages without a `Date:` header
+- status: todo
+- depends on: T38
+- parallel-safe with: T39
+- files: src/engine/imapclient.{h,cpp}, src/engine/messagestore.{h,cpp},
+  autotests/messagedatetest.cpp, autotests/messagestoretest.cpp, autotests/CMakeLists.txt
+- inputs: T38 finding; RFC 5322 `Received:` (date after the last `;`, newest first).
+- output: `QDateTime messageDate(const KMime::Message&)`: the Date header, else the date of the
+  first `Received:` header that parses, else null; used for every `MessageSummary`.
+  `MessageStore::removeOldestUntil` evicts undated messages last (they are usually sent mail).
+  Tests for both.
+- verify: `ctest --test-dir build --output-on-failure`
 - notes:
 
 ### T39 — `MailController`: storage usage, cleanup and sync

@@ -9,6 +9,7 @@ add_library(plasmamail_engine STATIC
     engine/messagerenderer.cpp
     engine/messagestore.cpp
     engine/retention.cpp
+    engine/syncmanager.cpp
     engine/secretstore.cpp
     engine/storagesettings.cpp
 )

@@ -858,7 +858,7 @@ T39 and T46 later make it fully functional.
   warnings and all 10 tests pass on 2026-10-08; not yet run against a server.
 
 ### T36 — `SyncManager`: download one folder within limits
-- status: todo
+- status: done
 - depends on: T32, T35
 - parallel-safe with: none
 - files: src/engine/syncmanager.h, src/engine/syncmanager.cpp
@@ -869,7 +869,17 @@ T39 and T46 later make it fully functional.
   next message would pass `maxBytes`; then `applyRetention`. Signals `progress(folder, done, total)`,
   `folderSynced(folder)`, `errorOccurred(QString)`.
 - verify: `cmake --build build --target plasmamail_engine` succeeds.
-- notes:
+- notes: Constructor takes `ImapClient*` and `MessageStore*` (not owned); `setSettings()`.
+  **Size rule:** without RFC822.SIZE the size is only known after download, so each run
+  downloads at most `maxBytes` (newest first), then `applyRetention` removes the oldest copies
+  overall. Counting already-stored mail instead would stop a full store from ever taking new
+  mail. Disk use can briefly reach about twice `maxBytes` during a first sync.
+  SINCE has day precision and uses the arrival date, so fetched messages whose Date header is
+  before the cutoff are skipped. Storage off → `syncFolder` only applies retention (clears).
+  Any `ImapClient::errorOccurred` during a run aborts it. Results are matched by folder name
+  only: starting a new sync of the same folder right after a failure could pick up the old run's
+  late results (harmless: they are real messages of that folder). Builds with no warnings on
+  2026-10-08; first real run is the T38 probe.
 
 ### T37 — `SyncManager`: sync all chosen folders
 - status: todo

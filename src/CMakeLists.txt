@@ -8,6 +8,7 @@ add_library(plasmamail_engine STATIC
     engine/imapclient.cpp
     engine/messagerenderer.cpp
     engine/messagestore.cpp
+    engine/retention.cpp
     engine/secretstore.cpp
     engine/storagesettings.cpp
 )

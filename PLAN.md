@@ -796,7 +796,7 @@ T39 and T46 later make it fully functional.
   2026-10-08: all 9 test executables pass.
 
 ### T32 — Retention: apply settings to the store
-- status: todo
+- status: done
 - depends on: T26, T31
 - parallel-safe with: T33, T34
 - files: src/engine/retention.h, src/engine/retention.cpp
@@ -804,7 +804,11 @@ T39 and T46 later make it fully functional.
 - output: `RetentionResult applyRetention(MessageStore&, const StorageSettings&, const QDateTime &now)`
   returning removed count and remaining bytes. Disabled settings → `clear()`.
 - verify: `cmake --build build --target plasmamail_engine` succeeds.
-- notes:
+- notes: `RetentionResult` also has `ok` (false when the store failed; reason in
+  `MessageStore::lastError()`). The time cutoff runs before the size limit. Storage off counts
+  removals with `removeOldestUntil(0)`, then `clear()` drops stray files. `cmake --build build
+  --target plasmamail_engine` succeeds on 2026-10-08 with no warnings. Reconfiguring prints
+  "error: No such remote 'origin'" (the repo has no remote), and the build still succeeds.
 
 ### T33 — Unit test for retention
 - status: todo

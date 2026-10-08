@@ -332,7 +332,7 @@ Tasks in the same wave can run in parallel once the earlier waves are done.
 - notes:
 
 ### T7 — Message body to safe HTML
-- status: todo
+- status: done
 - depends on: T1
 - parallel-safe with: T2, T3, T14
 - files: src/engine/messagerenderer.h, src/engine/messagerenderer.cpp
@@ -343,7 +343,16 @@ Tasks in the same wave can run in parallel once the earlier waves are done.
   `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data: cid:">`.
   Colors apply only to the plain-text wrapper. Add file to engine lib (link Qt6::Gui for QColor).
 - verify: `cmake --build build --target plasmamail_engine` succeeds.
-- notes:
+- notes: Done 2026-10-08. `messageBodyHtml()` in src/engine/messagerenderer.{h,cpp}; the CSP
+  string is the public constant `messageContentSecurityPolicy`. HTML part: CSP meta + the
+  decoded HTML as-is. Plain text: full HTML document with the CSP meta, colors on `body`,
+  `pre-wrap` div, escaped text, URLs linked (a trailing `.,;:!?)]` is not part of the link; the
+  link stops at escaped quotes/brackets). A missing Content-Type is treated as text/plain;
+  other cases fall back to `Message::textContent()`. Engine now links Qt6::Gui.
+  **Gotcha for T8/T28/T35:** KMime only splits headers from body on LF line endings. Build
+  test messages with `\n`, and convert raw CRLF data with `KMime::CRLFtoLF()` before
+  `setContent()` (KIMAP already does this for fetched messages). A smoke run (not committed)
+  confirmed: script escaping, URL linking, multipart/alternative → HTML, QP + ISO-8859-1 decoding.
 
 ### T8 — Unit test for `messageBodyHtml`
 - status: todo

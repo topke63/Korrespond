@@ -6,10 +6,12 @@ add_library(plasmamail_engine STATIC
     engine/account.cpp
     engine/folderutils.cpp
     engine/imapclient.cpp
+    engine/messagerenderer.cpp
 )
 target_include_directories(plasmamail_engine PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/engine)
 target_link_libraries(plasmamail_engine PUBLIC
     Qt6::Core
+    Qt6::Gui
     KF6::ConfigCore
     KF6::Mime
     KPim6::IMAP

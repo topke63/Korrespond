@@ -160,6 +160,54 @@ private Q_SLOTS:
         const QString html = render("Subject: a\nContent-Type: text/plain; charset=utf-8\nContent-Transfer-Encoding: 8bit\n\nЗдраво, свете\n");
         QVERIFY(html.contains(u"Здраво, свете"_s));
     }
+
+    void testAttachmentNames_data()
+    {
+        QTest::addColumn<QByteArray>("raw");
+        QTest::addColumn<QStringList>("expected");
+
+        const QByteArray head = "Subject: a\nMIME-Version: 1.0\nContent-Type: multipart/mixed; boundary=M\n\n--M\nContent-Type: text/plain\n\nbody\n";
+        const QByteArray tail = "--M--\n";
+        const QByteArray pdf = "Content-Transfer-Encoding: base64\n\nJVBERg==\n";
+
+        QTest::newRow("none") << QByteArray("Subject: a\nContent-Type: text/plain\n\nbody\n") << QStringList();
+        QTest::newRow("disposition filename")
+            << head + "--M\nContent-Type: application/pdf\nContent-Disposition: attachment; filename=\"report.pdf\"\n" + pdf + tail
+            << QStringList{u"report.pdf"_s};
+        QTest::newRow("content-type name only")
+            << head + "--M\nContent-Type: application/pdf; name=\"invoice.pdf\"\nContent-Disposition: attachment\n" + pdf + tail
+            << QStringList{u"invoice.pdf"_s};
+        QTest::newRow("filename wins over name")
+            << head + "--M\nContent-Type: application/pdf; name=\"type.pdf\"\nContent-Disposition: attachment; filename=\"disp.pdf\"\n" + pdf + tail
+            << QStringList{u"disp.pdf"_s};
+        QTest::newRow("unnamed") << head + "--M\nContent-Type: application/octet-stream\nContent-Disposition: attachment\n" + pdf + tail
+                                 << QStringList{u"Unnamed attachment"_s};
+        QTest::newRow("named and unnamed, in order")
+            << head + "--M\nContent-Type: application/pdf\nContent-Disposition: attachment; filename=a.pdf\n" + pdf
+                   + "--M\nContent-Type: application/octet-stream\nContent-Disposition: attachment\n" + pdf + tail
+            << QStringList{u"a.pdf"_s, u"Unnamed attachment"_s};
+        QTest::newRow("RFC 2231 filename")
+            << head + "--M\nContent-Type: application/pdf\nContent-Disposition: attachment; filename*=UTF-8''%D0%B8%D0%B7%D0%B2%D0%B5%D1%88%D1%82%D0%B0%D1%98.pdf\n"
+                   + pdf + tail
+            << QStringList{u"извештај.pdf"_s};
+        QTest::newRow("RFC 2047 name")
+            << head + "--M\nContent-Type: application/pdf; name=\"=?UTF-8?B?Y2Fmw6kucGRm?=\"\nContent-Disposition: attachment\n" + pdf + tail
+            << QStringList{u"café.pdf"_s};
+        QTest::newRow("alternative bodies are not attachments")
+            << QByteArray("Subject: a\nMIME-Version: 1.0\nContent-Type: multipart/alternative; boundary=B\n\n"
+                          "--B\nContent-Type: text/plain\n\nplain\n--B\nContent-Type: text/html\n\n<p>html</p>\n--B--\n")
+            << QStringList();
+    }
+
+    void testAttachmentNames()
+    {
+        QFETCH(QByteArray, raw);
+        QFETCH(QStringList, expected);
+        KMime::Message msg;
+        msg.setContent(raw);
+        msg.parse();
+        QCOMPARE(attachmentNames(msg), expected);
+    }
 };
 
 QTEST_GUILESS_MAIN(MessageRendererTest)

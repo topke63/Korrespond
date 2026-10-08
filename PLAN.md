@@ -373,7 +373,7 @@ Tasks in the same wave can run in parallel once the earlier waves are done.
   QP ISO-8859-1 incl. soft line break, base64 windows-1252 HTML, UTF-8 Cyrillic.
 
 ### T9 — Attachment names from a message
-- status: todo
+- status: done
 - depends on: T8
 - parallel-safe with: T10–T15
 - files: src/engine/messagerenderer.{h,cpp}, autotests/messagerenderertest.cpp
@@ -382,7 +382,12 @@ Tasks in the same wave can run in parallel once the earlier waves are done.
 - output: `QStringList attachmentNames(KMime::Message &msg)` plus a test with one named and one
   unnamed attachment.
 - verify: `ctest --test-dir build -R messagerenderertest --output-on-failure`
-- notes:
+- notes: Done 2026-10-08. Signature takes `const KMime::Message &` (KMime has a const
+  `attachments()`), which also accepts non-const messages. Engine library now links KF6::I18n
+  for the "Unnamed attachment" text. Tests (9 rows in messagerenderertest): no attachments,
+  disposition filename, Content-Type name only, filename wins over name, unnamed, named +
+  unnamed in order, RFC 2231 `filename*=` (UTF-8 Cyrillic), RFC 2047 encoded name, and
+  multipart/alternative bodies not counted as attachments.
 
 ### T10 — `FolderModel` in the models library
 - status: done

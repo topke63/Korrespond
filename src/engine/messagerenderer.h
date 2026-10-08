@@ -5,6 +5,7 @@
 
 #include <QColor>
 #include <QString>
+#include <QStringList>
 
 namespace KMime
 {
@@ -19,3 +20,7 @@ inline constexpr auto messageContentSecurityPolicy = "default-src 'none'; style-
 // Uses the text/html part if the message has one, otherwise the text/plain part, escaped,
 // with http(s) URLs made clickable and shown in the given colors.
 QString messageBodyHtml(const KMime::Message &msg, const QColor &text, const QColor &background);
+
+// Display names of the message's attachments, in order: the Content-Disposition filename,
+// else the Content-Type name, else a translated "Unnamed attachment".
+QStringList attachmentNames(const KMime::Message &msg);

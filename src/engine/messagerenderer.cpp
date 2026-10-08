@@ -3,6 +3,7 @@
 
 #include "messagerenderer.h"
 
+#include <KLocalizedString>
 #include <KMime/Message>
 
 #include <QRegularExpression>
@@ -63,4 +64,22 @@ QString messageBodyHtml(const KMime::Message &msg, const QColor &text, const QCo
         plain = msg.textContent();
     }
     return plainTextHtml(plain ? plain->decodedText() : QString(), text, background);
+}
+
+QStringList attachmentNames(const KMime::Message &msg)
+{
+    QStringList names;
+    for (const KMime::Content *part : msg.attachments()) {
+        QString name;
+        if (const auto *disposition = part->contentDisposition()) {
+            name = disposition->filename();
+        }
+        if (name.isEmpty()) {
+            if (const auto *type = part->contentType()) {
+                name = type->name();
+            }
+        }
+        names.append(name.isEmpty() ? i18nc("@info placeholder for a mail attachment without a file name", "Unnamed attachment") : name);
+    }
+    return names;
 }

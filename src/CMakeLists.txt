@@ -13,6 +13,7 @@ target_link_libraries(plasmamail_engine PUBLIC
     Qt6::Core
     Qt6::Gui
     KF6::ConfigCore
+    KF6::I18n
     KF6::Mime
     KPim6::IMAP
     Qt6::Network

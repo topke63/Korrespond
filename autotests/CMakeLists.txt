@@ -58,3 +58,10 @@ ecm_add_test(
     TEST_NAME messagestoretest
     LINK_LIBRARIES plasmamail_engine Qt6::Test Qt6::Sql
 )
+
+# Test for retention
+ecm_add_test(
+    retentiontest.cpp
+    TEST_NAME retentiontest
+    LINK_LIBRARIES plasmamail_engine Qt6::Test
+)

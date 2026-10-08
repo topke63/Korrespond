@@ -811,7 +811,7 @@ T39 and T46 later make it fully functional.
   "error: No such remote 'origin'" (the repo has no remote), and the build still succeeds.
 
 ### T33 — Unit test for retention
-- status: todo
+- status: done
 - depends on: T2, T32
 - parallel-safe with: T34
 - files: autotests/retentiontest.cpp
@@ -820,7 +820,9 @@ T39 and T46 later make it fully functional.
   stops at or under the limit; both together; disabled clears everything; unlimited/forever
   removes nothing.
 - verify: `ctest --test-dir build -R retentiontest --output-on-failure`
-- notes:
+- notes: Also covers the importSince cutoff, an exact fit at the size limit (kept) and a store
+  that isn't open (`ok` false). Registered in autotests/CMakeLists.txt. Verified with
+  `ctest --test-dir build` on 2026-10-08: all 10 test executables pass.
 
 ### T34 — `ImapClient::searchSince`
 - status: todo

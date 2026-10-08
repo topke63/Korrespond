@@ -1024,7 +1024,7 @@ body below. Message previews in the list (needs fetching body text) are out of s
   display for the user's Breeze colors.
 
 ### T49 — Folder sidebar
-- status: todo
+- status: done
 - depends on: T48
 - parallel-safe with: none
 - files: src/qml/FolderSidebar.qml, src/qml/Main.qml
@@ -1034,7 +1034,9 @@ body below. Message previews in the list (needs fetching body text) are out of s
   indent), and a menu button ("Local Storage…", "Remove Account…") instead of the two footer
   buttons. Still docked on wide windows, modal on narrow.
 - verify: offscreen checks as in T19 print no QML warnings; screenshot (T48) reviewed.
-- notes:
+- notes: Done 2026-10-08. An `OverlayDrawer` set as both `globalDrawer` and `pageStack.leftSidebar`
+  (inside the page row, so its header lines up with the page title bars). Avatar is
+  `org.kde.kirigamiaddons.components` `Avatar` (Kirigami 6 has no `Kirigami.Avatar`).
 
 ### T50 — Three-pane layout
 - status: todo

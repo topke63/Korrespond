@@ -23,8 +23,8 @@ Kirigami.ApplicationWindow {
 
     Component.onCompleted: showStartPage()
 
-    globalDrawer: Kirigami.GlobalDrawer {
-        id: drawer
+    globalDrawer: FolderSidebar {
+        id: sidebar
 
         // Docked beside the pages on wide windows, slides over them on narrow ones.
         function updateOpen() {
@@ -33,62 +33,19 @@ Kirigami.ApplicationWindow {
 
         enabled: MailController.hasAccount
         modal: !window.wideScreen
-        title: MailController.accountEmail
-        titleIcon: "mail-folder-inbox"
         onModalChanged: updateOpen()
         onEnabledChanged: updateOpen()
         Component.onCompleted: updateOpen()
-
-        Repeater {
-            model: MailController.folderModel
-
-            delegate: QQC2.ItemDelegate {
-                required property string path
-                required property string name
-                required property string iconName
-                required property int depth
-
-                Layout.fillWidth: true
-                leftPadding: Kirigami.Units.largeSpacing + depth * Kirigami.Units.gridUnit
-                text: name
-                icon.name: iconName
-                highlighted: path === MailController.currentFolder
-                onClicked: {
-                    MailController.selectFolder(path);
-                    if (drawer.modal) {
-                        drawer.close();
-                    }
-                }
+        onStorageSettingsRequested: {
+            if (modal) {
+                close();
             }
+            window.pageStack.layers.push(storagePage);
         }
-
-        footer: QQC2.ToolBar {
-            position: QQC2.ToolBar.Footer
-            contentItem: ColumnLayout {
-                spacing: 0
-
-                QQC2.ToolButton {
-                    Layout.fillWidth: true
-                    text: KI18n.i18nc("@action:button", "Local Storage")
-                    icon.name: "drive-harddisk"
-                    display: QQC2.AbstractButton.TextBesideIcon
-                    onClicked: {
-                        if (drawer.modal) {
-                            drawer.close();
-                        }
-                        window.pageStack.layers.push(storagePage);
-                    }
-                }
-                QQC2.ToolButton {
-                    Layout.fillWidth: true
-                    text: KI18n.i18nc("@action:button", "Remove Account")
-                    icon.name: "list-remove-user"
-                    display: QQC2.AbstractButton.TextBesideIcon
-                    onClicked: removeDialog.open()
-                }
-            }
-        }
+        onRemoveAccountRequested: removeDialog.open()
     }
+    // Inside the page row, so the sidebar's header lines up with the pages' title bars.
+    pageStack.leftSidebar: sidebar
 
     Kirigami.PromptDialog {
         id: removeDialog

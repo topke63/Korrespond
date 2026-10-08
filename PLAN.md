@@ -1207,9 +1207,35 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   Unread and Flagged were empty with no error (the inbox had no unread/flagged mail), so a
   non-empty match is still unconfirmed — check when unread/flagged mail exists.
 
+### T60 — Settings window
+- status: todo
+- depends on: T41, T59
+- parallel-safe with: none
+- files: src/qml/Main.qml, src/qml/FolderSidebar.qml
+- inputs: user 2026-10-08: "make settings button, add it to menu above left panel".
+- output: Kirigami Addons `ConfigurationView` (own window on desktop) with modules Accounts
+  (T61), Local Storage (StorageSettingsPage), About Plasma Mail (FormCard `AboutPage`, from
+  KAboutData). The ☰ menu: "Settings…" (Ctrl+,) and "About Plasma Mail"; "Local Storage…" and
+  "Remove Account…" move into Settings.
+- verify: offscreen checks as in T19; screenshot of each settings page reviewed.
+- notes:
+
+### T61 — Accounts settings page
+- status: todo
+- depends on: T60
+- parallel-safe with: none
+- files: src/qml/AccountSettingsPage.qml, src/app/mailcontroller.{h,cpp}
+- inputs: `Account` fields.
+- output: controller properties `accountDisplayName`, `accountProvider` (readable name),
+  `accountServer` ("host:port"); a FormCard page showing the account (avatar, address, name,
+  provider, IMAP server) and a "Remove Account…" button with the confirmation dialog
+  (moved from Main.qml).
+- verify: offscreen checks as in T19; screenshot reviewed.
+- notes:
+
 ### T25 — Global verify
 - status: todo
-- depends on: T1–T24, T26–T59, T39a
+- depends on: T1–T24, T26–T61, T39a
 - parallel-safe with: none
 - files: none
 - inputs: —

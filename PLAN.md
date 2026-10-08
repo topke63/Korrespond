@@ -606,7 +606,7 @@ Tasks in the same wave can run in parallel once the earlier waves are done.
   thousands separator. Yahoo hint links to https://help.yahoo.com/kb/SLN15241.html.
 
 ### T21 — Folder list in the global drawer
-- status: todo
+- status: done
 - depends on: T17, T19
 - parallel-safe with: T20, T22
 - files: src/qml/Main.qml
@@ -614,7 +614,10 @@ Tasks in the same wave can run in parallel once the earlier waves are done.
 - output: `Kirigami.GlobalDrawer` (modal on narrow windows) listing folders with icon,
   indentation by `depth`, highlight of the current folder; footer action "Remove account".
 - verify: offscreen launch as in T19 prints no QML warnings.
-- notes:
+- notes: Done 2026-10-08. Drawer is disabled without an account, docked open on wide windows
+  and closes after picking a folder when modal. "Remove Account" asks first (PromptDialog).
+  Verified offscreen twice: clean config, and a fake custom account (`127.0.0.1:1`, run with
+  `DBUS_SESSION_BUS_ADDRESS=disabled:` so the real wallet is never touched) so the drawer loads.
 
 ### T22 — Message list page
 - status: todo

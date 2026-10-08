@@ -18,6 +18,10 @@ bool Account::isValid() const
 bool Account::applyPreset(Account &account, const QString &provider)
 {
     account.provider = provider;
+    account.imapHost.clear();
+    account.imapPort = 0;
+    account.smtpHost.clear();
+    account.smtpPort = 0;
     if (provider == "yahoo"_L1) {
         account.imapHost = u"imap.mail.yahoo.com"_s;
         account.imapPort = 993;

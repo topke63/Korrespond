@@ -507,7 +507,7 @@ Tasks in the same wave can run in parallel once the earlier waves are done.
   0 skipped, ~30 ms, no permission prompt. 60 s wait per request covers a first-time prompt.
 
 ### T16 — `MailController`: account setup and folder listing
-- status: in-progress
+- status: done
 - depends on: T5, T10, T14
 - parallel-safe with: T11, T13, T15
 - files: src/app/mailcontroller.h, src/app/mailcontroller.cpp
@@ -522,7 +522,18 @@ Tasks in the same wave can run in parallel once the earlier waves are done.
   (`qt_add_qml_module` with this source, no QML files yet, a temporary trivial
   `src/app/main.cpp` returning 0 is allowed and replaced in T19).
 - verify: `cmake --build build --target plasma-mail` succeeds.
-- notes:
+- notes: Done 2026-10-08. **Deviation (better UX, like Geary):** `setupAccount` first logs in
+  and lists folders with the new credentials; only on success does it write the password to
+  the keychain, save the config and emit `accountChanged`. A wrong password saves nothing and
+  emits one `errorOccurred`; an earlier account is reconnected. Setting up a different email
+  deletes the old one's keychain entry. Startup: `connectSavedAccount()` reads the password and
+  connects. `busy` is a request counter, reset on fatal errors. User-facing texts use i18n;
+  engine error texts are passed through untranslated. App target: `qt_add_qml_module`
+  (URI PlasmaMail, QTP0001 NEW), `src/app` is on the include path because the generated type
+  registration includes `<mailcontroller.h>` by name; `src/app/main.cpp` is a stub returning 0
+  until T19. Verified beyond the build check with a throwaway harness against Yahoo (test-mode
+  config, real keychain): wrong → right password, restart reconnects from the keychain with
+  6 folders, `removeAccount` clears config and keychain.
 
 ### T17 — `MailController`: folder selection and message list
 - status: todo

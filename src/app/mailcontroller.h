@@ -1,0 +1,74 @@
+// SPDX-FileCopyrightText: 2026 topke <topke63@gmail.com>
+// SPDX-License-Identifier: GPL-2.0-or-later
+
+#pragma once
+
+#include "account.h"
+#include "folderutils.h"
+
+#include <QAbstractListModel>
+#include <QObject>
+#include <QQmlEngine>
+
+class FolderModel;
+class ImapClient;
+class SecretStore;
+
+// The only object the QML UI talks to. Owns the engine objects for the single account.
+class MailController : public QObject
+{
+    Q_OBJECT
+    QML_ELEMENT
+    QML_SINGLETON
+
+    Q_PROPERTY(bool hasAccount READ hasAccount NOTIFY accountChanged)
+    Q_PROPERTY(QString accountEmail READ accountEmail NOTIFY accountChanged)
+    Q_PROPERTY(bool busy READ busy NOTIFY busyChanged)
+    Q_PROPERTY(QAbstractListModel *folderModel READ folderModel CONSTANT)
+
+public:
+    explicit MailController(QObject *parent = nullptr);
+    ~MailController() override;
+
+    [[nodiscard]] bool hasAccount() const;
+    [[nodiscard]] QString accountEmail() const;
+    [[nodiscard]] bool busy() const;
+    [[nodiscard]] QAbstractListModel *folderModel() const;
+
+    // Checks the credentials by logging in and listing folders; only then stores the password
+    // in the keychain, saves the account and sets hasAccount. On failure nothing is saved and
+    // errorOccurred is emitted. provider: "yahoo", "gmail", "outlook" or "custom" (custom uses
+    // the host/port arguments; the others use their presets).
+    Q_INVOKABLE void setupAccount(const QString &provider,
+                                  const QString &email,
+                                  const QString &displayName,
+                                  const QString &password,
+                                  const QString &imapHost = {},
+                                  int imapPort = 993,
+                                  const QString &smtpHost = {},
+                                  int smtpPort = 465);
+    // Disconnects, deletes the password from the keychain and the account from the config.
+    Q_INVOKABLE void removeAccount();
+
+Q_SIGNALS:
+    void accountChanged();
+    void busyChanged();
+    void errorOccurred(const QString &message);
+
+private:
+    // Reads the saved account's password from the keychain and connects.
+    void connectSavedAccount();
+    void connectAccount(const Account &account, const QString &password);
+    void beginRequest();
+    void endRequest();
+    void resetRequests();
+    void onFoldersListed(const QList<FolderInfo> &folders);
+
+    Account m_account; // the saved account; invalid when there is none
+    Account m_pendingAccount; // being verified by setupAccount()
+    QString m_pendingPassword;
+    ImapClient *m_client;
+    SecretStore *m_secrets;
+    FolderModel *m_folderModel;
+    int m_requests = 0;
+};

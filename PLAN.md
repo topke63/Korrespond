@@ -420,7 +420,7 @@ Tasks in the same wave can run in parallel once the earlier waves are done.
   already gone.
 
 ### T13 — Unit test for `MessageListModel`
-- status: todo
+- status: done
 - depends on: T2, T12
 - parallel-safe with: T14–T16
 - files: autotests/messagelistmodeltest.cpp
@@ -428,7 +428,11 @@ Tasks in the same wave can run in parallel once the earlier waves are done.
 - output: `QAbstractItemModelTester`; empty subject → "(No subject)"; `setUnread` emits one
   `dataChanged` with `UnreadRole`; `message(unknownUid)` returns uid 0.
 - verify: `ctest --test-dir build -R messagelistmodeltest --output-on-failure`
-- notes:
+- notes: Done 2026-10-08. Rewritten from the earlier draft (forbidden `slots` keyword, and a
+  date check that only passed on 1 October). Covers the model tester, all roles, "(No subject)",
+  `dateText` for today/other days/invalid with a pinned "today", local-time conversion across
+  time zones, exactly one `dataChanged` with `UnreadRole` (none for unchanged/unknown uid),
+  lookup and clear. Expected strings use `QLocale`, so the test passes in any locale.
 
 ### T14 — `SecretStore`: async keychain wrapper
 - status: todo

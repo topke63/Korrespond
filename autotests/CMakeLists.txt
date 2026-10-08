@@ -16,3 +16,10 @@ ecm_add_test(
     TEST_NAME foldermodeltest
     LINK_LIBRARIES plasmamail_models Qt6::Test
 )
+
+# Test for MessageListModel
+ecm_add_test(
+    messagelistmodeltest.cpp
+    TEST_NAME messagelistmodeltest
+    LINK_LIBRARIES plasmamail_models Qt6::Test
+)

@@ -14,7 +14,7 @@
 - **Global verify**:
   `cmake -S . -B build -G Ninja && cmake --build build && ctest --test-dir build --output-on-failure`
 - **Open questions**:
-  - **Q1** (answered 2026-10-08: yes, ready; the user types it in themselves): Does the user have a Yahoo app password ready (Yahoo → Account security →
+  - **Q1** (answered 2026-10-08: yes, ready; the user types it in themselves. **Corrected 2026-10-08:** in the first GUI run the user entered their web login password, which Yahoo refuses over IMAP; an app password still has to be generated before T24): Does the user have a Yahoo app password ready (Yahoo → Account security →
     2-step verification on → "Generate app password")? Needed only by T6 and T24, which are
     manual checks against the real server. Ask before starting those tasks.
   - **Q2** (answered: all except Trash and Junk): Which folders are stored locally? Proposal: all folders except Trash and Junk.

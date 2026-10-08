@@ -1137,7 +1137,7 @@ body below. Message previews in the list (needs fetching body text) are out of s
 - notes:
 
 ### T56 — Message toolbar (look only)
-- status: todo
+- status: done
 - depends on: T54
 - parallel-safe with: none
 - files: src/qml/MessagePage.qml
@@ -1147,7 +1147,9 @@ body below. Message previews in the list (needs fetching body text) are out of s
   right. All disabled (milestone 1 is read-only; they get wired up in later milestones), with
   accessible names set. Shown only when a message is open, except the search field.
 - verify: offscreen checks as in T19; screenshot reviewed.
-- notes:
+- notes: Done 2026-10-08. Built as the page's `titleDelegate` (Repeater of ToolButtons, a
+  Separator, spacer, `Kirigami.SearchField`). No Breeze `mail-move` icon: Move uses `folder`.
+  Disabled buttons show greyed, as intended.
 
 ### T25 — Global verify
 - status: todo

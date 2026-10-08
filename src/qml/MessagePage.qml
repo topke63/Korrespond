@@ -29,8 +29,65 @@ Kirigami.Page {
         return { name: match[1].length > 0 ? match[1] : match[2], address: match[2] };
     }
 
-    // The subject is shown large in the page itself, like Geary; the title bar stays clean.
+    // The subject is shown large in the page itself; the title bar holds the message actions.
     title: ""
+    // Mimestream-style action bar. Milestone 1 only reads mail, so the actions are shown for the
+    // look and stay disabled until later milestones implement them.
+    titleDelegate: RowLayout {
+        Layout.fillWidth: true
+        spacing: 0
+
+        Repeater {
+            model: [
+                { icon: "archive-insert", text: KI18n.i18nc("@action:button", "Archive") },
+                { icon: "edit-delete", text: KI18n.i18nc("@action:button", "Delete") },
+                { icon: "mail-mark-unread", text: KI18n.i18nc("@action:button", "Mark as Unread") },
+                { icon: "folder", text: KI18n.i18nc("@action:button", "Move to Folder") },
+                { icon: "tag", text: KI18n.i18nc("@action:button", "Label") },
+                { separator: true },
+                { icon: "mail-reply-sender", text: KI18n.i18nc("@action:button", "Reply") },
+                { icon: "mail-reply-all", text: KI18n.i18nc("@action:button", "Reply All") },
+                { icon: "mail-forward", text: KI18n.i18nc("@action:button", "Forward") }
+            ]
+
+            delegate: Loader {
+                required property var modelData
+
+                visible: page.hasMessage
+                sourceComponent: modelData.separator ? separatorComponent : buttonComponent
+
+                Component {
+                    id: buttonComponent
+
+                    QQC2.ToolButton {
+                        icon.name: modelData.icon
+                        text: modelData.text
+                        display: QQC2.AbstractButton.IconOnly
+                        enabled: false // not implemented in milestone 1
+                    }
+                }
+                Component {
+                    id: separatorComponent
+
+                    Kirigami.Separator {
+                        implicitHeight: Kirigami.Units.iconSizes.smallMedium
+                        Layout.alignment: Qt.AlignVCenter
+                        anchors.verticalCenter: parent ? parent.verticalCenter : undefined
+                    }
+                }
+            }
+        }
+
+        Item {
+            Layout.fillWidth: true
+        }
+
+        Kirigami.SearchField {
+            Layout.preferredWidth: Kirigami.Units.gridUnit * 14
+            Layout.rightMargin: Kirigami.Units.smallSpacing
+            enabled: false // search comes in a later milestone
+        }
+    }
     padding: 0
     onHtmlChanged: showHtml()
     Component.onCompleted: showHtml()

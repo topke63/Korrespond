@@ -7,6 +7,7 @@ add_library(plasmamail_engine STATIC
     engine/folderutils.cpp
     engine/imapclient.cpp
     engine/messagerenderer.cpp
+    engine/secretstore.cpp
 )
 target_include_directories(plasmamail_engine PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/engine)
 target_link_libraries(plasmamail_engine PUBLIC

@@ -458,7 +458,7 @@ Tasks in the same wave can run in parallel once the earlier waves are done.
   lookup and clear. Expected strings use `QLocale`, so the test passes in any locale.
 
 ### T14 — `SecretStore`: async keychain wrapper
-- status: todo
+- status: done
 - depends on: T1
 - parallel-safe with: T2, T3, T7
 - files: src/engine/secretstore.h, src/engine/secretstore.cpp
@@ -468,7 +468,13 @@ Tasks in the same wave can run in parallel once the earlier waves are done.
   `deletePassword(key)` and signals `passwordWritten(key, error)`, `passwordRead(key, password, error)`,
   `passwordDeleted(key, error)` (empty error = success). Link Qt6Keychain into engine lib.
 - verify: `cmake --build build --target plasmamail_engine` succeeds.
-- notes:
+- notes: Done 2026-10-08. `SecretStore(const QString &service, QObject *parent)`: the service
+  name is a constructor argument so T15 can use a separate test service; the app passes
+  `QString::fromLatin1(AccountSecrets::service)`. Every request emits exactly one signal; empty
+  error = success, and a failure always has non-empty text. `deletePassword` treats
+  `EntryNotFound` as success (removing an account twice is fine); `readPassword` of a missing
+  key reports an error and an empty password. Insecure plain-file fallback is explicitly off.
+  Qt6Keychain was already linked into the engine.
 
 ### T15 — Test for `SecretStore` against the session keychain
 - status: todo

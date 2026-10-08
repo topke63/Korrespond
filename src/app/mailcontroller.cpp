@@ -82,7 +82,49 @@ QString MailController::currentFolder() const
 
 QString MailController::currentFolderName() const
 {
+    if (m_currentFolder == QLatin1StringView(allInboxesPath)) {
+        return i18nc("@title shared folder", "All Inboxes");
+    }
+    if (m_currentFolder == QLatin1StringView(unreadPath)) {
+        return i18nc("@title shared folder", "Unread");
+    }
+    if (m_currentFolder == QLatin1StringView(flaggedPath)) {
+        return i18nc("@title shared folder", "Flagged");
+    }
     return m_currentFolder.isEmpty() ? QString() : m_folderModel->displayName(m_currentFolder);
+}
+
+QVariantList MailController::sharedFolders() const
+{
+    const auto entry = [](const char *path, const QString &name, const QString &iconName) {
+        return QVariantMap{{u"path"_s, QLatin1StringView(path)}, {u"name"_s, name}, {u"iconName"_s, iconName}};
+    };
+    return {
+        entry(allInboxesPath, i18nc("@title shared folder", "All Inboxes"), u"mail-folder-inbox"_s),
+        entry(unreadPath, i18nc("@title shared folder", "Unread"), u"mail-mark-unread"_s),
+        entry(flaggedPath, i18nc("@title shared folder", "Flagged"), u"flag"_s),
+    };
+}
+
+bool MailController::isSharedView(const QString &path)
+{
+    return path == QLatin1StringView(allInboxesPath) || path == QLatin1StringView(unreadPath) || path == QLatin1StringView(flaggedPath);
+}
+
+QString MailController::imapFolderFor(const QString &path) const
+{
+    return isSharedView(path) ? m_folderModel->inboxPath() : path;
+}
+
+ImapClient::HeaderFilter MailController::filterFor(const QString &path)
+{
+    if (path == QLatin1StringView(unreadPath)) {
+        return ImapClient::Unread;
+    }
+    if (path == QLatin1StringView(flaggedPath)) {
+        return ImapClient::Flagged;
+    }
+    return ImapClient::AllMessages;
 }
 
 qint64 MailController::currentUid() const
@@ -187,8 +229,12 @@ void MailController::selectFolder(const QString &path)
         clearMessage(true); // the open message belongs to the folder being left
         Q_EMIT currentFolderChanged();
     }
+    const QString folder = imapFolderFor(path);
+    if (folder.isEmpty()) {
+        return; // a shared view before the folders (and so the inbox) are known
+    }
     beginRequest();
-    m_client->fetchHeaders(path, messageLimit);
+    m_client->fetchHeaders(folder, messageLimit, filterFor(path));
 }
 
 void MailController::refresh()
@@ -203,10 +249,10 @@ void MailController::refresh()
     }
 }
 
-void MailController::onHeadersFetched(const QString &folder, ImapClient::HeaderFilter, const QList<MessageSummary> &messages)
+void MailController::onHeadersFetched(const QString &folder, ImapClient::HeaderFilter filter, const QList<MessageSummary> &messages)
 {
     endRequest();
-    if (folder != m_currentFolder) {
+    if (folder != imapFolderFor(m_currentFolder) || filter != filterFor(m_currentFolder)) {
         return; // the user switched folders while this was loading
     }
     m_messageModel->setMessages(messages);
@@ -218,7 +264,7 @@ void MailController::openMessage(qint64 uid)
         return;
     }
     m_currentUid = uid;
-    m_messageFolder = m_currentFolder;
+    m_messageFolder = imapFolderFor(m_currentFolder);
     clearMessage(false);
     beginRequest();
     m_client->fetchMessage(m_messageFolder, uid);
@@ -242,7 +288,7 @@ void MailController::onMessageFetched(const QString &folder, qint64 uid, const s
     m_messageAttachments = attachmentNames(msg);
     Q_EMIT currentMessageChanged();
 
-    if (folder == m_currentFolder && m_messageModel->message(uid).unread) {
+    if (folder == imapFolderFor(m_currentFolder) && m_messageModel->message(uid).unread) {
         m_client->markSeen(folder, uid);
         m_messageModel->setUnread(uid, false);
     }
@@ -364,16 +410,16 @@ void MailController::onFoldersListed(const QList<FolderInfo> &folders)
 {
     endRequest();
     m_folderModel->setFolders(folders);
-    const bool currentStillExists = std::any_of(folders.cbegin(), folders.cend(), [this](const FolderInfo &f) {
+    const bool currentStillExists = isSharedView(m_currentFolder) || std::any_of(folders.cbegin(), folders.cend(), [this](const FolderInfo &f) {
         return f.path == m_currentFolder;
     });
     if (!currentStillExists) {
-        // First list after connecting, or the folder was deleted elsewhere: show the inbox.
+        // First list after connecting, or the folder was deleted elsewhere: show All Inboxes.
         m_currentFolder.clear();
         m_messageModel->clear();
         clearMessage(true);
         Q_EMIT currentFolderChanged();
-        selectFolder(m_folderModel->inboxPath());
+        selectFolder(QLatin1StringView(allInboxesPath));
     } else {
         Q_EMIT currentFolderChanged(); // the display name may have changed
     }

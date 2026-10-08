@@ -38,6 +38,8 @@ class MailController : public QObject
     Q_PROPERTY(QAbstractListModel *messageModel READ messageModel CONSTANT)
     Q_PROPERTY(QString currentFolder READ currentFolder NOTIFY currentFolderChanged)
     Q_PROPERTY(QString currentFolderName READ currentFolderName NOTIFY currentFolderChanged)
+    // Views over every account's inbox, shown above the accounts: list of {path, name, iconName}.
+    Q_PROPERTY(QVariantList sharedFolders READ sharedFolders CONSTANT)
     Q_PROPERTY(qint64 currentUid READ currentUid NOTIFY currentMessageChanged)
     Q_PROPERTY(QString messageSubject READ messageSubject NOTIFY currentMessageChanged)
     Q_PROPERTY(QString messageFrom READ messageFrom NOTIFY currentMessageChanged)
@@ -65,6 +67,7 @@ public:
     [[nodiscard]] QAbstractListModel *messageModel() const;
     [[nodiscard]] QString currentFolder() const;
     [[nodiscard]] QString currentFolderName() const;
+    [[nodiscard]] QVariantList sharedFolders() const;
     [[nodiscard]] qint64 currentUid() const;
     [[nodiscard]] QString messageSubject() const;
     [[nodiscard]] QString messageFrom() const;
@@ -106,6 +109,11 @@ public:
     // The values storage starts with when first turned on, as a map with the property names.
     Q_INVOKABLE QVariantMap defaultStorageSettings() const;
 
+    // Reserved paths of the shared views (not valid IMAP folder names we would ever list).
+    static constexpr auto allInboxesPath = "plasmamail:inboxes";
+    static constexpr auto unreadPath = "plasmamail:unread";
+    static constexpr auto flaggedPath = "plasmamail:flagged";
+
     // How many of the newest messages a folder shows.
     static constexpr int messageLimit = 50;
 
@@ -125,6 +133,11 @@ private:
     void endRequest();
     void resetRequests();
     void onFoldersListed(const QList<FolderInfo> &folders);
+    // The IMAP folder and filter behind a folder or shared-view path. With one account the
+    // shared views all read its inbox.
+    [[nodiscard]] QString imapFolderFor(const QString &path) const;
+    [[nodiscard]] static ImapClient::HeaderFilter filterFor(const QString &path);
+    [[nodiscard]] static bool isSharedView(const QString &path);
     void onHeadersFetched(const QString &folder, ImapClient::HeaderFilter filter, const QList<MessageSummary> &messages);
     void onMessageFetched(const QString &folder, qint64 uid, const std::shared_ptr<KMime::Message> &message);
     // Empties the message properties; with clearUid also forgets which message is open.
@@ -137,7 +150,7 @@ private:
     SecretStore *m_secrets;
     FolderModel *m_folderModel;
     MessageListModel *m_messageModel;
-    QString m_currentFolder;
+    QString m_currentFolder; // an IMAP folder path or a shared-view path
     qint64 m_currentUid = 0; // 0 when no message is open
     QString m_messageFolder; // folder of the open message
     QString m_messageSubject;

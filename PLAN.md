@@ -1176,7 +1176,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   lambda updated for the new signal.
 
 ### T58 — `MailController`: shared views
-- status: todo
+- status: done
 - depends on: T57
 - parallel-safe with: none
 - files: src/app/mailcontroller.{h,cpp}
@@ -1187,7 +1187,9 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   inbox plus a filter; `currentFolderName` returns their names; opening/marking messages uses
   the real folder. After connecting, the start view is All Inboxes instead of Inbox.
 - verify: `cmake --build build --target plasma-mail` succeeds.
-- notes:
+- notes: Done 2026-10-08. `imapFolderFor(path)` / `filterFor(path)` map a view to inbox + filter;
+  header results are matched on both folder and filter. A shared view selected before the
+  folder list is known fetches nothing (no inbox path yet).
 
 ### T59 — Sidebar sections: shared folders, then per account
 - status: todo

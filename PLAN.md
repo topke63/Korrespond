@@ -840,7 +840,7 @@ T39 and T46 later make it fully functional.
   no warnings on 2026-10-08; not yet run against a server (first use is in the sync tasks).
 
 ### T35 — `ImapClient::fetchRawMessages`
-- status: todo
+- status: done
 - depends on: T34, Q3
 - parallel-safe with: T26–T33
 - files: src/engine/imapclient.{h,cpp}
@@ -850,7 +850,12 @@ T39 and T46 later make it fully functional.
   `rawMessageFetched(folder, MessageSummary, QByteArray raw)` per message and
   `rawFetchFinished(folder)` at the end.
 - verify: `cmake --build build --target plasmamail_engine` succeeds.
-- notes:
+- notes: One FETCH per call, so the caller (SyncManager) batches the uids. Raw bytes are
+  `encodedContent(NewlineType::CRLF)`. `FetchScope::Full` sends `BODY.PEEK[] FLAGS UID`
+  (checked in libKPim6IMAP's strings), so downloading never marks mail read and the summary
+  keeps the real read and flagged state. Header parsing moved into a shared `summaryOf()` used by
+  `fetchSummaries` too. An empty uid list emits `rawFetchFinished` at once. Builds with no
+  warnings and all 10 tests pass on 2026-10-08; not yet run against a server.
 
 ### T36 — `SyncManager`: download one folder within limits
 - status: todo

@@ -18,6 +18,26 @@
 
 using namespace Qt::StringLiterals;
 
+static MessageSummary summaryOf(const KIMAP::Message &msg)
+{
+    MessageSummary summary;
+    summary.uid = msg.uid;
+    summary.unread = !msg.flags.contains("\\Seen");
+    summary.flagged = msg.flags.contains("\\Flagged");
+    if (const auto &mime = msg.message) {
+        if (auto subject = mime->subject()) {
+            summary.subject = subject->asUnicodeString();
+        }
+        if (auto from = mime->from()) {
+            summary.from = from->displayString();
+        }
+        if (auto date = mime->date()) {
+            summary.date = date->dateTime();
+        }
+    }
+    return summary;
+}
+
 ImapClient::ImapClient(QObject *parent)
     : QObject(parent)
 {
@@ -281,6 +301,44 @@ void ImapClient::searchSince(const QString &folder, const QDate &since)
     select->start();
 }
 
+void ImapClient::fetchRawMessages(const QString &folder, const QList<qint64> &uids)
+{
+    if (uids.isEmpty()) {
+        Q_EMIT rawFetchFinished(folder);
+        return;
+    }
+    session();
+    const quint64 generation = m_generation;
+    queueSelect(folder, generation);
+
+    auto fetch = new KIMAP::FetchJob(session());
+    fetch->setUidBased(true);
+    KIMAP::ImapSet set;
+    set.add(uids);
+    fetch->setSequenceSet(set);
+    KIMAP::FetchJob::FetchScope scope;
+    scope.mode = KIMAP::FetchJob::FetchScope::Full; // BODY.PEEK[]: doesn't set \Seen
+    fetch->setScope(scope);
+
+    connect(fetch, &KIMAP::FetchJob::messagesAvailable, this, [this, folder, generation](const QMap<qint64, KIMAP::Message> &batch) {
+        if (!isCurrent(generation)) {
+            return;
+        }
+        for (const KIMAP::Message &msg : batch) {
+            if (msg.message) {
+                Q_EMIT rawMessageFetched(folder, summaryOf(msg), msg.message->encodedContent(KMime::NewlineType::CRLF));
+            }
+        }
+    });
+    connect(fetch, &KJob::result, this, [this, folder, generation](KJob *job) {
+        if (!checkJob(job, generation)) {
+            return;
+        }
+        Q_EMIT rawFetchFinished(folder);
+    });
+    fetch->start();
+}
+
 void ImapClient::fetchSummaries(const KIMAP::ImapSet &set, bool uidBased, const QString &folder, HeaderFilter filter, quint64 generation)
 {
     auto fetch = new KIMAP::FetchJob(m_session);
@@ -293,22 +351,7 @@ void ImapClient::fetchSummaries(const KIMAP::ImapSet &set, bool uidBased, const 
     auto messages = std::make_shared<QList<MessageSummary>>();
     connect(fetch, &KIMAP::FetchJob::messagesAvailable, this, [messages](const QMap<qint64, KIMAP::Message> &batch) {
         for (const KIMAP::Message &msg : batch) {
-            MessageSummary summary;
-            summary.uid = msg.uid;
-            summary.unread = !msg.flags.contains("\\Seen");
-            summary.flagged = msg.flags.contains("\\Flagged");
-            if (const auto &mime = msg.message) {
-                if (auto subject = mime->subject()) {
-                    summary.subject = subject->asUnicodeString();
-                }
-                if (auto from = mime->from()) {
-                    summary.from = from->displayString();
-                }
-                if (auto date = mime->date()) {
-                    summary.date = date->dateTime();
-                }
-            }
-            messages->append(summary);
+            messages->append(summaryOf(msg));
         }
     });
     connect(fetch, &KJob::result, this, [this, folder, filter, messages, generation](KJob *job) {

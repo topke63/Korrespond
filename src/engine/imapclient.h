@@ -58,6 +58,10 @@ public:
     // UIDs of the messages in folder that arrived on or after since (the server's arrival date,
     // not the Date header); a null date means all messages. Emits searchFinished().
     void searchSince(const QString &folder, const QDate &since);
+    // Downloads whole messages (attachments included) without marking them read. Emits
+    // rawMessageFetched() for each one, in no particular order, then rawFetchFinished(). uids
+    // gone from the server are skipped. Callers pass batches; this sends one FETCH.
+    void fetchRawMessages(const QString &folder, const QList<qint64> &uids);
 
 Q_SIGNALS:
     void foldersListed(const QList<FolderInfo> &folders);
@@ -66,6 +70,10 @@ Q_SIGNALS:
     // uids are in ascending order. uidValidity is the folder's current UIDVALIDITY: when it
     // differs from the stored one, every stored uid of the folder is stale.
     void searchFinished(const QString &folder, qint64 uidValidity, const QList<qint64> &uids);
+    // raw has CRLF line endings, as on the wire.
+    void rawMessageFetched(const QString &folder, const MessageSummary &summary, const QByteArray &raw);
+    // Not emitted when the fetch failed; errorOccurred() is emitted instead.
+    void rawFetchFinished(const QString &folder);
     void messageFetched(const QString &folder, qint64 uid, const std::shared_ptr<KMime::Message> &message);
     void errorOccurred(const QString &message);
 

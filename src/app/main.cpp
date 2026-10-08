@@ -17,7 +17,7 @@
 
 using namespace Qt::StringLiterals;
 
-// Dev only: PLASMAMAIL_SCREENSHOT=<file.png> saves the app window (never the screen) after
+// Dev only: PLASMAMAIL_SCREENSHOT=<file.png> saves the app window in front (never the screen) after
 // PLASMAMAIL_SCREENSHOT_DELAY ms (default 6000) and quits. PLASMAMAIL_SCREENSHOT_OPEN=1 first
 // opens the newest message of the current folder, halfway through the delay.
 static void scheduleScreenshot(QQmlApplicationEngine &engine)
@@ -44,7 +44,11 @@ static void scheduleScreenshot(QQmlApplicationEngine &engine)
         });
     }
     QTimer::singleShot(delay, &engine, [&engine, file] {
-        auto window = engine.rootObjects().isEmpty() ? nullptr : qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
+        // The window in front (e.g. the settings window), else the main window.
+        auto window = qobject_cast<QQuickWindow *>(QGuiApplication::focusWindow());
+        if (!window && !engine.rootObjects().isEmpty()) {
+            window = qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
+        }
         const bool saved = window && window->grabWindow().save(file);
         if (!saved) {
             qWarning("Could not save the screenshot to %s", qPrintable(file));
@@ -62,7 +66,11 @@ int main(int argc, char *argv[])
     KLocalizedString::setApplicationDomain("plasma-mail");
     KAboutData about(u"plasma-mail"_s, i18nc("@title", "Plasma Mail"), u"0.1"_s,
                      i18nc("@info", "A simple IMAP mail client for Plasma"), KAboutLicense::GPL_V2,
-                     i18nc("@info:credit", "© 2026 topke"));
+                     i18nc("@info:credit", "© 2026 topke"), QString(), QString(),
+                     QString()); // no bug address: not a KDE project, so no bugs.kde.org link
+    // Not "org.kde.…" (the default), so the About page shows no KDE donate/get-involved links.
+    about.setDesktopFileName(u"plasma-mail"_s);
+    about.setLicense(KAboutLicense::GPL_V2, KAboutLicense::OrLaterVersions); // matches the SPDX headers
     KAboutData::setApplicationData(about);
 
     // Breeze look by default; QT_QUICK_CONTROLS_STYLE still wins when set.

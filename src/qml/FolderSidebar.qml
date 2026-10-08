@@ -13,7 +13,8 @@ import PlasmaMail
 Kirigami.OverlayDrawer {
     id: sidebar
 
-    signal storageSettingsRequested()
+    signal settingsRequested()
+    signal aboutRequested()
     signal removeAccountRequested()
 
     // Mimestream-style colored icons by folder role; other folders stay neutral.
@@ -70,7 +71,7 @@ Kirigami.OverlayDrawer {
                 QQC2.ToolButton {
                     icon.name: "application-menu"
                     display: QQC2.AbstractButton.IconOnly
-                    text: KI18n.i18nc("@action:button", "Account Menu")
+                    text: KI18n.i18nc("@action:button", "Main Menu")
                     down: accountMenu.visible
                     onClicked: accountMenu.popup(this, 0, height)
 
@@ -82,9 +83,14 @@ Kirigami.OverlayDrawer {
                         id: accountMenu
 
                         QQC2.MenuItem {
-                            text: KI18n.i18nc("@action:inmenu", "Local Storage…")
-                            icon.name: "drive-harddisk"
-                            onTriggered: sidebar.storageSettingsRequested()
+                            text: KI18n.i18nc("@action:inmenu", "Settings…")
+                            icon.name: "settings-configure"
+                            onTriggered: sidebar.settingsRequested()
+                        }
+                        QQC2.MenuItem {
+                            text: KI18n.i18nc("@action:inmenu", "About Plasma Mail")
+                            icon.name: "help-about"
+                            onTriggered: sidebar.aboutRequested()
                         }
                         QQC2.MenuSeparator {}
                         QQC2.MenuItem {

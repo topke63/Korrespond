@@ -1208,7 +1208,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   non-empty match is still unconfirmed — check when unread/flagged mail exists.
 
 ### T60 — Settings window
-- status: todo
+- status: done
 - depends on: T41, T59
 - parallel-safe with: none
 - files: src/qml/Main.qml, src/qml/FolderSidebar.qml
@@ -1218,7 +1218,11 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   KAboutData). The ☰ menu: "Settings…" (Ctrl+,) and "About Plasma Mail"; "Local Storage…" and
   "Remove Account…" move into Settings.
 - verify: offscreen checks as in T19; screenshot of each settings page reviewed.
-- notes:
+- notes: Done 2026-10-08. Modules: Local Storage, About (Accounts comes with T61, so
+  "Remove Account…" stays in the menu until then). KAboutData: desktop file name `plasma-mail`
+  (the default `org.kde.…` made the About page link KDE's donate/get-involved pages), empty bug
+  address (else a bugs.kde.org link), license GPL-2.0-or-later. Screenshot hook (T48) now grabs
+  the focused window, so the settings window can be captured.
 
 ### T61 — Accounts settings page
 - status: todo

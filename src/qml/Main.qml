@@ -6,6 +6,7 @@ import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.ki18n
 import org.kde.kirigami as Kirigami
+import org.kde.kirigamiaddons.settings as KirigamiSettings
 import PlasmaMail
 
 Kirigami.ApplicationWindow {
@@ -43,16 +44,44 @@ Kirigami.ApplicationWindow {
         onModalChanged: updateOpen()
         onEnabledChanged: updateOpen()
         Component.onCompleted: updateOpen()
-        onStorageSettingsRequested: {
+        onSettingsRequested: {
             if (modal) {
                 close();
             }
-            window.pageStack.layers.push(storagePage);
+            settings.open();
         }
+        onAboutRequested: settings.open("about")
         onRemoveAccountRequested: removeDialog.open()
     }
     // Inside the page row, so the sidebar's header lines up with the pages' title bars.
     pageStack.leftSidebar: sidebar
+
+    KirigamiSettings.ConfigurationView {
+        id: settings
+
+        window: window
+        modules: [
+            KirigamiSettings.ConfigurationModule {
+                moduleId: "storage"
+                text: KI18n.i18nc("@action:button", "Local Storage")
+                icon.name: "drive-harddisk"
+                page: () => storagePage
+            },
+            KirigamiSettings.ConfigurationModule {
+                moduleId: "about"
+                text: KI18n.i18nc("@action:button", "About Plasma Mail")
+                icon.name: "help-about"
+                page: () => Qt.createComponent("org.kde.kirigamiaddons.formcard", "AboutPage")
+                category: KI18n.i18nc("@title:group", "About")
+            }
+        ]
+    }
+
+    Shortcut {
+        sequence: "Ctrl+,"
+        enabled: MailController.hasAccount
+        onActivated: settings.open()
+    }
 
     Kirigami.PromptDialog {
         id: removeDialog

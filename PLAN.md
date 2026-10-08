@@ -1081,9 +1081,14 @@ T39 and T46 later make it fully functional.
   and the 5 stored INBOX messages show, "Could not connect to imap.mail.yahoo.com." appears, a
   stored message opens. **Bug found and fixed:** the folder list was only saved when it arrived
   while storage was already on, so turning storage on in a running app left no list for an
-  offline start; `saveStorageSettings` now saves it too. **Open:** the log showed
-  `ScrollablePage.qml:277: TypeError: Cannot read property 'flickable' of null` (3×) in
-  the run where the storage page was used, probably when it closed; not investigated yet.
+  offline start; `saveStorageSettings` now saves it too. The log also showed
+  `ScrollablePage.qml:277: TypeError: Cannot read property 'flickable' of null` (3×) after the
+  settings window was used; **fixed 2026-10-08**: a Kirigami bug (its `scrollingArea` binds
+  `root.flickable.width` without a null guard, still so upstream), hit when the settings window
+  is destroyed with ScrollablePages in it (ours, FormCardPage and the About page).
+  Main.qml now clears the settings window's pages and layers on its `closing` signal (the
+  window is destroyed only after the signal). Reproduced 5/5 in a minimal QML file and in the
+  app (offscreen: open Settings at Local Storage, close); with the fix 0 errors.
 
 ### T43 — CMake presets for debug, release and sanitizer builds
 - status: todo

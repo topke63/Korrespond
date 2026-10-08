@@ -82,6 +82,22 @@ Kirigami.ApplicationWindow {
         ]
     }
 
+    // Kirigami's ScrollablePage (also under FormCardPage and the About page) throws "Cannot
+    // read property 'flickable' of null" when the settings window is destroyed with its pages
+    // still in it. Removing the pages first, while the window still exists, avoids that.
+    Connections {
+        target: settings.configViewItem
+        ignoreUnknownSignals: true // the mobile settings page has no closing signal
+
+        function onClosing() {
+            const pageStack = settings.configViewItem.pageStack;
+            if (pageStack) {
+                pageStack.layers.clear();
+                pageStack.clear();
+            }
+        }
+    }
+
     Shortcut {
         sequence: "Ctrl+,"
         enabled: MailController.hasAccount

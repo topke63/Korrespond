@@ -6,7 +6,6 @@ import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.ki18n
 import org.kde.kirigami as Kirigami
-import org.kde.kirigamiaddons.components as Components
 import PlasmaMail
 
 // Folder list beside the pages (docked on wide windows, sliding in on narrow ones), with the
@@ -38,9 +37,7 @@ Kirigami.OverlayDrawer {
             contentItem: RowLayout {
                 spacing: Kirigami.Units.smallSpacing
 
-                Components.Avatar {
-                    Layout.preferredWidth: Kirigami.Units.iconSizes.medium
-                    Layout.preferredHeight: Kirigami.Units.iconSizes.medium
+                SenderAvatar {
                     Layout.leftMargin: Kirigami.Units.smallSpacing
                     name: MailController.accountEmail
                 }

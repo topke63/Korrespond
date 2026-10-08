@@ -7,7 +7,6 @@ import QtQuick.Layouts
 import QtWebEngine
 import org.kde.ki18n
 import org.kde.kirigami as Kirigami
-import org.kde.kirigamiaddons.components as Components
 import PlasmaMail
 
 Kirigami.Page {
@@ -43,14 +42,17 @@ Kirigami.Page {
         // Subject, sender and attachments above the body.
         ColumnLayout {
             Layout.fillWidth: true
-            Layout.margins: Kirigami.Units.gridUnit
-            Layout.bottomMargin: Kirigami.Units.largeSpacing
+            Layout.leftMargin: Kirigami.Units.gridUnit * 1.5
+            Layout.rightMargin: Kirigami.Units.gridUnit * 1.5
+            Layout.topMargin: Kirigami.Units.gridUnit
+            Layout.bottomMargin: Kirigami.Units.gridUnit
             visible: page.hasMessage
-            spacing: Kirigami.Units.largeSpacing
+            spacing: Kirigami.Units.gridUnit * 0.75
 
             Kirigami.Heading {
                 Layout.fillWidth: true
-                level: 2
+                level: 1
+                font.weight: Font.Bold
                 wrapMode: Text.Wrap
                 textFormat: Text.PlainText
                 text: MailController.messageSubject.length > 0 ? MailController.messageSubject
@@ -61,10 +63,9 @@ Kirigami.Page {
                 Layout.fillWidth: true
                 spacing: Kirigami.Units.largeSpacing
 
-                Components.Avatar {
-                    Layout.alignment: Qt.AlignTop
-                    Layout.preferredWidth: Kirigami.Units.iconSizes.large
-                    Layout.preferredHeight: Kirigami.Units.iconSizes.large
+                SenderAvatar {
+                    Layout.alignment: Qt.AlignVCenter
+                    implicitWidth: Kirigami.Units.gridUnit * 2.5
                     name: page.sender.name
                 }
 
@@ -85,6 +86,7 @@ Kirigami.Page {
                             text: page.sender.address
                             textFormat: Text.PlainText
                             color: Kirigami.Theme.disabledTextColor
+                            font: Kirigami.Theme.smallFont
                             elide: Text.ElideRight
                         }
                         QQC2.Label {
@@ -100,6 +102,7 @@ Kirigami.Page {
                         text: KI18n.i18nc("@label recipients of a message", "To: %1", MailController.messageTo)
                         textFormat: Text.PlainText
                         color: Kirigami.Theme.disabledTextColor
+                        font: Kirigami.Theme.smallFont
                         elide: Text.ElideRight
                     }
                 }
@@ -130,6 +133,7 @@ Kirigami.Page {
         Kirigami.Separator {
             Layout.fillWidth: true
             visible: page.hasMessage
+            opacity: 0.5
         }
 
         Item {

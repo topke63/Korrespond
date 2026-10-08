@@ -1070,6 +1070,8 @@ body below. Message previews in the list (needs fetching body text) are out of s
   accent dot + bold sender + accent date; read subjects use `disabledTextColor`. Separators are
   inset to start at the text. Refresh is icon-only with a tooltip mentioning F5.
 
+  Refined 2026-10-08 (T53 direction): solid `SenderAvatar` (new SenderAvatar.qml: name color,
+  white initial), rounded inset selection/hover, no separators, semibold senders.
 ### T52 — Message view
 - status: done
 - depends on: T50
@@ -1087,6 +1089,8 @@ body below. Message previews in the list (needs fetching body text) are out of s
   subject is a level-2 heading in the page. WebEngine console messages are dropped
   (`onJavaScriptConsoleMessage`), so blocked remote loads no longer flood the log.
 
+  Refined 2026-10-08 (T53 direction): level-1 bold subject, 2.5-grid-unit `SenderAvatar`,
+  small dim address/"To" line, wider margins. Sidebar uses `SenderAvatar` too.
 ### T53 — Visual review with the user
 - status: todo
 - depends on: T49–T52
@@ -1095,7 +1099,9 @@ body below. Message previews in the list (needs fetching body text) are out of s
 - inputs: the user runs the app.
 - output: user's verdict on the new look recorded in notes.
 - verify: manual.
-- notes:
+- notes: 2026-10-08 user direction: "Mimestream's clean look with Mailspring's avatars", done as
+  tighter spacing/typography in T51/T52 (no new tasks). Previews / smart grouping (Spark) not
+  requested; add as new tasks only if the user asks.
 
 ### T25 — Global verify
 - status: todo

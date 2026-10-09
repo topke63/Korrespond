@@ -1729,7 +1729,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   `--google` is on the command line (`tools/imapprobe.cpp`), else a QCoreApplication as before.
 
 ### T79 — `imap-probe --google`
-- status: todo
+- status: done
 - depends on: T76, T77, T78
 - parallel-safe with: T81–T84
 - files: tools/imapprobe.cpp
@@ -1738,7 +1738,11 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   10 INBOX headers like the Yahoo mode; then refreshes the token once and lists folders again
   over a new session. Prints only "signed in" / "token refreshed", never tokens.
 - verify: build succeeds; live run is T80.
-- notes:
+- notes: Done 2026-10-09. Forces provider gmail + authMethod oauth; no password asked. Order:
+  sign-in → "Signed in" → folders → newest 10 INBOX headers → newest message → refresh →
+  "Token refreshed" → folders over a new session → OK. The 60 s no-answer timer only starts
+  after the browser sign-in. `--google --sync` is refused. Without a configured client it
+  prints the "No Google OAuth client" error and exits 1 (checked); live run is T80.
 
 ### T80 — Manual check: Google sign-in with `imap-probe`
 - status: todo

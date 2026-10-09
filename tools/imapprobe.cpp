@@ -15,10 +15,18 @@
 // folder and the total size. Also reads PLASMAMAIL_STORE_DIR (required), PLASMAMAIL_SINCE
 // (yyyy-MM-dd, default all mail) and PLASMAMAIL_MAX_MB (default unlimited). Mail is kept
 // forever otherwise. Only reads from the server.
+//
+//   PLASMAMAIL_EMAIL=you@gmail.com build/bin/imap-probe --google
+//
+// --google signs in to Gmail through the browser (needs the Google OAuth client from
+// plasmamailrc [GoogleOAuth] or PLASMAMAIL_GOOGLE_CLIENT_ID / _SECRET), lists the folders and
+// the newest INBOX headers, then refreshes the access token once and lists the folders again
+// over a new session. Prints only "signed in" / "token refreshed", never a token.
 
 #include "account.h"
 #include "imapclient.h"
 #include "messagestore.h"
+#include "oauthclient.h"
 #include "storagesettings.h"
 #include "syncmanager.h"
 
@@ -84,8 +92,12 @@ int main(int argc, char *argv[])
     }
     QCoreApplication &app = *appHolder;
     const bool syncMode = app.arguments().contains(u"--sync"_s);
+    if (googleMode && syncMode) {
+        std::cerr << "--google and --sync can't be combined yet." << std::endl;
+        return 1;
+    }
 
-    const QString provider = qEnvironmentVariable("PLASMAMAIL_PROVIDER", u"yahoo"_s);
+    const QString provider = googleMode ? u"gmail"_s : qEnvironmentVariable("PLASMAMAIL_PROVIDER", u"yahoo"_s);
     Account account;
     if (!Account::applyPreset(account, provider)) {
         std::cerr << "Unknown PLASMAMAIL_PROVIDER: " << provider.toStdString() << " (use yahoo, gmail or outlook)" << std::endl;
@@ -97,10 +109,12 @@ int main(int argc, char *argv[])
         return 1;
     }
     QString password = qEnvironmentVariable("PLASMAMAIL_PASSWORD");
-    if (password.isEmpty()) {
+    if (googleMode) {
+        account.authMethod = u"oauth"_s;
+    } else if (password.isEmpty()) {
         password = readPasswordFromTerminal();
     }
-    if (password.isEmpty()) {
+    if (password.isEmpty() && !googleMode) {
         std::cerr << "No password: set PLASMAMAIL_PASSWORD or run in a terminal to be asked." << std::endl;
         return 1;
     }
@@ -158,7 +172,51 @@ int main(int argc, char *argv[])
         std::cerr << "ERROR: no answer within " << timeoutMs / 1000 << " s" << std::endl;
         QCoreApplication::exit(1);
     });
-    timeout.start();
+    if (!googleMode) {
+        timeout.start(); // --google starts it once the browser sign-in is done
+    }
+
+    // --google: sign in, run the usual check, then refresh the token once and list the folders
+    // again over a new session.
+    enum class GoogleStage {
+        SigningIn,
+        FirstSession,
+        Refreshing,
+        SecondSession
+    };
+    GoogleStage stage = GoogleStage::SigningIn;
+    QString refreshToken;
+    OAuthClient oauth;
+    const auto afterFirstSession = [&] {
+        if (!googleMode) {
+            print(u"OK"_s);
+            QCoreApplication::exit(0);
+            return;
+        }
+        stage = GoogleStage::Refreshing;
+        oauth.refresh(refreshToken);
+    };
+    QObject::connect(&oauth, &OAuthClient::failed, &app, [](const QString &message) {
+        std::cerr << "ERROR: " << message.toStdString() << std::endl;
+        QCoreApplication::exit(1);
+    });
+    QObject::connect(&oauth, &OAuthClient::signedIn, &app, [&](const QString &accessToken, const QString &newRefreshToken, const QDateTime &) {
+        print(u"Signed in"_s);
+        refreshToken = newRefreshToken;
+        stage = GoogleStage::FirstSession;
+        timeout.start();
+        client.setAccount(account, accessToken);
+        client.listFolders();
+    });
+    QObject::connect(&oauth, &OAuthClient::accessTokenChanged, &app, [&](const QString &accessToken, const QDateTime &) {
+        if (stage != GoogleStage::Refreshing) {
+            return;
+        }
+        print(u"Token refreshed"_s);
+        stage = GoogleStage::SecondSession;
+        client.setAccount(account, accessToken);
+        client.listFolders();
+    });
 
     SyncManager sync(&client, &store);
     sync.setSettings(settings);
@@ -190,12 +248,18 @@ int main(int argc, char *argv[])
     });
 
     QObject::connect(&client, &ImapClient::foldersListed, &app, [&](const QList<FolderInfo> &folders) {
+        timeout.start();
         print(u"\nFolders (%1):"_s.arg(folders.size()));
         for (const FolderInfo &folder : folders) {
             print(u"  %1%2%3"_s.arg(QString(folder.depth * 2, u' '), folder.path, folder.role.isEmpty() ? QString() : u"  [%1]"_s.arg(folder.role)));
             if (folder.role == "inbox"_L1) {
                 inbox = folder.path;
             }
+        }
+        if (stage == GoogleStage::SecondSession) {
+            print(u"OK"_s);
+            QCoreApplication::exit(0);
+            return;
         }
         if (syncMode) {
             syncFolders = folders;
@@ -220,22 +284,28 @@ int main(int argc, char *argv[])
                       .arg(msg.date.toLocalTime().toString(u"yyyy-MM-dd hh:mm"_s), msg.from.left(30), msg.subject.left(60)));
         }
         if (messages.isEmpty()) {
-            print(u"\nInbox is empty; nothing to fetch. OK"_s);
-            QCoreApplication::exit(0);
+            print(u"\nInbox is empty; nothing to fetch."_s);
+            afterFirstSession();
             return;
         }
         client.fetchMessage(folder, messages.first().uid);
     });
 
-    QObject::connect(&client, &ImapClient::messageFetched, &app, [](const QString &, qint64 uid, const std::shared_ptr<KMime::Message> &message) {
+    QObject::connect(&client, &ImapClient::messageFetched, &app, [&](const QString &, qint64 uid, const std::shared_ptr<KMime::Message> &message) {
         const auto *subject = message->subject();
         print(u"\nFetched newest message (UID %1): \"%2\", %3 bytes"_s.arg(uid)
                   .arg(subject ? subject->asUnicodeString() : QString())
                   .arg(message->encodedContent().size()));
-        print(u"OK"_s);
-        QCoreApplication::exit(0);
+        afterFirstSession();
     });
 
-    client.listFolders();
+    if (googleMode) {
+        // Queued: a failure before app.exec() starts would be lost.
+        QTimer::singleShot(0, &app, [&] {
+            oauth.signIn(account.email);
+        });
+    } else {
+        client.listFolders();
+    }
     return app.exec();
 }

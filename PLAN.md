@@ -3103,9 +3103,11 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   accountlistmodel.cpp moved into the `plasmamail_models` static lib so the new
   autotests/accountlistmodeltest.cpp can link them (no QML registration involved). ctest 17/17,
   fresh configure in a separate build dir ok, offscreen clean. moveAccount itself has no unit test.
+  Commit note: the source/CMake part landed in 06b8d30 (a planning commit picked up the working
+  tree); 3de53eb has the test and these notes.
 
 ### T149 — Settings → Accounts: move up / down buttons
-- status: todo
+- status: done
 - depends on: T148
 - parallel-safe with: none
 - files: src/qml/AccountSettingsPage.qml
@@ -3114,10 +3116,13 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   "Move down"); the first row's up and the last row's down are disabled. The sidebar sections
   reorder at once.
 - verify: `qmllint` clean; offscreen start prints no new QML warnings.
-- notes:
+- notes: Done 2026-10-09. ToolButtons go-up/go-down per row (tooltips + accessible names "Move up" /
+  "Move down"), enabled by `index > 0` / `index < accountRepeater.count - 1`. QtTest probe hosting the
+  real page with a stub controller: states correct before and after moves, an arrow click does not
+  open the details page (a row click still does). qmllint clean, ctest 17/17, offscreen clean.
 
 ### T150 — Manual check: reorder accounts
-- status: todo
+- status: waiting (manual check with the user)
 - depends on: T149
 - parallel-safe with: none
 - files: none

@@ -22,6 +22,8 @@ FormCard.FormCardPage {
     FormCard.FormCard {
         // One row per account, in the order they were added.
         Repeater {
+            id: accountRepeater
+
             model: MailController.accounts
 
             delegate: FormCard.AbstractFormDelegate {
@@ -32,6 +34,7 @@ FormCard.FormCardPage {
                 required property string provider
                 required property string server
                 required property string authMethod
+                required property int index
 
                 onClicked: page.QQC2.ApplicationWindow.window.pageStack.layers.push(detailsPage, {
                     email: email,
@@ -66,6 +69,26 @@ FormCard.FormCardPage {
                             font: Kirigami.Theme.smallFont
                             elide: Text.ElideRight
                         }
+                    }
+                    QQC2.ToolButton {
+                        icon.name: "go-up"
+                        display: QQC2.AbstractButton.IconOnly
+                        enabled: accountRow.index > 0
+                        onClicked: MailController.moveAccount(accountRow.email, -1)
+                        Accessible.name: KI18n.i18nc("@action:button", "Move up")
+                        QQC2.ToolTip.text: Accessible.name
+                        QQC2.ToolTip.visible: hovered || activeFocus
+                        QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
+                    }
+                    QQC2.ToolButton {
+                        icon.name: "go-down"
+                        display: QQC2.AbstractButton.IconOnly
+                        enabled: accountRow.index < accountRepeater.count - 1
+                        onClicked: MailController.moveAccount(accountRow.email, 1)
+                        Accessible.name: KI18n.i18nc("@action:button", "Move down")
+                        QQC2.ToolTip.text: Accessible.name
+                        QQC2.ToolTip.visible: hovered || activeFocus
+                        QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
                     }
                     Kirigami.Icon {
                         implicitWidth: Kirigami.Units.iconSizes.small

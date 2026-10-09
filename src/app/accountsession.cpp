@@ -33,6 +33,7 @@ AccountSession::AccountSession(const Account &account, const QString &storeDir, 
     connect(m_client, &ImapClient::moveFailed, this, &AccountSession::moveFailed);
     connect(m_client, &ImapClient::sessionLost, this, &AccountSession::sessionLost);
     connect(m_client, &ImapClient::jobsDropped, this, &AccountSession::jobsDropped);
+    connect(m_client, &ImapClient::sessionLost, this, &AccountSession::stopWatcher);
     // Any answer from the server means the connection works; a fatal error (the session is gone)
     // means it does not. A refused command (e.g. no such folder) leaves the session, and so the state.
     connect(m_client, &ImapClient::headersFetched, this, &AccountSession::markConnected);
@@ -75,6 +76,7 @@ AccountSession::AccountSession(const Account &account, const QString &storeDir, 
 // SyncManager uses the store, so it goes first.
 AccountSession::~AccountSession()
 {
+    stopWatcher();
     delete m_sync;
 }
 
@@ -123,6 +125,9 @@ void AccountSession::setConnectionState(ConnectionState state, const QString &er
     }
     m_connectionState = state;
     m_lastError = state == Failed ? error : QString();
+    if (state != Connected) {
+        stopWatcher(); // it follows the main connection
+    }
     Q_EMIT connectionStateChanged();
 }
 
@@ -233,8 +238,46 @@ void AccountSession::connectWithSecret(const QString &secret)
     // setAccount() disconnects, which a running sync would never hear about.
     m_sync->stop();
     setSyncing(false);
+    stopWatcher();
     m_client->setAccount(m_account, secret);
     m_client->listFolders();
+}
+
+void AccountSession::startWatcher()
+{
+    if (m_connectionState != Connected) {
+        return;
+    }
+    if (!m_watcher) {
+        m_watcher = new ImapIdleWatcher(this);
+        connect(m_watcher, &ImapIdleWatcher::inboxChanged, this, &AccountSession::inboxChanged);
+        connect(m_watcher, &ImapIdleWatcher::stateChanged, this, &AccountSession::pushStateChanged);
+    }
+    if (m_watcher->state() != ImapIdleWatcher::Stopped) {
+        return;
+    }
+    // Asked before every login. The client's secret is the password, or for OAuth the access token
+    // that the sign-in code renews by itself before it expires (see onAccessToken).
+    m_watcher->start(m_account, [this](const std::function<void(const QString &)> &done) {
+        done(m_client->secret());
+    });
+}
+
+void AccountSession::stopWatcher()
+{
+    if (m_watcher && m_watcher->state() != ImapIdleWatcher::Stopped) {
+        m_watcher->stop();
+    }
+}
+
+bool AccountSession::idling() const
+{
+    return m_watcher && m_watcher->state() == ImapIdleWatcher::Idling;
+}
+
+ImapIdleWatcher::State AccountSession::pushState() const
+{
+    return m_watcher ? m_watcher->state() : ImapIdleWatcher::Stopped;
 }
 
 bool AccountSession::showStoredFolders()

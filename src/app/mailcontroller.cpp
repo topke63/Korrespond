@@ -8,6 +8,7 @@
 #include "appsettings.h"
 #include "foldermodel.h"
 #include "folderutils.h"
+#include "idlepolicy.h"
 #include "imapclient.h"
 #include "messagecomposer.h"
 #include "messagelistmodel.h"
@@ -26,6 +27,7 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QGuiApplication>
+#include <QMetaEnum>
 #include <QPalette>
 #include <QSaveFile>
 #include <QStandardPaths>
@@ -78,10 +80,14 @@ MailController::MailController(QObject *parent)
     if (QCoreApplication *app = QCoreApplication::instance()) {
         connect(app, &QCoreApplication::aboutToQuit, this, [this] {
             m_attachmentDir.reset();
+            for (AccountSession *session : std::as_const(m_sessions)) {
+                session->stopWatcher();
+            }
         });
     }
     m_app = AppSettings::load();
-    m_checkTimer->start(std::chrono::minutes(m_app.checkMinutes));
+    // Ticks often; checkForNewMail() decides per account whether its interval has passed.
+    m_checkTimer->start(std::chrono::seconds(30));
 
     m_storage = StorageSettings::load();
     const QList<Account> accounts = Account::loadAll();
@@ -195,8 +201,24 @@ AccountSession *MailController::createSession(const Account &account)
     connect(session, &AccountSession::inboxChecked, this, [this, session](const QString &folder, int unreadTotal, const QList<MessageSummary> &newestUnread) {
         onInboxChecked(session, folder, unreadTotal, newestUnread);
     });
+    connect(session, &AccountSession::inboxChanged, this, [this, session] {
+        onPushChanged(session);
+    });
+    connect(session, &AccountSession::pushStateChanged, this, [this, session] {
+        // States only: no address, no data.
+        qInfo("Push state for account #%d: %s",
+              int(m_sessions.indexOf(session)) + 1,
+              session->idling() ? "Idling" : qPrintable(QString::fromLatin1(QMetaEnum::fromType<ImapIdleWatcher::State>().valueToKey(session->pushState()))));
+    });
     connect(session, &AccountSession::syncingChanged, this, &MailController::updateSyncing);
     connect(session, &AccountSession::syncTextChanged, this, &MailController::updateActivity);
+    connect(session, &AccountSession::connectionStateChanged, this, [this, session] {
+        // Back after a loss (the watcher was stopped with it) and the folders are known: push again.
+        // A session that is still being verified (m_pending) gets its watcher from onSessionFolders.
+        if (session->connectionState() == AccountSession::Connected && session != m_pending && !session->folders().isEmpty()) {
+            startPush(session);
+        }
+    });
     connect(session, &AccountSession::connectionStateChanged, this, &MailController::updateActivity);
     connect(session, &AccountSession::storageUsageChanged, this, &MailController::updateStorageUsage);
     return session;
@@ -211,6 +233,8 @@ void MailController::discardSession(AccountSession *session, bool deleteStore)
 {
     m_sharedRequested.erase(session);
     m_inflight.erase(session);
+    forgetChecks(session);
+    session->stopWatcher();
     if (m_awaitingFolders.erase(session) > 0) {
         endRequest();
     }
@@ -682,7 +706,6 @@ void MailController::saveAppSettings(bool keepInTray, int checkMinutes)
     }
     settings.save();
     m_app = settings;
-    m_checkTimer->start(std::chrono::minutes(m_app.checkMinutes));
     Q_EMIT appSettingsChanged();
 }
 
@@ -1178,10 +1201,55 @@ void MailController::setUnread(const QString &account, qint64 uid, bool unread)
     session->client()->setSeen(folder, uid, !unread);
 }
 
+// The timer path: an account with a working watcher is only polled as a safety net.
 void MailController::checkForNewMail()
 {
+    const auto now = std::chrono::steady_clock::now();
     for (AccountSession *session : std::as_const(m_sessions)) {
+        const auto last = m_lastCheck.find(session);
+        if (last != m_lastCheck.end() && now - last->second < IdlePolicy::pollInterval(session->idling(), m_app.checkMinutes)) {
+            continue;
+        }
         checkInbox(session);
+    }
+}
+
+void MailController::startPush(AccountSession *session)
+{
+    if (m_pushEnabled) {
+        session->startWatcher();
+    }
+}
+
+// Changes often come in bursts: wait a second, and never run two checks of one account at once.
+void MailController::onPushChanged(AccountSession *session)
+{
+    QTimer *&timer = m_pushDebounce[session];
+    if (!timer) {
+        timer = new QTimer(session);
+        timer->setSingleShot(true);
+        timer->setInterval(std::chrono::seconds(1));
+        connect(timer, &QTimer::timeout, this, [this, session] {
+            if (!isKnown(session)) {
+                return;
+            }
+            if (m_checking.contains(session)) {
+                m_checkQueued.insert(session);
+            } else {
+                checkInbox(session);
+            }
+        });
+    }
+    timer->start();
+}
+
+void MailController::forgetChecks(AccountSession *session)
+{
+    m_checkQueued.erase(session);
+    m_lastCheck.erase(session);
+    if (const auto it = m_pushDebounce.find(session); it != m_pushDebounce.end()) {
+        it->second->stop();
+        m_pushDebounce.erase(it);
     }
 }
 
@@ -1196,6 +1264,7 @@ void MailController::checkInbox(AccountSession *session)
         return;
     }
     m_checking.insert(session);
+    m_lastCheck[session] = std::chrono::steady_clock::now();
     updateActivity();
     session->client()->checkInbox(inbox, 20);
 }
@@ -1208,6 +1277,11 @@ void MailController::onInboxChecked(AccountSession *session, const QString &fold
     Q_EMIT activityChanged(); // the time changed even when the text did not
     if (!isKnown(session)) {
         return;
+    }
+    if (m_checkQueued.erase(session) > 0) {
+        QTimer::singleShot(0, session, [this, session] { // after this answer is handled
+            checkInbox(session);
+        });
     }
     const QString email = session->account().email;
     const int before = unreadCount();
@@ -1576,6 +1650,7 @@ void MailController::removeAccount(const QString &account)
     const QString email = session->account().email;
     m_sessions.removeOne(session);
     m_checking.erase(session);
+    forgetChecks(session);
     m_newMail.forget(email);
     if (m_unreadByAccount.erase(email) > 0) {
         Q_EMIT unreadCountChanged();
@@ -1712,6 +1787,7 @@ void MailController::onSessionError(AccountSession *session, const QString &mess
     m_inflight.erase(session); // its queued answers will not come
     // A failed background check is only logged: offline, it would complain every few minutes.
     const bool quiet = m_checking.erase(session) > 0;
+    m_checkQueued.erase(session); // the next poll or push change tries again
     updateActivity();
     if (quiet) {
         qWarning("Checking the inbox of %s failed: %s", qPrintable(session->account().email), qPrintable(message));
@@ -1754,6 +1830,7 @@ void MailController::onSessionFolders(AccountSession *session)
             fetchSharedPart(session); // its inbox is known now (a no-op if already asked)
         }
         checkInbox(session); // the first one records what is there and counts the unread
+        startPush(session);
         return;
     }
 

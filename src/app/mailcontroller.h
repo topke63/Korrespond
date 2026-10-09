@@ -21,6 +21,7 @@
 #include <QUrl>
 #include <QVariantMap>
 
+#include <chrono>
 #include <deque>
 #include <map>
 #include <memory>
@@ -368,6 +369,10 @@ private:
     // right after an account's folders arrive.
     void checkInbox(AccountSession *session);
     void checkForNewMail();
+    // Push mail (IDLE): the watcher's change signal starts a check after a short pause.
+    void startPush(AccountSession *session);
+    void onPushChanged(AccountSession *session);
+    void forgetChecks(AccountSession *session); // drops the timing state of a session that goes away
     void onInboxChecked(AccountSession *session, const QString &folder, int unreadTotal, const QList<MessageSummary> &newestUnread);
     // Keeps unreadCount in step with what happens here: delta for a message of `folder`.
     // Loads the inbox again if the open view shows it, so new mail appears in the list.
@@ -432,6 +437,10 @@ private:
     QTimer *m_checkTimer;
     std::map<QString, int> m_unreadByAccount; // unread messages per account's inbox
     std::set<AccountSession *> m_checking; // accounts with a background check in flight
+    std::set<AccountSession *> m_checkQueued; // a push change arrived during a check: one more after it
+    std::map<AccountSession *, QTimer *> m_pushDebounce; // single-shot, children of their session
+    std::map<AccountSession *, std::chrono::steady_clock::time_point> m_lastCheck;
+    bool m_pushEnabled = true; // gates starting watchers
     std::set<QString> m_moving; // moveKey()s of messages the server is moving
     std::set<AccountSession *> m_awaitingFolders; // sessions with a folder-list request in flight (counted as busy)
     AccountListModel *m_accounts;

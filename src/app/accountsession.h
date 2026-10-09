@@ -6,6 +6,7 @@
 #include "account.h"
 #include "folderutils.h"
 #include "imapclient.h"
+#include "imapidlewatcher.h"
 #include "storagesettings.h"
 
 #include <QList>
@@ -65,6 +66,14 @@ public:
     // and lists the folders. Later renewals reach the client by themselves.
     void connectWithRefreshToken(const QString &refreshToken);
     [[nodiscard]] QString refreshToken() const; // empty until signed in
+    // Push mail: an own connection in IDLE on INBOX (see ImapIdleWatcher). It logs in with the
+    // secret the main connection uses now (kept in the client; renewed OAuth tokens included).
+    // startWatcher() does nothing while a watcher runs; it is stopped whenever the main
+    // connection fails, closes or reconnects, so the next folder list starts a fresh one.
+    void startWatcher();
+    void stopWatcher();
+    [[nodiscard]] bool idling() const; // the watcher is in IDLE
+    [[nodiscard]] ImapIdleWatcher::State pushState() const;
     // Fills the folder model from the stored folder list, before connecting. False when storage
     // is off or nothing is stored.
     bool showStoredFolders();
@@ -94,6 +103,8 @@ Q_SIGNALS:
     void connectionStateChanged();
     void syncTextChanged();
     void storageUsageChanged();
+    void inboxChanged(); // the watcher heard of a change in INBOX
+    void pushStateChanged();
 
 private:
     void onFoldersListed(const QList<FolderInfo> &folders);
@@ -113,6 +124,7 @@ private:
     QString m_syncText;
     bool m_loggedIn = false; // the first access token has been used to connect
     ImapClient *m_client;
+    ImapIdleWatcher *m_watcher = nullptr; // created by startWatcher()
     FolderModel *m_folderModel;
     std::unique_ptr<MessageStore> m_store;
     SyncManager *m_sync;

@@ -3696,7 +3696,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   server (T173).
 
 ### T171 — Controller: use the watcher, poll less
-- status: todo
+- status: done
 - depends on: T170
 - parallel-safe with: none
 - files: src/app/accountsession.h, src/app/accountsession.cpp, src/app/mailcontroller.h,
@@ -3711,7 +3711,18 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   removed or the app quits and its states are logged without data.
 - verify: build succeeds; `ctest --preset dev` passes; offscreen start with a throw-away profile
   and no account shows no new warnings; real lint stays at the baseline (2) if QML changed.
-- notes:
+- notes: Done 2026-10-09. AccountSession owns one watcher (startWatcher/stopWatcher); provider returns
+  `ImapClient::secret()` (in-memory password, or the current OAuth access token, renewed ~5 min
+  before expiry by OAuthClient → setAccessToken). Start: onSessionFolders → startPush (gated by
+  `m_pushEnabled`, used by T172), and on a session that becomes Connected again with known folders
+  (tester fix: recovery without a new folder list). Stop: sessionLost, Failed state, reconnect
+  (connectWithSecret), discardSession/removeAccount, aboutToQuit, destructor. Non-fatal NO and
+  token renewal don't stop it (no churn). inboxChanged → 1 s debounce → checkInbox, or queued once
+  if a check runs (onInboxChecked runs it). Check timer ticks every 30 s; per account
+  `IdlePolicy::pollInterval(idling, CheckMinutes)` with m_lastCheck (worst case CheckMinutes + 30 s).
+  Log "Push state for account #n: <State>" (no address). Checked by reading + ctest 19/19 + offscreen;
+  needs a real server: start/Idling, push → check ~1 s, 15-min poll, one watcher after reconnect,
+  OAuth token in the watcher login → T173. Follow-ups → T174.
 
 ### T172 — Setting and status: push on/off, push state in the chip tooltip
 - status: todo
@@ -3742,6 +3753,21 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   push come back by itself; the setting off falls back to polling.
 - verify: manual, with the user.
 - notes:
+
+### T174 — Push follow-ups found in T171
+- status: todo
+- depends on: T171
+- parallel-safe with: none
+- files: src/app/mailcontroller.cpp, src/engine/imapclient.h, src/engine/imapclient.cpp
+- inputs: tester notes of T171.
+- output: (a) when `ImapClient::setAccount()`/`disconnectFromServer()` drop an in-flight
+  checkInbox silently (generation bump), MailController clears `m_checking` for that account (e.g.
+  extend T145's `jobsDropped()` to all pending requests, not only moves) so polling and push don't
+  stop for that account; (b) a push that arrived during a check that then failed is retried once
+  after a short delay instead of waiting for the 15-minute poll; (c) the push-state log line in
+  ~AccountSession prints "#0" — skip logging for a session no longer in the list.
+- verify: build; `ctest --preset dev`; offscreen start clean.
+- notes: pre-existing / edge cases; not urgent.
 
 ## Execution Loop
 

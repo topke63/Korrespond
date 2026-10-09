@@ -12,7 +12,9 @@ add_library(plasmamail_engine STATIC
     engine/newmailtracker.cpp
     engine/oauthclient.cpp
     engine/oauthsettings.cpp
+    engine/outgoingmessage.cpp
     engine/retention.cpp
+    engine/smtpclient.cpp
     engine/syncmanager.cpp
     engine/secretstore.cpp
     engine/storagesettings.cpp

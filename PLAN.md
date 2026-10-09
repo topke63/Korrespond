@@ -2258,7 +2258,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   14/14 tests.
 
 ### T109 — `SmtpClient`: send a message
-- status: todo
+- status: done
 - depends on: T108, T77
 - parallel-safe with: T99–T107
 - files: src/engine/smtpclient.h, src/engine/smtpclient.cpp (+ CMake line)
@@ -2266,7 +2266,20 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - output: `send(account, secret, from, to, cc, bcc, subject, body, inReplyTo, references)` →
   `sent()` / `failed(message)`; builds the message with KMime; encrypted connection only.
 - verify: build. Live check in T115.
-- notes:
+- notes: Done 2026-10-09 (nothing sent yet; live check is T115). Two classes instead of one:
+  `OutgoingMessage` (src/engine/outgoingmessage.*; a struct with from, to/cc/bcc, subject, body,
+  inReplyTo, references and `build(now)`) builds the RFC 5322 bytes with KMime — CRLF, 7-bit only,
+  UTF-8 text as quoted-printable (KMime encodes the body itself; an own encoder double-encoded
+  `=` as `=3D3D`, so there is none), encoded headers, Date, generated Message-ID on the sender's
+  domain, MIME-Version, In-Reply-To / References, **no Bcc header** — and the bare envelope
+  recipients (Bcc included). 10 tests (outgoingmessagetest: headers, recipients, no Bcc leak, body
+  round trip with non-ASCII/emoji/long lines, 7-bit and CRLF, reply headers, no name, several
+  addresses in one field). `SmtpClient` (smtpclient.*; KSMTP namespace is `KSmtp`, include path
+  `<KSMTP/…>`): `send(account, secret, message)` → `sent()` / `failed(text)`; port 465 = TLS,
+  else STARTTLS (never unencrypted); login with the password or XOAUTH2; one SendJob (`From` =
+  the account's address); 60 s timeout; a second send while one runs fails at once; the secret
+  is cleared when done; error texts never contain the password or a token. Build without
+  warnings; 15/15 tests.
 
 ### T110 — Message builder and reply/forward text
 - status: todo

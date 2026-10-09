@@ -64,6 +64,7 @@ private Q_SLOTS:
 
         const QHash<int, QByteArray> names = model.roleNames();
         QCOMPARE(names.value(MessageListModel::UidRole), "uid");
+        QCOMPARE(names.value(MessageListModel::AccountRole), "account");
         QCOMPARE(names.value(MessageListModel::SubjectRole), "subject");
         QCOMPARE(names.value(MessageListModel::FromRole), "from");
         QCOMPARE(names.value(MessageListModel::DateRole), "date");
@@ -135,6 +136,52 @@ private Q_SLOTS:
         model.setMessages({summary(5, u"Found"_s)});
         QCOMPARE(model.message(u"me@example.org"_s, 5).subject, u"Found"_s);
         QCOMPARE(model.message(u"me@example.org"_s, 999).uid, qint64(0));
+    }
+
+    void testSameUidInTwoAccounts()
+    {
+        MessageSummary yahoo = summary(7, u"From Yahoo"_s, true);
+        yahoo.account = u"me@yahoo.com"_s;
+        MessageSummary gmail = summary(7, u"From Gmail"_s, true);
+        gmail.account = u"me@gmail.com"_s;
+        MessageListModel model;
+        QAbstractItemModelTester tester(&model, QAbstractItemModelTester::FailureReportingMode::QtTest);
+        model.setMessages({yahoo, gmail});
+        QCOMPARE(model.rowCount(), 2);
+
+        QCOMPARE(model.index(0).data(MessageListModel::AccountRole).toString(), u"me@yahoo.com"_s);
+        QCOMPARE(model.index(1).data(MessageListModel::AccountRole).toString(), u"me@gmail.com"_s);
+        QCOMPARE(model.message(u"me@yahoo.com"_s, 7).subject, u"From Yahoo"_s);
+        QCOMPARE(model.message(u"me@gmail.com"_s, 7).subject, u"From Gmail"_s);
+        QCOMPARE(model.message(u"other@example.org"_s, 7).uid, qint64(0));
+    }
+
+    void testChangesOnlyTouchTheGivenAccount()
+    {
+        MessageSummary yahoo = summary(7, u"From Yahoo"_s, true);
+        yahoo.account = u"me@yahoo.com"_s;
+        MessageSummary gmail = summary(7, u"From Gmail"_s, true);
+        gmail.account = u"me@gmail.com"_s;
+        MessageListModel model;
+        model.setMessages({yahoo, gmail});
+        QSignalSpy spy(&model, &QAbstractItemModel::dataChanged);
+
+        model.setUnread(u"me@gmail.com"_s, 7, false);
+        QCOMPARE(spy.count(), 1);
+        QCOMPARE(spy.at(0).at(0).toModelIndex(), model.index(1));
+        QVERIFY(model.index(0).data(MessageListModel::UnreadRole).toBool());
+        QVERIFY(!model.index(1).data(MessageListModel::UnreadRole).toBool());
+
+        spy.clear();
+        model.setFlagged(u"me@yahoo.com"_s, 7, true);
+        QCOMPARE(spy.count(), 1);
+        QCOMPARE(spy.at(0).at(0).toModelIndex(), model.index(0));
+        QVERIFY(model.index(0).data(MessageListModel::FlaggedRole).toBool());
+        QVERIFY(!model.index(1).data(MessageListModel::FlaggedRole).toBool());
+
+        spy.clear();
+        model.setUnread(u"other@example.org"_s, 7, false); // no such account: nothing changes
+        QCOMPARE(spy.count(), 0);
     }
 
     void testClear()

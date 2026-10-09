@@ -1858,7 +1858,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   not in T87, so the build stays green. 12/12 tests pass.
 
 ### T87 — Tests for messages from two accounts
-- status: todo
+- status: done
 - depends on: T86
 - parallel-safe with: T68–T85
 - files: autotests/messagelistmodeltest.cpp
@@ -1866,7 +1866,10 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - output: tests: two accounts with the same uid stay separate rows; setUnread/setFlagged change
   only the row of the given account; the `account` role returns the email.
 - verify: `ctest --test-dir build -R messagelistmodeltest --output-on-failure`
-- notes:
+- notes: Done 2026-10-09. Added testSameUidInTwoAccounts (two rows with uid 7 stay separate, the
+  `account` role and `message(account, uid)` tell them apart, unknown account → empty) and
+  testChangesOnlyTouchTheGivenAccount (setUnread/setFlagged change one row, one signal; an
+  unknown account changes nothing); the role-name test checks "account".
 
 ### T88 — `MailController`: folders and messages per account
 - status: todo

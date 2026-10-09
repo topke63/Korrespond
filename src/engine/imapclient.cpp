@@ -471,8 +471,10 @@ void ImapClient::search(const QString &folder, const QString &text)
     const QString needle = text.trimmed();
     auto search = new KIMAP::SearchJob(session());
     search->setUidBased(true);
+    // IMAP's OR takes exactly two keys, so the three are nested.
     search->setTerm(KIMAP::Term(KIMAP::Term::Or,
-                                {KIMAP::Term(KIMAP::Term::Subject, needle), KIMAP::Term(KIMAP::Term::From, needle), KIMAP::Term(KIMAP::Term::Body, needle)}));
+                                {KIMAP::Term(KIMAP::Term::Subject, needle),
+                                 KIMAP::Term(KIMAP::Term::Or, {KIMAP::Term(KIMAP::Term::From, needle), KIMAP::Term(KIMAP::Term::Body, needle)})}));
     connect(search, &KJob::result, this, [this, folder, generation](KJob *job) {
         if (!checkJob(job, generation)) {
             return;

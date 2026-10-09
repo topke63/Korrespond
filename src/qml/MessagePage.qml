@@ -216,6 +216,7 @@ Kirigami.Page {
             Layout.rightMargin: Kirigami.Units.smallSpacing
             enabled: MailController.currentFolder !== ""
             // Enter searches the open folder on the server; Escape or an empty field shows the folder again.
+            autoAccept: false // the server is asked on Enter only, not after every keystroke
             onAccepted: MailController.search(text)
             onTextChanged: {
                 if (text === "") {

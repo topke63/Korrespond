@@ -1772,7 +1772,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   calls these yet (T83/T85 do).
 
 ### T82 — Tests for the store move
-- status: todo
+- status: done
 - depends on: T81
 - parallel-safe with: T68–T80
 - files: autotests/messagestoretest.cpp
@@ -1780,7 +1780,9 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - output: tests: a store with a message moves and opens in the new folder with its message and
   file; nothing to move → true, no folders created; target already has a store → nothing moved.
 - verify: `ctest --test-dir build -R messagestoretest --output-on-failure`
-- notes:
+- notes: Done 2026-10-09. 4 new tests: accountDir (case-insensitive, 40 hex chars); the move keeps
+  message, preview data and .eml bytes; nothing to move → true, no `accounts/` created; existing
+  account store → old files stay, account store unchanged. 12/12 test executables pass.
 
 ### T83 — `AccountSession`: one account's client, folders and store
 - status: todo

@@ -549,6 +549,70 @@ private Q_SLOTS:
         QVERIFY(store.previews(u"INBOX"_s).isEmpty());
         QVERIFY(!store.lastError().isEmpty());
     }
+
+    void testAccountDirUsesHashOfLowerCasedEmail()
+    {
+        const QString dir = MessageStore::accountDir(u"/data"_s, u"Topke63@Gmail.com"_s);
+        QCOMPARE(dir, MessageStore::accountDir(u"/data"_s, u"topke63@gmail.com"_s));
+        QVERIFY(dir.startsWith(u"/data/accounts/"_s));
+        QCOMPARE(dir.mid(QStringLiteral("/data/accounts/").size()).size(), 40); // SHA-1 as hex
+        QVERIFY(dir != MessageStore::accountDir(u"/data"_s, u"other@gmail.com"_s));
+    }
+
+    void testMoveLegacyStoreKeepsMessageAndFile()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        const QByteArray raw = rawMessage("legacy body");
+        {
+            MessageStore store(dir.path());
+            QVERIFY(store.open());
+            QVERIFY(store.addMessage(u"INBOX"_s, 1, summary(5, u"Old mail"_s), raw));
+        }
+        const QString account = MessageStore::accountDir(dir.path(), u"me@yahoo.com"_s);
+        QVERIFY(MessageStore::moveLegacyStore(dir.path(), account));
+
+        QVERIFY(!QFileInfo::exists(dir.filePath(u"mail.sqlite"_s)));
+        QVERIFY(!QFileInfo::exists(dir.filePath(u"messages"_s)));
+        MessageStore moved(account);
+        QVERIFY(moved.open());
+        QCOMPARE(moved.messages(u"INBOX"_s, -1).size(), 1);
+        QCOMPARE(moved.messages(u"INBOX"_s, -1).first().subject, u"Old mail"_s);
+        QCOMPARE(moved.rawMessage(u"INBOX"_s, 5), raw);
+        QCOMPARE(emlFiles(account).size(), 1);
+    }
+
+    void testMoveLegacyStoreWithNothingToMove()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        const QString account = MessageStore::accountDir(dir.path(), u"me@yahoo.com"_s);
+        QVERIFY(MessageStore::moveLegacyStore(dir.path(), account));
+        QVERIFY(!QFileInfo::exists(dir.filePath(u"accounts"_s)));
+    }
+
+    void testMoveLegacyStoreLeavesExistingAccountStoreAlone()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        const QString account = MessageStore::accountDir(dir.path(), u"me@yahoo.com"_s);
+        {
+            MessageStore legacy(dir.path());
+            QVERIFY(legacy.open());
+            QVERIFY(legacy.addMessage(u"INBOX"_s, 1, summary(5, u"Old mail"_s), rawMessage("a")));
+            MessageStore existing(account);
+            QVERIFY(existing.open());
+            QVERIFY(existing.addMessage(u"INBOX"_s, 1, summary(9, u"Already here"_s), rawMessage("b")));
+        }
+        QVERIFY(MessageStore::moveLegacyStore(dir.path(), account));
+
+        QVERIFY(QFileInfo::exists(dir.filePath(u"mail.sqlite"_s)));
+        QCOMPARE(emlFiles(dir.path()).size(), 1);
+        MessageStore existing(account);
+        QVERIFY(existing.open());
+        QVERIFY(existing.contains(u"INBOX"_s, 9));
+        QVERIFY(!existing.contains(u"INBOX"_s, 5));
+    }
 };
 
 QTEST_GUILESS_MAIN(MessageStoreTest)

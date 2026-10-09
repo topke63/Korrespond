@@ -13,6 +13,10 @@
   environment variables for manual tests.
 - **Global verify**:
   `cmake -S . -B build -G Ninja && cmake --build build && ctest --test-dir build --output-on-failure`
+  QML lint (since T159, 2026-10-09): `cmake --build --preset dev --target all_qmllint` (the Qt 6 qmllint
+  with the build's import paths; `/usr/bin/qmllint` is an old 1.0 tool that prints nothing — don't use
+  it). Baseline: **20** tagged warnings (10 missing-property, 7 unqualified, 3 unused-imports);
+  count with `... 2>&1 | grep -o "\[[a-z-]*\]$" | wc -l`. A task must not raise it.
 - **Open questions**:
   - **Q1** (answered 2026-10-08: yes, ready; the user types it in themselves. **Corrected 2026-10-08:** in the first GUI run the user entered their web login password, which Yahoo refuses over IMAP; an app password still has to be generated before T24): Does the user have a Yahoo app password ready (Yahoo → Account security →
     2-step verification on → "Generate app password")? Needed only by T6 and T24, which are
@@ -3317,7 +3321,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   Limit: inside a sandbox without the host's /proc a live host instance would look dead.
 
 ### T159 — Real qmllint baseline
-- status: todo
+- status: done
 - depends on: none
 - parallel-safe with: none
 - files: src/qml/*.qml, CMakePresets.json or src/CMakeLists.txt (lint target)
@@ -3330,7 +3334,31 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   `pragma ComponentBehavior: Bound` and qualified ids where cheap; the remaining warnings counted and
   written down as the baseline, so later tasks check "no new warnings" against it.
 - verify: the lint command runs; the count is at or below the recorded baseline; offscreen start clean.
-- notes: not a user request; a quality task found while verifying T156.
+- notes: not a user request; a quality task found while verifying T156. Done 2026-10-09 (user
+  approved). The `all_qmllint` target existed but ran without a Qt import path (Qt6_DIR resolves under
+  /opt/cuda, so QT6_INSTALL_QML is wrong): added `IMPORT_PATH ${KDE_INSTALL_FULL_QMLDIR}` to
+  qt_add_qml_module in src/CMakeLists.txt. Before: 1449 lines (mostly failed imports); with the path
+  56; after `pragma ComponentBehavior: Bound` in StatusBar, MessageListPage, MessagePage,
+  ComposeWindow, AccountSettingsPage, AccountSetupPage, FolderSidebar (+ `toolLoader.modelData` in the
+  MessagePage toolbar) and Main.qml's root id `window` → `mainWindow`: 20 (baseline above). Runtime
+  check: throw-away profile with a fake .invalid account, no D-Bus, no network, seeded store,
+  screenshots of the sidebar, list, open message, settings and compose: no QML errors; the two
+  "not placed in the graphics scene" lines are the same on HEAD. Probes 11/8/6 pass, ctest 17/17.
+  Left (T160): pageStack/show/close on untyped objects, applicationWindow() unqualified,
+  Qt.application.layoutDirection, 3 unused imports.
+
+### T160 — QML lint: the remaining 20 warnings
+- status: todo
+- depends on: T159
+- parallel-safe with: none
+- files: src/qml/Main.qml, src/qml/NotificationSettingsPage.qml, src/qml/MessageListPage.qml,
+  src/qml/MessagePage.qml, src/qml/FolderSidebar.qml, src/qml/Account*Page.qml
+- inputs: T159's list.
+- output: unused imports removed (check attached properties first); `pageStack`, `show`, `close` on
+  typed objects (e.g. `Kirigami.ApplicationWindow` casts / typed properties) or a commented
+  `// qmllint disable` where Kirigami gives no type; count below 20.
+- verify: lint count lower; offscreen start and the scratch probes clean.
+- notes: optional quality task, not requested by the user.
 
 ## Execution Loop
 

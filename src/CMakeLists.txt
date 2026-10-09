@@ -57,6 +57,8 @@ add_executable(plasma-mail
 qt_add_qml_module(plasma-mail
     URI PlasmaMail
     VERSION 1.0
+    # Lets the all_qmllint / plasma-mail_qmllint targets find Qt and KDE QML modules.
+    IMPORT_PATH ${KDE_INSTALL_FULL_QMLDIR}
     SOURCES
         app/mailnotifier.cpp app/mailnotifier.h
         app/trayicon.cpp app/trayicon.h

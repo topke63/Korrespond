@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: 2026 topke <topke63@gmail.com>
 // SPDX-License-Identifier: GPL-2.0-or-later
 
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Dialogs
 import QtQuick.Controls as QQC2

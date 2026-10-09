@@ -10,7 +10,7 @@ import org.kde.kirigamiaddons.settings as KirigamiSettings
 import PlasmaMail
 
 Kirigami.ApplicationWindow {
-    id: window
+    id: mainWindow
 
     // Shows account setup until an account exists, the mail view after.
     function showStartPage() {
@@ -52,7 +52,7 @@ Kirigami.ApplicationWindow {
         }
 
         enabled: MailController.hasAccount
-        modal: !window.wideScreen
+        modal: !mainWindow.wideScreen
         onModalChanged: updateOpen()
         onEnabledChanged: updateOpen()
         Component.onCompleted: updateOpen()
@@ -70,15 +70,15 @@ Kirigami.ApplicationWindow {
     // In a wide window the page row's default (fixed) mode gives every column the same width;
     // the dynamic mode uses each page's own width hints, which the resizable list column needs.
     Binding {
-        target: window.pageStack.columnView
+        target: mainWindow.pageStack.columnView
         property: "columnResizeMode"
-        value: window.pageStack.wideMode ? Kirigami.ColumnView.DynamicColumns : Kirigami.ColumnView.SingleColumn
+        value: mainWindow.pageStack.wideMode ? Kirigami.ColumnView.DynamicColumns : Kirigami.ColumnView.SingleColumn
     }
 
     KirigamiSettings.ConfigurationView {
         id: settings
 
-        window: window
+        window: mainWindow
         modules: [
             KirigamiSettings.ConfigurationModule {
                 moduleId: "accounts"
@@ -179,24 +179,24 @@ Kirigami.ApplicationWindow {
     Connections {
         target: MailController
         function onErrorOccurred(message: string) {
-            window.showPassiveNotification(message);
+            mainWindow.showPassiveNotification(message);
         }
         // A notification was clicked: show the message column (the window itself is raised in C++).
         function onShowMessageRequested() {
-            window.pageStack.currentIndex = window.pageStack.depth - 1;
+            mainWindow.pageStack.currentIndex = mainWindow.pageStack.depth - 1;
         }
         function onAccountChanged() {
             // Adding a second account keeps the open mail view; only the first or the last one
             // switches between setup and mail.
-            if (window.hadAccount !== MailController.hasAccount) {
-                window.showStartPage();
+            if (mainWindow.hadAccount !== MailController.hasAccount) {
+                mainWindow.showStartPage();
             }
             // After removing the account there is nothing left to configure.
             if (!MailController.hasAccount && settings.configViewItem) {
                 if (typeof settings.configViewItem.close === "function") {
                     settings.configViewItem.close(); // desktop: the settings window
                 } else {
-                    window.pageStack.layers.clear(); // mobile: the settings layer
+                    mainWindow.pageStack.layers.clear(); // mobile: the settings layer
                 }
             }
         }

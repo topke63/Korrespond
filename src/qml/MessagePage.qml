@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: 2026 topke <topke63@gmail.com>
 // SPDX-License-Identifier: GPL-2.0-or-later
 
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtCore
 import QtQuick.Controls as QQC2
@@ -82,6 +84,8 @@ Kirigami.Page {
             ]
 
             delegate: Loader {
+                id: toolLoader
+
                 required property var modelData
 
                 visible: page.hasMessage
@@ -188,13 +192,13 @@ Kirigami.Page {
                     id: buttonComponent
 
                     QQC2.ToolButton {
-                        icon.name: modelData.icon
-                        text: modelData.text
+                        icon.name: toolLoader.modelData.icon
+                        text: toolLoader.modelData.text
                         display: QQC2.AbstractButton.IconOnly
                         enabled: MailController.canCompose // enable only when we can compose a message
-                        onClicked: page.openCompose(modelData.kind)
+                        onClicked: page.openCompose(toolLoader.modelData.kind)
 
-                        QQC2.ToolTip.text: modelData.tooltip
+                        QQC2.ToolTip.text: toolLoader.modelData.tooltip
                         QQC2.ToolTip.visible: hovered
                         QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
                     }

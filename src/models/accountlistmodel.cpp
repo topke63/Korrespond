@@ -8,6 +8,8 @@
 
 #include <KLocalizedString>
 
+#include <algorithm>
+
 using namespace Qt::StringLiterals;
 
 AccountListModel::AccountListModel(QObject *parent)
@@ -41,6 +43,12 @@ QVariant AccountListModel::data(const QModelIndex &index, int role) const
         return u"%1:%2"_s.arg(account.imapHost).arg(account.imapPort);
     case AuthMethodRole:
         return account.authMethod;
+    case ConnectionStateRole:
+        return AccountSession::stateName(session->connectionState());
+    case StatusTextRole:
+        return session->lastError();
+    case SyncTextRole:
+        return session->syncText();
     case FolderModelRole:
         return QVariant::fromValue<QObject *>(session->folderModel());
     }
@@ -55,6 +63,9 @@ QHash<int, QByteArray> AccountListModel::roleNames() const
         {ProviderRole, "provider"},
         {ServerRole, "server"},
         {AuthMethodRole, "authMethod"},
+        {ConnectionStateRole, "connectionState"},
+        {StatusTextRole, "statusText"},
+        {SyncTextRole, "syncText"},
         {FolderModelRole, "folderModel"},
     };
 }
@@ -70,6 +81,20 @@ void AccountListModel::setSessions(const QList<AccountSession *> &sessions)
     m_sessions.clear();
     for (AccountSession *session : sessions) {
         m_sessions.append(session);
+        // The status roles follow the session; the row is looked up again as rows can move.
+        const auto changed = [this, session](const QList<int> &roles) {
+            const auto it = std::find(m_sessions.cbegin(), m_sessions.cend(), session);
+            if (it != m_sessions.cend()) {
+                const QModelIndex idx = index(int(it - m_sessions.cbegin()));
+                Q_EMIT dataChanged(idx, idx, roles);
+            }
+        };
+        connect(session, &AccountSession::connectionStateChanged, this, [changed] {
+            changed({ConnectionStateRole, StatusTextRole});
+        });
+        connect(session, &AccountSession::syncTextChanged, this, [changed] {
+            changed({SyncTextRole});
+        });
         // By the time destroyed() arrives the QPointer is already null.
         connect(session, &QObject::destroyed, this, [this] {
             for (int row = int(m_sessions.size()) - 1; row >= 0; --row) {

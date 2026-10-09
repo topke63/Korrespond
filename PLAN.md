@@ -2809,7 +2809,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   Build; 14/14 tests.
 
 ### T138 — `AccountListModel`: status roles
-- status: todo
+- status: done
 - depends on: T136, T137
 - parallel-safe with: none
 - files: src/models/accountlistmodel.h, src/models/accountlistmodel.cpp
@@ -2817,7 +2817,9 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - output: roles `connectionState` ("idle" | "connecting" | "connected" | "failed"), `statusText`
   (the last error or empty) and `syncText`; `dataChanged` when a session's state or text changes.
 - verify: build succeeds; all tests pass.
-- notes:
+- notes: Done 2026-10-09. Roles `connectionState` ("idle"/"connecting"/"connected"/"failed"),
+  `statusText` (the last error) and `syncText`; `dataChanged` for the session's row (looked up
+  again each time) when its state or sync text changes. Build; 14/14 tests; first used by T140.
 
 ### T139 — Controller: activity line
 - status: todo

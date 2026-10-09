@@ -3152,6 +3152,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   - Never put attachment names or contents into logs.
 - **Out of scope**: drag and drop into the compose window, inline images in the body, previews of
   attachments, forwarding with the original attachments (a later request), virus scanning.
+  Closed 2026-10-09: the user tried the Move up / Move down buttons and said reordering works (restart persistence not reported).
 
 ### T151 — Engine: attachment data from a message
 - status: done
@@ -3174,7 +3175,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   octet-stream. attachmentNames() still returns raw names (UI unchanged). ctest 17/17.
 
 ### T152 — Controller: open and save an attachment
-- status: todo
+- status: done
 - depends on: T151
 - parallel-safe with: none
 - files: src/app/mailcontroller.h, src/app/mailcontroller.cpp
@@ -3185,7 +3186,13 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   existing error toast), `Q_INVOKABLE bool attachmentIsRisky(int index)`. The temp folder is
   created with 0700 on first use and removed on quit. No file names in logs.
 - verify: build succeeds; `ctest --preset dev` passes.
-- notes:
+- notes: Done 2026-10-09. openAttachment / saveAttachment / attachmentIsRisky + signal
+  attachmentBlocked(name); errors via errorOccurred. Temp: `QTemporaryDir` plasma-mail-XXXXXX (0700),
+  numbered 0700 subfolder per opened attachment, files 0600 via QSaveFile; reset on aboutToQuit and in
+  the destructor. The risky rule lives in messagerenderer: `isRiskyAttachment(AttachmentData)` (last
+  suffix decides; declared, name-detected and content-detected MIME types; lists in one place) with
+  14 test rows (also touched src/engine/messagerenderer.{h,cpp}, autotests/messagerenderertest.cpp).
+  ctest 17/17, offscreen clean. Follow-ups in T158.
 
 ### T153 — Message view: clickable attachments
 - status: todo
@@ -3254,6 +3261,20 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   attachments, which open; Yahoo's Sent folder has a copy with them; Gmail has exactly one copy;
   a too large file is refused.
 - verify: manual, with the user.
+- notes:
+
+### T158 — Attachments: follow-ups from T152
+- status: todo
+- depends on: T153
+- parallel-safe with: none
+- files: src/app/mailcontroller.h, src/app/mailcontroller.cpp, src/app/main.cpp
+- inputs: tester notes of T152.
+- output: (a) the decoded attachment parts are cached with the open message instead of re-decoding
+  the whole message on every openAttachment/saveAttachment/attachmentIsRisky call; (b) when
+  `QDesktopServices::openUrl` returns false, show "No program is set up to open this file." via
+  errorOccurred; (c) at start, remove stale `plasma-mail-*` temp folders owned by the user (left
+  after a crash; they hold decoded attachments).
+- verify: build; `ctest --preset dev`; offscreen start clean.
 - notes:
 
 ## Execution Loop

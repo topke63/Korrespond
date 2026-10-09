@@ -45,3 +45,8 @@ struct AttachmentData {
 // The message's attachments with their decoded content, in the same order and with the same
 // part selection as attachmentNames().
 QList<AttachmentData> attachmentParts(const KMime::Message &msg);
+
+// True if opening the attachment could run code: its file suffix (the last one, case-insensitive)
+// is an executable or script suffix, or its declared or detected MIME type is one of those kinds.
+// "report.exe.pdf" is judged by ".pdf" and is not risky.
+bool isRiskyAttachment(const AttachmentData &part);

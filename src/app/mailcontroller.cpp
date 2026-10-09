@@ -21,11 +21,16 @@
 #include <KMime/Message>
 #include <KNotifyConfigWidget>
 
+#include <QCoreApplication>
+#include <QDesktopServices>
 #include <QDir>
+#include <QFileInfo>
 #include <QGuiApplication>
 #include <QPalette>
+#include <QSaveFile>
 #include <QStandardPaths>
 #include <QTime>
+#include <QUrl>
 
 #include <algorithm>
 
@@ -44,6 +49,13 @@ MailController::MailController(QObject *parent)
     m_googleConfigured = GoogleOAuthSettings::load().isConfigured();
     connect(m_checkTimer, &QTimer::timeout, this, &MailController::checkForNewMail);
     connect(this, &MailController::busyChanged, this, &MailController::updateActivity);
+    // Opened attachments are deleted at quit, not only when the controller is destroyed (the engine
+    // owning it is torn down after the event loop, which may not be reached on every exit path).
+    if (QCoreApplication *app = QCoreApplication::instance()) {
+        connect(app, &QCoreApplication::aboutToQuit, this, [this] {
+            m_attachmentDir.reset();
+        });
+    }
     m_app = AppSettings::load();
     m_checkTimer->start(std::chrono::minutes(m_app.checkMinutes));
 
@@ -1733,4 +1745,83 @@ void MailController::resetRequests()
         m_requests = 0;
         Q_EMIT busyChanged();
     }
+}
+
+namespace
+{
+// Writes the file with owner read/write only; the rename into place happens only after a full write.
+bool writeOwnerOnly(const QString &path, const QByteArray &data)
+{
+    QSaveFile file(path);
+    file.setDirectWriteFallback(false);
+    if (!file.open(QIODevice::WriteOnly)) {
+        return false;
+    }
+    file.setPermissions(QFileDevice::ReadOwner | QFileDevice::WriteOwner);
+    if (file.write(data) != data.size()) {
+        file.cancelWriting();
+        return false;
+    }
+    return file.commit();
+}
+}
+
+bool MailController::attachmentIsRisky(int index)
+{
+    if (!m_openMessage || index < 0) {
+        return false;
+    }
+    const QList<AttachmentData> parts = attachmentParts(*m_openMessage);
+    return index < parts.size() && isRiskyAttachment(parts.at(index));
+}
+
+void MailController::openAttachment(int index)
+{
+    if (!m_openMessage || index < 0) {
+        return;
+    }
+    const QList<AttachmentData> parts = attachmentParts(*m_openMessage);
+    if (index >= parts.size()) {
+        return;
+    }
+    const AttachmentData &part = parts.at(index);
+    if (isRiskyAttachment(part)) {
+        Q_EMIT attachmentBlocked(part.name);
+        return;
+    }
+    if (!m_attachmentDir) {
+        m_attachmentDir = std::make_unique<QTemporaryDir>(QDir::tempPath() + u"/plasma-mail-XXXXXX"_s); // mode 0700
+    }
+    if (!m_attachmentDir->isValid()) {
+        Q_EMIT errorOccurred(i18n("Could not create a temporary folder for the attachment."));
+        return;
+    }
+    // Its own subfolder, so equal names never overwrite each other.
+    const QString folder = m_attachmentDir->filePath(QString::number(++m_attachmentCount));
+    if (!QDir().mkdir(folder) || !QFile::setPermissions(folder, QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner)) {
+        Q_EMIT errorOccurred(i18n("Could not create a temporary folder for the attachment."));
+        return;
+    }
+    const QString path = folder + u'/' + part.name;
+    if (!writeOwnerOnly(path, part.data)) {
+        Q_EMIT errorOccurred(i18n("Could not write the attachment to a temporary file."));
+        return;
+    }
+    QDesktopServices::openUrl(QUrl::fromLocalFile(path));
+}
+
+bool MailController::saveAttachment(int index, const QUrl &target)
+{
+    if (!m_openMessage || index < 0 || !target.isLocalFile() || target.toLocalFile().isEmpty()) {
+        return false;
+    }
+    const QList<AttachmentData> parts = attachmentParts(*m_openMessage);
+    if (index >= parts.size()) {
+        return false;
+    }
+    if (!writeOwnerOnly(target.toLocalFile(), parts.at(index).data)) {
+        Q_EMIT errorOccurred(i18n("Could not save the attachment to %1.", QFileInfo(target.toLocalFile()).fileName()));
+        return false;
+    }
+    return true;
 }

@@ -14,7 +14,9 @@
 #include <QDateTime>
 #include <QObject>
 #include <QQmlEngine>
+#include <QTemporaryDir>
 #include <QTimer>
+#include <QUrl>
 #include <QVariantMap>
 
 #include <deque>
@@ -233,6 +235,14 @@ public:
     // fetched from the server; marks it read if it was unread (on the server and locally).
     // The message properties stay empty until it has arrived.
     Q_INVOKABLE void openMessage(const QString &account, qint64 uid);
+    // Attachment `index` (as in messageAttachments) of the open message, from the loaded message only.
+    // openAttachment writes it to a private temp folder (removed when the app quits) and opens it with
+    // the default application; a risky one (executable, script, ...) is not opened: attachmentBlocked.
+    Q_INVOKABLE void openAttachment(int index);
+    // Writes it to the local file `target` (mode 0600); false, with errorOccurred, on failure.
+    Q_INVOKABLE bool saveAttachment(int index, const QUrl &target);
+    // True if opening it could run code (by file suffix, declared or detected type).
+    Q_INVOKABLE bool attachmentIsRisky(int index);
     // Flags or unflags message `uid` of the current list (or the open message): updates the list
     // and the open message at once, then stores the flag on the server.
     Q_INVOKABLE void setFlagged(const QString &account, qint64 uid, bool flagged);
@@ -310,6 +320,8 @@ Q_SIGNALS:
     // subject describe the message; uid is the newest new message of the account's inbox.
     void newMailArrived(const QString &account, int count, const QString &sender, const QString &subject, qint64 uid);
     void errorOccurred(const QString &message);
+    // An attachment was not opened because it could run code; name is its file name.
+    void attachmentBlocked(const QString &name);
 
 private:
     // The session the UI shows: the first saved account, or while the very first account is
@@ -418,6 +430,8 @@ private:
     bool m_messageFlagged = false;
     bool m_messageUnread = false;
     std::shared_ptr<KMime::Message> m_openMessage; // the loaded open message, for composeFor()
+    std::unique_ptr<QTemporaryDir> m_attachmentDir; // created on first open, removed with the controller
+    int m_attachmentCount = 0;
     StorageSettings m_storage;
     qint64 m_storageUsedBytes = 0;
     bool m_syncing = false;

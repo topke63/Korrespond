@@ -282,6 +282,41 @@ private Q_SLOTS:
         QCOMPARE(parts[1].mimeType, u"text/plain"_s);
     }
 
+    void testRiskyAttachment_data()
+    {
+        QTest::addColumn<QString>("name");
+        QTest::addColumn<QString>("mime");
+        QTest::addColumn<QByteArray>("data");
+        QTest::addColumn<bool>("risky");
+        // Risky by file suffix, whatever the declared type says.
+        QTest::newRow("shell script") << u"run.sh"_s << u"application/octet-stream"_s << QByteArray("echo hi\n") << true;
+        QTest::newRow("windows upper case") << u"SETUP.EXE"_s << u"application/octet-stream"_s << QByteArray::fromHex("4d5a") << true;
+        QTest::newRow("executable behind a document suffix") << u"invoice.pdf.exe"_s << u"application/pdf"_s << QByteArray("%PDF-1.4\n") << true;
+        QTest::newRow("desktop entry") << u"app.desktop"_s << u"application/octet-stream"_s << QByteArray("[Desktop Entry]\n") << true;
+        QTest::newRow("AppImage") << u"x.AppImage"_s << u"application/octet-stream"_s << QByteArray::fromHex("7f454c46") << true;
+        QTest::newRow("python script declared as text") << u"script.py"_s << u"text/plain"_s << QByteArray("print(1)\n") << true;
+        // Risky by detected type: no suffix, but a "#!" line (checked by the sniffing below).
+        QTest::newRow("shebang without suffix") << u"script"_s << u"application/octet-stream"_s << QByteArray("#!/bin/sh\necho hi\n") << true;
+        // Risky by declared type alone (the content is plain text), under a harmless name.
+        QTest::newRow("declared windows program") << u"file.dat"_s << u"application/x-msdownload"_s << QByteArray("not a program\n") << true;
+        // Not risky.
+        QTest::newRow("photo") << u"photo.jpg"_s << u"image/jpeg"_s << QByteArray::fromHex("ffd8ffe0") << false;
+        QTest::newRow("pdf") << u"doc.pdf"_s << u"application/pdf"_s << QByteArray("%PDF-1.4\n") << false;
+        QTest::newRow("text") << u"notes.txt"_s << u"text/plain"_s << QByteArray("hello\n") << false;
+        QTest::newRow("zip") << u"archive.zip"_s << u"application/zip"_s << QByteArray::fromHex("504b0304") << false;
+        // Only the last suffix counts: this is a PDF.
+        QTest::newRow("exe inside a pdf name") << u"report.exe.pdf"_s << u"application/pdf"_s << QByteArray("%PDF-1.4\n") << false;
+    }
+
+    void testRiskyAttachment()
+    {
+        QFETCH(QString, name);
+        QFETCH(QString, mime);
+        QFETCH(QByteArray, data);
+        QFETCH(bool, risky);
+        QCOMPARE(isRiskyAttachment(AttachmentData{name, mime, data}), risky);
+    }
+
     void testPreviewPlain()
     {
         // Line breaks and runs of spaces become single spaces; quoted lines are skipped.

@@ -6,6 +6,9 @@
 #include <KLocalizedString>
 #include <KMime/Message>
 
+#include <QFileInfo>
+#include <QMimeDatabase>
+#include <QMimeType>
 #include <QRegularExpression>
 #include <QTextDocumentFragment>
 
@@ -164,4 +167,72 @@ QList<AttachmentData> attachmentParts(const KMime::Message &msg)
         result.append(AttachmentData{safeAttachmentFileName(name), mime, part->decodedBody()});
     }
     return result;
+}
+
+namespace
+{
+// The lists of what counts as risky to open: file suffixes (lower case) and MIME types (the type
+// itself or any of its parents).
+const QStringList &riskySuffixes()
+{
+    static const QStringList list{u"sh"_s,  u"bash"_s, u"zsh"_s,  u"csh"_s,        u"ksh"_s,     u"fish"_s, u"desktop"_s,  u"exe"_s, u"bat"_s,
+                                  u"cmd"_s, u"com"_s,  u"scr"_s,  u"pif"_s,        u"msi"_s,     u"jar"_s,  u"appimage"_s, u"run"_s, u"bin"_s,
+                                  u"py"_s,  u"pyw"_s,  u"pl"_s,   u"rb"_s,         u"php"_s,     u"js"_s,   u"mjs"_s,      u"vbs"_s, u"vbe"_s,
+                                  u"wsf"_s, u"ps1"_s,  u"psm1"_s, u"lnk"_s,        u"reg"_s,     u"hta"_s,  u"cpl"_s,      u"dll"_s, u"so"_s,
+                                  u"deb"_s, u"rpm"_s,  u"apk"_s,  u"flatpakref"_s, u"command"_s, u"app"_s};
+    return list;
+}
+
+const QStringList &riskyMimeTypes()
+{
+    static const QStringList list{u"application/x-executable"_s,
+                                  u"application/x-sharedlib"_s,
+                                  u"application/x-shellscript"_s,
+                                  u"application/x-desktop"_s,
+                                  u"application/x-msdownload"_s,
+                                  u"application/x-ms-dos-executable"_s,
+                                  u"application/x-msi"_s,
+                                  u"application/java-archive"_s,
+                                  u"application/vnd.appimage"_s,
+                                  u"text/x-python"_s,
+                                  u"text/x-perl"_s,
+                                  u"application/javascript"_s,
+                                  u"text/javascript"_s,
+                                  u"application/x-perl"_s,
+                                  u"application/x-ruby"_s,
+                                  u"application/x-php"_s};
+    return list;
+}
+
+bool mimeIsRisky(const QMimeType &type)
+{
+    if (!type.isValid()) {
+        return false;
+    }
+    for (const QString &risky : riskyMimeTypes()) {
+        if (type.inherits(risky)) {
+            return true;
+        }
+    }
+    return false;
+}
+}
+
+bool isRiskyAttachment(const AttachmentData &part)
+{
+    // The last suffix decides: "x.exe.txt" is text, "x.pdf.exe" is an executable.
+    const QString suffix = QFileInfo(part.name).suffix().toLower();
+    if (riskySuffixes().contains(suffix)) {
+        return true;
+    }
+    // The declared type, then the type from the name and the content (a script without a suffix is
+    // found by its "#!" line), then the type from the name alone.
+    QMimeDatabase db;
+    if (mimeIsRisky(db.mimeTypeForName(part.mimeType.trimmed().toLower()))) {
+        return true;
+    }
+    if (mimeIsRisky(db.mimeTypeForFileNameAndData(part.name, part.data))) {
+        return true;
+    }
+    return mimeIsRisky(db.mimeTypeForFile(part.name, QMimeDatabase::MatchExtension));
 }

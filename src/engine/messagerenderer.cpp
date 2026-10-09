@@ -3,6 +3,9 @@
 
 #include "messagerenderer.h"
 
+#include <algorithm>
+#include <cmath>
+
 #include <KLocalizedString>
 #include <KMime/Message>
 
@@ -53,13 +56,68 @@ static QString plainTextHtml(const QString &text, const QColor &textColor, const
         + linkify(text.toHtmlEscaped()) + u"</div></body></html>"_s;
 }
 
-QString messageBodyHtml(const KMime::Message &msg, const QColor &text, const QColor &background)
+bool htmlHasOwnColours(const QString &html)
+{
+    static const QRegularExpression re(
+        uR"((?<![-\w])(color|background(-color)?)\s*:|\sbgcolor\s*=|<body\b[^>]*\s(text|link|vlink|alink|background)\s*=|<font\b[^>]*\scolor\s*=)"_s,
+        QRegularExpression::CaseInsensitiveOption);
+    return re.match(html).hasMatch();
+}
+
+static double luminance(const QColor &c)
+{
+    const auto channel = [](double v) {
+        return v <= 0.03928 ? v / 12.92 : std::pow((v + 0.055) / 1.055, 2.4);
+    };
+    return 0.2126 * channel(c.redF()) + 0.7152 * channel(c.greenF()) + 0.0722 * channel(c.blueF());
+}
+
+double contrastRatio(const QColor &a, const QColor &b)
+{
+    const double la = luminance(a);
+    const double lb = luminance(b);
+    return (std::max(la, lb) + 0.05) / (std::min(la, lb) + 0.05);
+}
+
+QColor readableLinkColour(const QColor &link, const QColor &background)
+{
+    constexpr double minimum = 3.0;
+    if (contrastRatio(link, background) >= minimum) {
+        return link;
+    }
+    // Move towards white on a dark background, towards black on a light one.
+    const QColor target = luminance(background) < 0.18 ? QColor(Qt::white) : QColor(Qt::black);
+    for (int percent = 10; percent <= 100; percent += 10) {
+        const QColor c(QColor::fromRgbF(link.redF() + (target.redF() - link.redF()) * percent / 100.0,
+                                        link.greenF() + (target.greenF() - link.greenF()) * percent / 100.0,
+                                        link.blueF() + (target.blueF() - link.blueF()) * percent / 100.0));
+        if (contrastRatio(c, background) >= minimum) {
+            return c;
+        }
+    }
+    return target;
+}
+
+QString messageBodyHtml(const KMime::Message &msg, const QColor &text, const QColor &background, const QColor &link)
 {
     const KMime::Content *html = msg.mainBodyPart("text/html");
     if (html && html->contentType() && html->contentType()->isHTMLText()) {
         // A <meta> before the mail's own markup is placed into <head> by the HTML parser,
         // so the policy applies before any of the mail's resources are requested.
-        return cspMeta() + html->decodedText();
+        // The style goes before the mail's markup so the mail's own rules still win.
+        const QString body = html->decodedText();
+        QString style;
+        if (htmlHasOwnColours(body)) {
+            style = u"<style>html{background:#fff;color:#000}</style>"_s;
+        } else {
+            const QString fg = text.name(QColor::HexRgb);
+            const QString bg = background.name(QColor::HexRgb);
+            const QColor mix =
+                QColor::fromRgbF((text.redF() + background.redF()) / 2, (text.greenF() + background.greenF()) / 2, (text.blueF() + background.blueF()) / 2);
+            style = u"<style>html,body{background:"_s + bg + u";color:"_s + fg + u"}a{color:"_s + readableLinkColour(link, background).name(QColor::HexRgb)
+                + u"}blockquote{border-left:2px solid "_s + mix.name(QColor::HexRgb) + u";margin-left:0;padding-left:8px;color:"_s + fg + u"}</style>"_s;
+        }
+        return cspMeta() + style + body;
     }
 
     const KMime::Content *plain = msg.mainBodyPart("text/plain");

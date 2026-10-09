@@ -22,7 +22,21 @@ inline constexpr auto messageContentSecurityPolicy = "default-src 'none'; style-
 // Turns a message body into HTML that is safe to show in a web view.
 // Uses the text/html part if the message has one, otherwise the text/plain part, escaped,
 // with http(s) URLs made clickable and shown in the given colors.
-QString messageBodyHtml(const KMime::Message &msg, const QColor &text, const QColor &background);
+// HTML mail without colours of its own gets the theme colours (and the link colour, made readable
+// on the background); HTML mail that sets its own colours is shown on a white page.
+QString messageBodyHtml(const KMime::Message &msg, const QColor &text, const QColor &background, const QColor &link);
+
+// True if the HTML sets its own text or background colours: a CSS color / background /
+// background-color property (not border-color etc.), a bgcolor attribute, text/link/vlink/alink/
+// background on <body>, or <font color=...>.
+bool htmlHasOwnColours(const QString &html);
+
+// WCAG contrast ratio (1..21) between two colours.
+double contrastRatio(const QColor &a, const QColor &b);
+
+// The link colour if it has a contrast of at least 3:1 on the background, else a lighter or
+// darker variant of it that does.
+QColor readableLinkColour(const QColor &link, const QColor &background);
 
 // A short plain-text excerpt of the body for the message list: the text/plain part, else the
 // text of the HTML part; quoted ("> ") lines skipped, whitespace collapsed, at most maxLength

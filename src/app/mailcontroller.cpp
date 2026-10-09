@@ -1413,7 +1413,7 @@ void MailController::showMessage(AccountSession *session, const QString &folder,
     m_messageTo = msg.to() ? msg.to()->displayString() : QString();
     m_messageDate = ::messageDate(msg); // falls back to the Received date
     const QPalette palette = QGuiApplication::palette();
-    m_messageHtml = messageBodyHtml(msg, palette.color(QPalette::Text), palette.color(QPalette::Base));
+    m_messageHtml = messageBodyHtml(msg, palette.color(QPalette::Text), palette.color(QPalette::Base), palette.color(QPalette::Link));
     m_messageAttachments = attachmentNames(msg);
     Q_EMIT currentMessageChanged();
 

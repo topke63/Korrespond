@@ -3380,7 +3380,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - **Out of scope**: a setting to switch modes, per-sender choices, dark versions of images.
 
 ### T161 — Engine: readable colours for HTML messages
-- status: todo
+- status: done
 - depends on: T7
 - parallel-safe with: none
 - files: src/engine/messagerenderer.h, src/engine/messagerenderer.cpp,
@@ -3395,7 +3395,15 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   background colours and the link colour), HTML with `style="color:#333"`, with `bgcolor`, with
   `<font color>`, with `border-color` only (counts as no own colours); the CSP meta still comes
   first; `ctest --preset dev` passes.
-- notes:
+- notes: Done 2026-10-09. File names as planned. `messageBodyHtml(msg, text, background, link)` (link
+  required; mailcontroller passes palette Link); `htmlHasOwnColours()` regex
+  `(?<![-\w])(color|background(-color)?)\s*:|\sbgcolor\s*=|<body\b[^>]*\s(text|link|vlink|alink|background)\s*=|<font\b[^>]*\scolor\s*=`
+  (case-insensitive; border-color etc. excluded; "color:" in visible text → white page, the safe side);
+  `readableLinkColour()` keeps ≥3:1 (WCAG `contrastRatio()`). Theme block after the CSP meta; own colours
+  → `html{background:#fff;color:#000}`. 15 new test rows, ctest 17/17. Dark check: throw-away profile
+  with BreezeDark kdeglobals (needs `QT_QPA_PLATFORMTHEME=KDE` offscreen, else the palette stays light),
+  seeded store, screenshots: reply text #fcfcfc on #232629, link #1d99f3 (~4.8:1), quote readable;
+  newsletter shown on white with its own colours. Found: quirks mode for every HTML mail → T163.
 
 ### T162 — Manual check: readable HTML messages
 - status: todo
@@ -3407,6 +3415,22 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - output: confirmed: both are readable, links included, in the dark theme.
 - verify: manual, with the user.
 - notes:
+
+### T163 — HTML mail renders in quirks mode (found in T161)
+- status: todo
+- depends on: T161
+- parallel-safe with: none
+- files: src/engine/messagerenderer.cpp, autotests/messagerenderertest.cpp
+- inputs: T161 tester: the CSP meta is emitted before the mail's markup, so a mail's
+  `<!DOCTYPE html>` comes after the first token and is ignored; every HTML mail renders in quirks
+  mode (seen: body bgcolor fills the viewport for a mail with a DOCTYPE).
+- output: if the mail starts (after whitespace/BOM/comments) with a DOCTYPE, that DOCTYPE is emitted
+  first, then the CSP meta and style; otherwise unchanged. `testCspAlwaysPresent` updated to "CSP meta
+  comes before any mail markup other than the DOCTYPE".
+- verify: build; ctest; a render of a DOCTYPE mail is in standards mode (`document.compatMode` ==
+  "CSS1Compat", or the bgcolor no longer fills the viewport).
+- notes: needs the user's OK: it changes the "CSP meta first" rule slightly (still before any markup
+  that could load something).
 
 ## Execution Loop
 

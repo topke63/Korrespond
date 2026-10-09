@@ -10,12 +10,13 @@
 using namespace Qt::StringLiterals;
 
 // KMime needs LF line endings (see T7 notes), so raw test messages use "\n".
-static QString render(const QByteArray &raw, const QColor &text = Qt::black, const QColor &background = Qt::white)
+static QString
+render(const QByteArray &raw, const QColor &text = Qt::black, const QColor &background = Qt::white, const QColor &link = QColor(0x12, 0x34, 0x56))
 {
     KMime::Message msg;
     msg.setContent(raw);
     msg.parse();
-    return messageBodyHtml(msg, text, background);
+    return messageBodyHtml(msg, text, background, link);
 }
 
 static QString cspMeta()
@@ -36,6 +37,60 @@ class MessageRendererTest : public QObject
     Q_OBJECT
 
 private Q_SLOTS:
+    void testHtmlColours_data()
+    {
+        QTest::addColumn<QString>("html");
+        QTest::addColumn<bool>("own");
+        QTest::newRow("none") << u"<p>hi</p>"_s << false;
+        QTest::newRow("style color") << u"<p style=\"color:#333\">hi</p>"_s << true;
+        QTest::newRow("style uppercase") << u"<p STYLE=\"COLOR : #333\">hi</p>"_s << true;
+        QTest::newRow("bgcolor") << u"<table bgcolor=\"#eee\"><tr><td>x</td></tr></table>"_s << true;
+        QTest::newRow("font color") << u"<font color=\"red\">x</font>"_s << true;
+        QTest::newRow("body text") << u"<body text=\"#000\">x</body>"_s << true;
+        QTest::newRow("border-color only") << u"<p style=\"border-color:red\">x</p>"_s << false;
+        QTest::newRow("text-decoration-color only") << u"<p style=\"text-decoration-color:red\">x</p>"_s << false;
+        QTest::newRow("style block background") << u"<style>p{background:#fff}</style><p>x</p>"_s << true;
+        QTest::newRow("background-color") << u"<p style=\"background-color:#fff\">x</p>"_s << true;
+    }
+    void testHtmlColours()
+    {
+        QFETCH(QString, html);
+        QFETCH(bool, own);
+        QCOMPARE(htmlHasOwnColours(html), own);
+        const QString out = render("Subject: a\nContent-Type: text/html\n\n" + html.toUtf8() + "\n", QColor("#abcdef"), QColor("#102030"), QColor("#fedcba"));
+        QVERIFY(out.startsWith(cspMeta() + u"<style>"_s));
+        QVERIFY(out.contains(html));
+        if (own) {
+            QVERIFY(out.contains(u"<style>html{background:#fff;color:#000}</style>"_s));
+            QVERIFY(!out.contains(u"#abcdef"_s));
+            QVERIFY(!out.contains(u"#102030"_s));
+        } else {
+            QVERIFY(out.contains(u"#abcdef"_s));
+            QVERIFY(out.contains(u"#102030"_s));
+            QVERIFY(out.contains(u"a{color:#fedcba}"_s));
+            QVERIFY(out.contains(u"blockquote{border-left:2px solid"_s));
+        }
+    }
+    void testLinkContrast_data()
+    {
+        QTest::addColumn<QColor>("link");
+        QTest::addColumn<QColor>("background");
+        QTest::addColumn<bool>("unchanged");
+        QTest::newRow("blue on white") << QColor("#0645ad") << QColor("#ffffff") << true;
+        QTest::newRow("dark blue on dark") << QColor("#00008b") << QColor("#1b1e20") << false;
+        QTest::newRow("pale on white") << QColor("#e0e0ff") << QColor("#ffffff") << false;
+        QTest::newRow("same as bg dark") << QColor("#202020") << QColor("#202020") << false;
+        QTest::newRow("same as bg light") << QColor("#f0f0f0") << QColor("#f0f0f0") << false;
+    }
+    void testLinkContrast()
+    {
+        QFETCH(QColor, link);
+        QFETCH(QColor, background);
+        QFETCH(bool, unchanged);
+        const QColor result = readableLinkColour(link, background);
+        QVERIFY(contrastRatio(result, background) >= 3.0);
+        QCOMPARE(result == link, unchanged);
+    }
     void testCspAlwaysPresent_data()
     {
         QTest::addColumn<QByteArray>("raw");

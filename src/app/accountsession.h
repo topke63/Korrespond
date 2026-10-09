@@ -87,6 +87,9 @@ Q_SIGNALS:
     void messageMoved(const QString &from, qint64 uid, const QString &to);
     void inboxChecked(const QString &folder, int unreadTotal, const QList<MessageSummary> &newestUnread);
     void errorOccurred(const QString &message);
+    void moveFailed(const QString &folder, qint64 uid, const QString &message);
+    void sessionLost(const QString &message);
+    void jobsDropped();
     void syncingChanged();
     void connectionStateChanged();
     void syncTextChanged();

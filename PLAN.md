@@ -3009,10 +3009,11 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 
 
 ### T145 — Moves dropped on reconnect / over-broad move failures (found in T142)
-- status: todo
+- status: done
 - depends on: T142
 - parallel-safe with: none
 - files: src/engine/imapclient.h, src/engine/imapclient.cpp, src/app/mailcontroller.cpp
+  (also mailcontroller.h and accountsession.{h,cpp}, which forward the new signals)
 - inputs: tester notes of T142.
 - output: (a) when `ImapClient::setAccount()`/`disconnectFromServer()` bump the generation, moves
   in flight are reported (e.g. a `jobsDropped()` signal) so MailController clears `m_moving`,
@@ -3020,7 +3021,16 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   error on an account no longer marks every in-flight move as failed ("Moving failed" shown for a
   move that the server completed).
 - verify: build; `ctest --preset dev`; offscreen start clean.
-- notes: pre-existing; not part of the user's request. Same family as T117's note (a non-fatal
+- notes: pre-existing; not part of the user's request.
+  Done 2026-10-09 (user approved). ImapClient: `m_pendingMoves`, every move step through
+  `checkMoveJob`; signals `moveFailed(folder, uid, msg)` (job NO, session survives), `sessionLost(msg)`
+  (from fail(), the only fatal path) and `jobsDropped()` (generation bump with moves pending).
+  MailController: `onMoveFailed` drops one move; `dropMoves(session, failed)` on sessionLost (with
+  "Moving failed") and jobsDropped (silent); onSessionError no longer drops moves. Each move's request
+  is released exactly once (traced). No ImapClient test harness: checked by reading; ctest 17/17,
+  offscreen clean. Left as is: onSessionError still calls resetRequests() on any error; a
+  moveByCopy failure after the copy can leave a copy in the target; a reconnect forgets a move the
+  server may have finished (list fixed at the next sync). Same family as T117's note (a non-fatal
   error clears the search FIFO; m_requests can leak).
 
 ### T146 — Toolbar: hover text on the buttons right of Archive/Delete

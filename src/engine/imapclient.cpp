@@ -75,6 +75,7 @@ ImapClient::ImapClient(QObject *parent)
 
 ImapClient::~ImapClient()
 {
+    m_pendingMoves.clear(); // nobody is listening any more
     disconnectFromServer();
 }
 
@@ -94,6 +95,10 @@ void ImapClient::disconnectFromServer()
 {
     ++m_generation; // whatever the old session still reports is no longer relevant
     dropSession();
+    if (!m_pendingMoves.isEmpty()) {
+        m_pendingMoves.clear();
+        Q_EMIT jobsDropped();
+    }
 }
 
 QString ImapClient::secret() const
@@ -129,6 +134,8 @@ void ImapClient::fail(quint64 generation, const QString &message)
     }
     m_failedGeneration = generation;
     dropSession();
+    m_pendingMoves.clear(); // the session's queued jobs fail with it
+    Q_EMIT sessionLost(message);
     Q_EMIT errorOccurred(message);
 }
 
@@ -206,6 +213,7 @@ void ImapClient::moveMessage(const QString &from, qint64 uid, const QString &to)
 {
     session();
     const quint64 generation = m_generation;
+    m_pendingMoves.insert(from + u'\n' + QString::number(uid));
     queueSelect(from, generation);
 
     const auto proceed = [this, from, uid, to, generation] {
@@ -221,8 +229,8 @@ void ImapClient::moveMessage(const QString &from, qint64 uid, const QString &to)
         move->setSequenceSet(KIMAP::ImapSet(uid));
         move->setMailBox(to);
         connect(move, &KJob::result, this, [this, from, uid, to, generation](KJob *job) {
-            if (checkJob(job, generation)) {
-                Q_EMIT messageMoved(from, uid, to);
+            if (checkMoveJob(job, generation, from, uid)) {
+                finishMove(from, uid, to);
             }
         });
         move->start();
@@ -233,8 +241,8 @@ void ImapClient::moveMessage(const QString &from, qint64 uid, const QString &to)
     }
     // Asked once per session, after the login that is already queued.
     auto capabilities = new KIMAP::CapabilitiesJob(session());
-    connect(capabilities, &KJob::result, this, [this, generation, proceed](KJob *job) {
-        if (!checkJob(job, generation)) {
+    connect(capabilities, &KJob::result, this, [this, generation, proceed, from, uid](KJob *job) {
+        if (!checkMoveJob(job, generation, from, uid)) {
             return;
         }
         m_capabilities = static_cast<KIMAP::CapabilitiesJob *>(job)->capabilities();
@@ -252,17 +260,17 @@ void ImapClient::moveByCopy(const QString &from, qint64 uid, const QString &to, 
     copy->setSequenceSet(KIMAP::ImapSet(uid));
     copy->setMailBox(to);
     connect(copy, &KJob::result, this, [this, from, uid, to, generation](KJob *copyJob) {
-        if (!checkJob(copyJob, generation)) {
+        if (!checkMoveJob(copyJob, generation, from, uid)) {
             return;
         }
-        const auto setDeleted = [this, uid, generation](bool deleted, const std::function<void()> &then) {
+        const auto setDeleted = [this, from, uid, generation](bool deleted, const std::function<void()> &then) {
             auto store = new KIMAP::StoreJob(session());
             store->setUidBased(true);
             store->setSequenceSet(KIMAP::ImapSet(uid));
             store->setFlags({"\\Deleted"});
             store->setMode(deleted ? KIMAP::StoreJob::AppendFlags : KIMAP::StoreJob::RemoveFlags);
-            connect(store, &KJob::result, this, [this, generation, then](KJob *job) {
-                if (checkJob(job, generation) && then) {
+            connect(store, &KJob::result, this, [this, from, uid, generation, then](KJob *job) {
+                if (checkMoveJob(job, generation, from, uid) && then) {
                     then();
                 }
             });
@@ -274,21 +282,23 @@ void ImapClient::moveByCopy(const QString &from, qint64 uid, const QString &to, 
             search->setUidBased(true);
             search->setTerm(KIMAP::Term(KIMAP::Term::Deleted));
             connect(search, &KJob::result, this, [this, from, uid, to, generation, setDeleted](KJob *job) {
-                if (!checkJob(job, generation)) {
+                if (!checkMoveJob(job, generation, from, uid)) {
                     return;
                 }
                 const QList<qint64> deleted = static_cast<KIMAP::SearchJob *>(job)->results();
                 if (deleted.size() != 1 || deleted.constFirst() != uid) {
                     // Leave the original as it was; the copy stays in `to`.
                     setDeleted(false, {});
-                    Q_EMIT errorOccurred(i18n(
-                        "The message was copied, but the original could not be removed safely because other messages in this folder are marked as deleted."));
+                    const QString message = i18n(
+                        "The message was copied, but the original could not be removed safely because other messages in this folder are marked as deleted.");
+                    Q_EMIT errorOccurred(message);
+                    failMove(from, uid, message);
                     return;
                 }
                 auto expunge = new KIMAP::ExpungeJob(session());
                 connect(expunge, &KJob::result, this, [this, from, uid, to, generation](KJob *expungeJob) {
-                    if (checkJob(expungeJob, generation)) {
-                        Q_EMIT messageMoved(from, uid, to);
+                    if (checkMoveJob(expungeJob, generation, from, uid)) {
+                        finishMove(from, uid, to);
                     }
                 });
                 expunge->start();
@@ -297,6 +307,32 @@ void ImapClient::moveByCopy(const QString &from, qint64 uid, const QString &to, 
         });
     });
     copy->start();
+}
+
+bool ImapClient::checkMoveJob(KJob *job, quint64 generation, const QString &from, qint64 uid)
+{
+    if (checkJob(job, generation)) {
+        return true;
+    }
+    // A fatal failure already ended the session (and the pending moves); a stale job says nothing.
+    if (job->error() && generation == m_generation) {
+        failMove(from, uid, job->errorString());
+    }
+    return false;
+}
+
+void ImapClient::failMove(const QString &from, qint64 uid, const QString &message)
+{
+    if (m_pendingMoves.remove(from + u'\n' + QString::number(uid))) {
+        Q_EMIT moveFailed(from, uid, message);
+    }
+}
+
+void ImapClient::finishMove(const QString &from, qint64 uid, const QString &to)
+{
+    if (m_pendingMoves.remove(from + u'\n' + QString::number(uid))) {
+        Q_EMIT messageMoved(from, uid, to);
+    }
 }
 
 bool ImapClient::checkJob(KJob *job, quint64 generation)

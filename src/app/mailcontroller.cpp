@@ -156,6 +156,15 @@ AccountSession *MailController::createSession(const Account &account)
     connect(session, &AccountSession::errorOccurred, this, [this, session](const QString &message) {
         onSessionError(session, message);
     });
+    connect(session, &AccountSession::moveFailed, this, [this, session](const QString &from, qint64 uid, const QString &message) {
+        onMoveFailed(session, from, uid, message);
+    });
+    connect(session, &AccountSession::sessionLost, this, [this, session] {
+        dropMoves(session, true);
+    });
+    connect(session, &AccountSession::jobsDropped, this, [this, session] {
+        dropMoves(session, false);
+    });
     connect(session, &AccountSession::messageMoved, this, [this, session](const QString &from, qint64 uid, const QString &to) {
         onMessageMoved(session, from, uid, to);
     });
@@ -1272,6 +1281,50 @@ void MailController::moveOpenMessage(const QString &target, const QString &doneT
     Q_EMIT currentMessageChanged(); // canArchive / canDelete are false while it moves
 }
 
+// Forgets every move of the session's account: its results will not come (the connection is
+// gone, or was replaced). Each owned one request. `failed` records the failure text.
+void MailController::dropMoves(AccountSession *session, bool failed)
+{
+    const QString movePrefix = session->account().email + u'\n';
+    bool any = false;
+    for (auto it = m_moving.begin(); it != m_moving.end();) {
+        if (it->startsWith(movePrefix)) {
+            if (const auto texts = m_moveTexts.find(*it); texts != m_moveTexts.end()) {
+                if (failed) {
+                    setLastAction(texts->second.second);
+                }
+                m_moveTexts.erase(texts);
+            }
+            it = m_moving.erase(it);
+            endRequest();
+            any = true;
+        } else {
+            ++it;
+        }
+    }
+    if (any) {
+        updateActivity();
+        Q_EMIT currentMessageChanged(); // canArchive / canDelete come back
+    }
+}
+
+void MailController::onMoveFailed(AccountSession *session, const QString &from, qint64 uid, const QString &message)
+{
+    Q_UNUSED(message) // the toast comes from errorOccurred()
+    const QString key = moveKey(session->account().email, from, uid);
+    if (m_moving.erase(key) == 0) {
+        m_moveTexts.erase(key);
+        return;
+    }
+    if (const auto texts = m_moveTexts.find(key); texts != m_moveTexts.end()) {
+        setLastAction(texts->second.second);
+        m_moveTexts.erase(texts);
+    }
+    endRequest();
+    updateActivity();
+    Q_EMIT currentMessageChanged();
+}
+
 void MailController::onMessageMoved(AccountSession *session, const QString &from, qint64 uid, const QString &to)
 {
     Q_UNUSED(to)
@@ -1611,25 +1664,6 @@ void MailController::onSessionError(AccountSession *session, const QString &mess
     updateActivity();
     if (quiet) {
         qWarning("Checking the inbox of %s failed: %s", qPrintable(session->account().email), qPrintable(message));
-    }
-    // A failed connection fails what was queued, including moves that were on their way.
-    const QString movePrefix = session->account().email + u'\n';
-    const size_t movesBefore = m_moving.size();
-    for (auto it = m_moving.begin(); it != m_moving.end();) {
-        if (it->startsWith(movePrefix)) {
-            if (const auto texts = m_moveTexts.find(*it); texts != m_moveTexts.end()) {
-                setLastAction(texts->second.second);
-                m_moveTexts.erase(texts);
-            }
-            it = m_moving.erase(it);
-            endRequest();
-        } else {
-            ++it;
-        }
-    }
-    if (const bool anyDropped = m_moving.size() != movesBefore; anyDropped) {
-        updateActivity();
-        Q_EMIT currentMessageChanged(); // canArchive / canDelete come back
     }
     if (session == m_pending) {
         // Verification of a new account failed: forget it, keep whatever was there before.

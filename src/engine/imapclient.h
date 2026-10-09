@@ -10,6 +10,7 @@
 #include <QList>
 #include <QObject>
 #include <QPointer>
+#include <QSet>
 
 #include <functional>
 #include <memory>
@@ -117,6 +118,14 @@ Q_SIGNALS:
     void rawFetchFinished(const QString &folder);
     void messageFetched(const QString &folder, qint64 uid, const std::shared_ptr<KMime::Message> &message);
     void errorOccurred(const QString &message);
+    // A move job failed without ending the session (e.g. NO); errorOccurred() is emitted as well.
+    void moveFailed(const QString &folder, qint64 uid, const QString &message);
+    // The session ended (connection lost, login failed); emitted just before errorOccurred().
+    // Moves still pending are failed by it: no moveFailed() follows for them.
+    void sessionLost(const QString &message);
+    // The session was replaced or closed while moves were pending; their results will never
+    // arrive, and neither moveFailed() nor messageMoved() is emitted for them.
+    void jobsDropped();
 
 private:
     // Returns the session, creating it (and queueing the login) if needed. Each new session
@@ -131,6 +140,10 @@ private:
     // same (or an older) session are ignored. The next request opens a new session.
     void fail(quint64 generation, const QString &message);
     void dropSession();
+    // Like checkJob() for a step of a move: a failure that keeps the session also emits moveFailed().
+    bool checkMoveJob(KJob *job, quint64 generation, const QString &from, qint64 uid);
+    void finishMove(const QString &from, qint64 uid, const QString &to);
+    void failMove(const QString &from, qint64 uid, const QString &message);
     void moveByCopy(const QString &from, qint64 uid, const QString &to, quint64 generation);
     void queueSelect(const QString &folder, quint64 generation);
     // Fetches headers for `set` (UIDs if uidBased, else sequence numbers) of the selected folder
@@ -152,4 +165,5 @@ private:
     QStringList m_capabilities; // the server's, read after login; empty until asked
     quint64 m_generation = 0; // number of the current (or last) session
     quint64 m_failedGeneration = 0; // session whose failure was already reported
+    QSet<QString> m_pendingMoves; // "folder\nuid" of moves that have not reported yet
 };

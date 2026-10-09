@@ -30,6 +30,9 @@ AccountSession::AccountSession(const Account &account, const QString &storeDir, 
     connect(m_client, &ImapClient::messageMoved, this, &AccountSession::messageMoved);
     connect(m_client, &ImapClient::inboxChecked, this, &AccountSession::inboxChecked);
     connect(m_client, &ImapClient::errorOccurred, this, &AccountSession::errorOccurred);
+    connect(m_client, &ImapClient::moveFailed, this, &AccountSession::moveFailed);
+    connect(m_client, &ImapClient::sessionLost, this, &AccountSession::sessionLost);
+    connect(m_client, &ImapClient::jobsDropped, this, &AccountSession::jobsDropped);
     // Any answer from the server means the connection works; a fatal error (the session is gone)
     // means it does not. A refused command (e.g. no such folder) leaves the session, and so the state.
     connect(m_client, &ImapClient::headersFetched, this, &AccountSession::markConnected);

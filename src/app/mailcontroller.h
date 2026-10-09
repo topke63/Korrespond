@@ -165,6 +165,7 @@ private:
     // being verified, that one. nullptr without either.
     [[nodiscard]] AccountSession *uiSession() const;
     [[nodiscard]] ImapClient *uiClient() const;
+    [[nodiscard]] QString uiEmail() const; // empty without a session
     [[nodiscard]] MessageStore *uiStore() const; // the open store of uiSession(), or nullptr
     AccountSession *createSession(const Account &account);
     // Stops a session and deletes it; with deleteStore also its local copies and folder.

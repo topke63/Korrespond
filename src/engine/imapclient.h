@@ -25,6 +25,7 @@ class Message;
 class KJob;
 
 struct MessageSummary {
+    QString account; // email address of the account the message belongs to; uid alone is not unique
     qint64 uid = 0;
     QString subject;
     QString from;

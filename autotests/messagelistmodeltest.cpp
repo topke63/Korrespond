@@ -15,6 +15,7 @@ using namespace Qt::StringLiterals;
 static MessageSummary summary(qint64 uid, const QString &subject, bool unread = false, const QDateTime &date = {})
 {
     MessageSummary msg;
+    msg.account = u"me@example.org"_s;
     msg.uid = uid;
     msg.subject = subject;
     msg.from = u"Sender %1 <sender%1@example.com>"_s.arg(uid);
@@ -38,7 +39,7 @@ private Q_SLOTS:
         MessageListModel model;
         QAbstractItemModelTester tester(&model, QAbstractItemModelTester::FailureReportingMode::QtTest);
         model.setMessages({summary(3, u"c"_s, true), summary(2, u"b"_s), summary(1, u"a"_s)});
-        model.setUnread(3, false);
+        model.setUnread(u"me@example.org"_s, 3, false);
         model.clear();
         model.setMessages({summary(1, u"a"_s)});
         QCOMPARE(model.rowCount(), 1);
@@ -80,12 +81,12 @@ private Q_SLOTS:
         QCOMPARE(model.index(0).data(MessageListModel::FlaggedRole).toBool(), true);
 
         QSignalSpy changed(&model, &QAbstractItemModel::dataChanged);
-        model.setFlagged(5, false);
+        model.setFlagged(u"me@example.org"_s, 5, false);
         QCOMPARE(changed.count(), 1);
         QCOMPARE(changed.at(0).at(2).value<QList<int>>(), QList<int>{MessageListModel::FlaggedRole});
         QCOMPARE(model.index(0).data(MessageListModel::FlaggedRole).toBool(), false);
-        model.setFlagged(5, false); // no change, no signal
-        model.setFlagged(99, true); // unknown uid is ignored
+        model.setFlagged(u"me@example.org"_s, 5, false); // no change, no signal
+        model.setFlagged(u"me@example.org"_s, 99, true); // unknown uid is ignored
         QCOMPARE(changed.count(), 1);
     }
 
@@ -115,7 +116,7 @@ private Q_SLOTS:
         model.setMessages({summary(1, u"a"_s, true), summary(2, u"b"_s, false)});
         QSignalSpy spy(&model, &QAbstractItemModel::dataChanged);
 
-        model.setUnread(1, false);
+        model.setUnread(u"me@example.org"_s, 1, false);
         QCOMPARE(spy.count(), 1);
         const QList<QVariant> args = spy.takeFirst();
         QCOMPARE(args.at(0).toModelIndex(), model.index(0));
@@ -123,8 +124,8 @@ private Q_SLOTS:
         QCOMPARE(args.at(2).value<QList<int>>(), QList<int>{MessageListModel::UnreadRole});
         QCOMPARE(model.index(0).data(MessageListModel::UnreadRole).toBool(), false);
 
-        model.setUnread(1, false); // unchanged: no signal
-        model.setUnread(999, true); // unknown uid: no signal
+        model.setUnread(u"me@example.org"_s, 1, false); // unchanged: no signal
+        model.setUnread(u"me@example.org"_s, 999, true); // unknown uid: no signal
         QCOMPARE(spy.count(), 0);
     }
 
@@ -132,8 +133,8 @@ private Q_SLOTS:
     {
         MessageListModel model;
         model.setMessages({summary(5, u"Found"_s)});
-        QCOMPARE(model.message(5).subject, u"Found"_s);
-        QCOMPARE(model.message(999).uid, qint64(0));
+        QCOMPARE(model.message(u"me@example.org"_s, 5).subject, u"Found"_s);
+        QCOMPARE(model.message(u"me@example.org"_s, 999).uid, qint64(0));
     }
 
     void testClear()

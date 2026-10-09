@@ -40,9 +40,10 @@ QDateTime messageDate(const KMime::Message &message)
     return {};
 }
 
-static MessageSummary summaryOf(const KIMAP::Message &msg)
+static MessageSummary summaryOf(const KIMAP::Message &msg, const QString &account)
 {
     MessageSummary summary;
+    summary.account = account;
     summary.uid = msg.uid;
     summary.unread = !msg.flags.contains("\\Seen");
     summary.flagged = msg.flags.contains("\\Flagged");
@@ -356,7 +357,7 @@ void ImapClient::fetchRawMessages(const QString &folder, const QList<qint64> &ui
         }
         for (const KIMAP::Message &msg : batch) {
             if (msg.message) {
-                Q_EMIT rawMessageFetched(folder, summaryOf(msg), msg.message->encodedContent(KMime::NewlineType::CRLF));
+                Q_EMIT rawMessageFetched(folder, summaryOf(msg, m_account.email), msg.message->encodedContent(KMime::NewlineType::CRLF));
             }
         }
     });
@@ -379,9 +380,9 @@ void ImapClient::fetchSummaries(const KIMAP::ImapSet &set, bool uidBased, const 
     fetch->setScope(scope);
 
     auto messages = std::make_shared<QList<MessageSummary>>();
-    connect(fetch, &KIMAP::FetchJob::messagesAvailable, this, [messages](const QMap<qint64, KIMAP::Message> &batch) {
+    connect(fetch, &KIMAP::FetchJob::messagesAvailable, this, [messages, email = m_account.email](const QMap<qint64, KIMAP::Message> &batch) {
         for (const KIMAP::Message &msg : batch) {
-            messages->append(summaryOf(msg));
+            messages->append(summaryOf(msg, email));
         }
     });
     connect(fetch, &KJob::result, this, [this, folder, filter, messages, generation](KJob *job) {

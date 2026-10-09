@@ -99,6 +99,12 @@ MessageStore *MailController::uiStore() const
     return session && session->storageActive() ? session->store() : nullptr;
 }
 
+QString MailController::uiEmail() const
+{
+    const AccountSession *session = uiSession();
+    return session ? session->account().email : QString();
+}
+
 AccountSession *MailController::createSession(const Account &account)
 {
     auto session = new AccountSession(account, MessageStore::accountDir(m_dataDir, account.email), m_storage, this);
@@ -418,12 +424,10 @@ QList<MessageSummary> MailController::storedMessages(const QString &path) const
     }
     const QString folder = imapFolderFor(path);
     const ImapClient::HeaderFilter filter = filterFor(path);
-    if (filter == ImapClient::AllMessages) {
-        return store->messages(folder, messageLimit);
-    }
     QList<MessageSummary> result;
-    for (const MessageSummary &message : store->messages(folder, -1)) {
-        if (filter == ImapClient::Unread ? message.unread : message.flagged) {
+    for (MessageSummary message : store->messages(folder, filter == ImapClient::AllMessages ? messageLimit : -1)) {
+        if (filter == ImapClient::AllMessages || (filter == ImapClient::Unread ? message.unread : message.flagged)) {
+            message.account = uiEmail(); // the store of one account doesn't know whose it is
             result.append(message);
             if (result.size() == messageLimit) {
                 break;
@@ -474,7 +478,7 @@ void MailController::openMessage(qint64 uid)
     m_currentUid = uid;
     m_messageFolder = imapFolderFor(m_currentFolder);
     clearMessage(false);
-    m_messageFlagged = m_messageModel->message(uid).flagged; // the parsed message carries no IMAP flags
+    m_messageFlagged = m_messageModel->message(uiEmail(), uid).flagged; // the parsed message carries no IMAP flags
     Q_EMIT currentMessageChanged(); // the flag shows while the message is still loading
     if (storageActive()) {
         if (const QByteArray raw = uiStore()->rawMessage(m_messageFolder, uid); !raw.isEmpty()) {
@@ -501,7 +505,7 @@ void MailController::setFlagged(qint64 uid, bool flagged)
     if (folder.isEmpty()) {
         return;
     }
-    m_messageModel->setFlagged(uid, flagged);
+    m_messageModel->setFlagged(uiEmail(), uid, flagged);
     if (uid == m_currentUid && m_messageFlagged != flagged) {
         m_messageFlagged = flagged;
         Q_EMIT currentMessageChanged();
@@ -530,9 +534,9 @@ void MailController::showMessage(const QString &folder, qint64 uid, const KMime:
     m_messageAttachments = attachmentNames(msg);
     Q_EMIT currentMessageChanged();
 
-    if (folder == imapFolderFor(m_currentFolder) && m_messageModel->message(uid).unread) {
+    if (folder == imapFolderFor(m_currentFolder) && m_messageModel->message(uiEmail(), uid).unread) {
         uiClient()->markSeen(folder, uid);
-        m_messageModel->setUnread(uid, false);
+        m_messageModel->setUnread(uiEmail(), uid, false);
         if (MessageStore *store = uiStore(); store && store->contains(folder, uid)) {
             store->setUnread(folder, uid, false);
         }

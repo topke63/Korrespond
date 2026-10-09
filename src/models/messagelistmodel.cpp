@@ -40,6 +40,8 @@ QVariant MessageListModel::data(const QModelIndex &index, int role) const
     switch (role) {
     case UidRole:
         return message.uid;
+    case AccountRole:
+        return message.account;
     case Qt::DisplayRole:
     case SubjectRole:
         return message.subject.isEmpty() ? i18nc("@info placeholder for an empty mail subject", "(No subject)") : message.subject;
@@ -63,6 +65,7 @@ QHash<int, QByteArray> MessageListModel::roleNames() const
 {
     return {
         {UidRole, "uid"},
+        {AccountRole, "account"},
         {SubjectRole, "subject"},
         {FromRole, "from"},
         {DateRole, "date"},
@@ -85,10 +88,10 @@ void MessageListModel::clear()
     setMessages({});
 }
 
-void MessageListModel::setUnread(qint64 uid, bool unread)
+void MessageListModel::setUnread(const QString &account, qint64 uid, bool unread)
 {
     for (qsizetype row = 0; row < m_messages.size(); ++row) {
-        if (m_messages[row].uid != uid) {
+        if (m_messages[row].uid != uid || m_messages[row].account != account) {
             continue;
         }
         if (m_messages[row].unread != unread) {
@@ -100,10 +103,10 @@ void MessageListModel::setUnread(qint64 uid, bool unread)
     }
 }
 
-void MessageListModel::setFlagged(qint64 uid, bool flagged)
+void MessageListModel::setFlagged(const QString &account, qint64 uid, bool flagged)
 {
     for (qsizetype row = 0; row < m_messages.size(); ++row) {
-        if (m_messages[row].uid != uid) {
+        if (m_messages[row].uid != uid || m_messages[row].account != account) {
             continue;
         }
         if (m_messages[row].flagged != flagged) {
@@ -115,10 +118,10 @@ void MessageListModel::setFlagged(qint64 uid, bool flagged)
     }
 }
 
-MessageSummary MessageListModel::message(qint64 uid) const
+MessageSummary MessageListModel::message(const QString &account, qint64 uid) const
 {
     for (const MessageSummary &msg : m_messages) {
-        if (msg.uid == uid) {
+        if (msg.uid == uid && msg.account == account) {
             return msg;
         }
     }

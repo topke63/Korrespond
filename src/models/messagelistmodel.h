@@ -15,6 +15,7 @@ class MessageListModel : public QAbstractListModel
 public:
     enum Role {
         UidRole = Qt::UserRole + 1,
+        AccountRole, // email address of the message's account
         SubjectRole,
         FromRole,
         DateRole,
@@ -32,11 +33,12 @@ public:
 
     void setMessages(const QList<MessageSummary> &messages);
     void clear();
+    // A uid is only unique within one account, so every lookup names the account.
     // Updates one message's unread state; emits dataChanged for that row only.
-    void setUnread(qint64 uid, bool unread);
-    void setFlagged(qint64 uid, bool flagged);
-    // Returns a default MessageSummary (uid 0) if `uid` is not in the list.
-    [[nodiscard]] MessageSummary message(qint64 uid) const;
+    void setUnread(const QString &account, qint64 uid, bool unread);
+    void setFlagged(const QString &account, qint64 uid, bool flagged);
+    // Returns a default MessageSummary (uid 0) if the message is not in the list.
+    [[nodiscard]] MessageSummary message(const QString &account, qint64 uid) const;
 
     // Short local-time text: time of day for today, short date otherwise.
     [[nodiscard]] static QString dateText(const QDateTime &dateTime, const QDate &today);

@@ -1842,7 +1842,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   looked as before. The user's real data dir has not been touched yet by the new code.
 
 ### T86 — Messages carry their account
-- status: todo
+- status: done
 - depends on: none
 - parallel-safe with: T68–T84
 - files: src/engine/imapclient.h, src/models/messagelistmodel.h, src/models/messagelistmodel.cpp
@@ -1851,7 +1851,11 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   `setUnread(account, uid, …)`, `setFlagged(account, uid, …)` (uid alone is not unique across
   accounts). Old uid-only overloads removed; callers updated in T87.
 - verify: `cmake --build build --target plasmamail_models` succeeds.
-- notes:
+- notes: Done 2026-10-09. `MessageSummary::account` is set by ImapClient for headers and raw
+  fetches, and by the controller for stored messages (`uiEmail()`); the store itself doesn't keep
+  it (one store per account). The old uid-only overloads are gone; callers (MailController and
+  the existing messagelistmodeltest, which now uses account me@example.org) were updated here,
+  not in T87, so the build stays green. 12/12 tests pass.
 
 ### T87 — Tests for messages from two accounts
 - status: todo

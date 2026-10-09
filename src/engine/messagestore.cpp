@@ -526,6 +526,37 @@ QString MessageStore::lastError() const
     return m_lastError;
 }
 
+QString MessageStore::accountDir(const QString &appDataDir, const QString &email)
+{
+    const QByteArray hash = QCryptographicHash::hash(email.toLower().toUtf8(), QCryptographicHash::Sha1).toHex();
+    return appDataDir + u"/accounts/"_s + QString::fromLatin1(hash);
+}
+
+bool MessageStore::moveLegacyStore(const QString &appDataDir, const QString &accountDir)
+{
+    const QString oldDb = appDataDir + u"/mail.sqlite"_s;
+    const QString oldMessages = appDataDir + u"/messages"_s;
+    const QString newDb = accountDir + u"/mail.sqlite"_s;
+    const QString newMessages = accountDir + u"/messages"_s;
+    if ((!QFileInfo::exists(oldDb) && !QFileInfo::exists(oldMessages)) || QFileInfo::exists(newDb)) {
+        return true;
+    }
+    if (!QDir().mkpath(accountDir)) {
+        return false;
+    }
+    // A leftover empty messages/ in the target (e.g. from an interrupted run) must not block the move.
+    QDir().rmdir(newMessages);
+
+    const bool movedDb = !QFileInfo::exists(oldDb) || QFile::rename(oldDb, newDb);
+    if (movedDb && (!QFileInfo::exists(oldMessages) || QFile::rename(oldMessages, newMessages))) {
+        return true;
+    }
+    if (movedDb && QFileInfo::exists(newDb)) {
+        QFile::rename(newDb, oldDb); // undo, so the old store stays whole
+    }
+    return false;
+}
+
 QString MessageStore::relativePath(const QString &folder, qint64 uidValidity, qint64 uid)
 {
     const QByteArray folderHash = QCryptographicHash::hash(folder.toUtf8(), QCryptographicHash::Sha1).toHex();

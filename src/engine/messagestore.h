@@ -67,6 +67,14 @@ public:
     bool setFolders(const QList<FolderInfo> &folders);
     [[nodiscard]] QList<FolderInfo> folders() const;
 
+    // Each account has its own store: <appDataDir>/accounts/<sha1 hex of the lower-cased email>.
+    [[nodiscard]] static QString accountDir(const QString &appDataDir, const QString &email);
+    // Moves the single store of milestone 1 (mail.sqlite and messages/ directly in appDataDir)
+    // into accountDir. Nothing is moved when there is no old store or accountDir already has
+    // one. Returns true when there was nothing to do or the move worked, false when a move
+    // failed (then the old files are put back where possible).
+    static bool moveLegacyStore(const QString &appDataDir, const QString &accountDir);
+
     // Human-readable reason for the last failed call (for logs, not shown in the UI).
     [[nodiscard]] QString lastError() const;
 

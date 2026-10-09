@@ -1756,7 +1756,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - notes:
 
 ### T81 — Move the old single store into an account folder
-- status: todo
+- status: done
 - depends on: none
 - parallel-safe with: T68–T80
 - files: src/engine/messagestore.h, src/engine/messagestore.cpp
@@ -1767,7 +1767,9 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   QString &appDataDir, const QString &accountDir)`: moves `mail.sqlite` and `messages/` if they
   exist and the target has no store yet; true when there was nothing to do.
 - verify: `cmake --build build --target plasmamail_engine` succeeds.
-- notes:
+- notes: Done 2026-10-09. `mail.sqlite` goes first, then `messages/`; if the second rename
+  fails the database is moved back. The store doesn't use WAL, so no side files exist. Nothing
+  calls these yet (T83/T85 do).
 
 ### T82 — Tests for the store move
 - status: todo

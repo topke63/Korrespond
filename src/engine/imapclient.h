@@ -47,7 +47,10 @@ public:
     explicit ImapClient(QObject *parent = nullptr);
     ~ImapClient() override;
 
+    // For an "oauth" account the secret is the access token (see setAccessToken).
     void setAccount(const Account &account, const QString &password);
+    // Replaces the secret used by future sessions; a session already logged in stays up.
+    void setAccessToken(const QString &accessToken);
     void disconnectFromServer();
 
     // Which messages fetchHeaders() returns.

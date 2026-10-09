@@ -75,6 +75,11 @@ void ImapClient::setAccount(const Account &account, const QString &password)
     m_password = password;
 }
 
+void ImapClient::setAccessToken(const QString &accessToken)
+{
+    m_password = accessToken;
+}
+
 void ImapClient::disconnectFromServer()
 {
     ++m_generation; // whatever the old session still reports is no longer relevant
@@ -114,6 +119,9 @@ QString ImapClient::loginErrorMessage(const QString &jobError) const
     if (!rejected) {
         return i18n("Could not log in: %1", jobError);
     }
+    if (m_account.authMethod == "oauth"_L1) {
+        return i18n("The server did not accept the Google sign-in. Please sign in again.");
+    }
     if (m_account.provider == "yahoo"_L1) {
         return i18n(
             "Yahoo did not accept the email address or password. Yahoo needs an app password here, "
@@ -145,7 +153,7 @@ KIMAP::Session *ImapClient::session()
     login->setUserName(m_account.email);
     login->setPassword(m_password);
     login->setEncryptionMode(m_account.imapPort == 143 ? KIMAP::LoginJob::STARTTLS : KIMAP::LoginJob::SSLorTLS);
-    login->setAuthenticationMode(KIMAP::LoginJob::ClearText);
+    login->setAuthenticationMode(m_account.authMethod == "oauth"_L1 ? KIMAP::LoginJob::XOAuth2 : KIMAP::LoginJob::ClearText);
     connect(login, &KJob::result, this, [this, generation](KJob *job) {
         if (job->error()) {
             fail(generation, loginErrorMessage(job->errorString()));

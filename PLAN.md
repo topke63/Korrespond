@@ -1701,7 +1701,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   failed(). Engine builds without warnings; 12/12 tests pass (live check in T80).
 
 ### T77 — `ImapClient`: XOAUTH2 login
-- status: todo
+- status: done
 - depends on: T68
 - parallel-safe with: T69–T76
 - files: src/engine/imapclient.h, src/engine/imapclient.cpp
@@ -1711,7 +1711,9 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   `void setAccessToken(const QString&)` replaces the token for future sessions without
   dropping the current one. Login errors for OAuth say to sign in again, not "wrong password".
 - verify: `cmake --build build --target plasmamail_engine` succeeds (live check in T80).
-- notes:
+- notes: Done 2026-10-09. Account::authMethod "oauth" → XOAuth2, else ClearText as before.
+  `setAccessToken()` only swaps the stored secret, so the open session keeps working; the next
+  session logs in with the new token. 12/12 tests pass (live check in T80).
 
 ### T78 — Link the OAuth client into `imap-probe`
 - status: todo

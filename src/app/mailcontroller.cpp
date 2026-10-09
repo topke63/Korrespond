@@ -9,6 +9,7 @@
 #include "foldermodel.h"
 #include "folderutils.h"
 #include "imapclient.h"
+#include "messagecomposer.h"
 #include "messagelistmodel.h"
 #include "messagerenderer.h"
 #include "messagestore.h"
@@ -310,6 +311,43 @@ bool MailController::messageFlagged() const
 bool MailController::messageUnread() const
 {
     return m_messageUnread;
+}
+
+bool MailController::canCompose() const
+{
+    return m_openMessage && m_currentUid > 0 && sessionFor(m_messageAccount);
+}
+
+QVariantMap MailController::composeFor(const QString &kind) const
+{
+    const AccountSession *session = sessionFor(m_messageAccount);
+    if (!m_openMessage || !session || (kind != "reply"_L1 && kind != "replyAll"_L1 && kind != "forward"_L1)) {
+        return {};
+    }
+    const Account &account = session->account();
+    const bool forward = kind == "forward"_L1;
+    QVariantMap map;
+    map[u"kind"_s] = kind;
+    map[u"account"_s] = account.email;
+    map[u"from"_s] =
+        account.displayName.isEmpty() || account.displayName == account.email ? account.email : u"%1 <%2>"_s.arg(account.displayName, account.email);
+
+    const QString subject = m_openMessage->subject() ? m_openMessage->subject()->asUnicodeString() : QString();
+    map[u"subject"_s] = forward ? MessageComposer::forwardSubject(subject) : MessageComposer::replySubject(subject);
+    if (forward) {
+        map[u"to"_s] = QString();
+        map[u"cc"_s] = QString();
+        map[u"body"_s] = QString(u"\n\n"_s + MessageComposer::forwardedBody(*m_openMessage));
+    } else {
+        const MessageComposer::Recipients recipients = MessageComposer::replyRecipients(*m_openMessage, {account.email}, kind == "replyAll"_L1);
+        map[u"to"_s] = recipients.to.join(u", "_s);
+        map[u"cc"_s] = recipients.cc.join(u", "_s);
+        map[u"body"_s] = QString(u"\n\n"_s + MessageComposer::quotedReply(*m_openMessage));
+    }
+    const MessageComposer::ThreadIds ids = MessageComposer::threadIds(*m_openMessage);
+    map[u"inReplyTo"_s] = ids.inReplyTo;
+    map[u"references"_s] = ids.references;
+    return map;
 }
 
 bool MailController::canMove() const
@@ -799,9 +837,9 @@ void MailController::openMessage(const QString &account, qint64 uid)
     if (session->storageActive()) {
         if (const QByteArray raw = session->store()->rawMessage(m_messageFolder, uid); !raw.isEmpty()) {
             // Parsed like KIMAP does with fetched messages.
-            KMime::Message message;
-            message.setContent(KMime::CRLFtoLF(raw));
-            message.parse();
+            auto message = std::make_shared<KMime::Message>();
+            message->setContent(KMime::CRLFtoLF(raw));
+            message->parse();
             showMessage(session, m_messageFolder, uid, message);
             return;
         }
@@ -1042,11 +1080,13 @@ void MailController::onMessageFetched(AccountSession *session, const QString &fo
     if (!isKnown(session) || uid != m_currentUid || folder != m_messageFolder || session->account().email != m_messageAccount || !message) {
         return; // another message was opened while this one was loading
     }
-    showMessage(session, folder, uid, *message);
+    showMessage(session, folder, uid, message);
 }
 
-void MailController::showMessage(AccountSession *session, const QString &folder, qint64 uid, const KMime::Message &msg)
+void MailController::showMessage(AccountSession *session, const QString &folder, qint64 uid, const std::shared_ptr<KMime::Message> &message)
 {
+    const KMime::Message &msg = *message;
+    m_openMessage = message;
     // The const getters return nullptr for missing headers instead of creating empty ones.
     m_messageSubject = msg.subject() ? msg.subject()->asUnicodeString() : QString();
     m_messageFrom = msg.from() ? msg.from()->asUnicodeString() : QString(); // "Name <address>"
@@ -1087,6 +1127,7 @@ void MailController::clearMessage(bool clearUid)
     m_messageAttachments.clear();
     m_messageFlagged = false;
     m_messageUnread = false;
+    m_openMessage.reset();
     Q_EMIT currentMessageChanged();
 }
 

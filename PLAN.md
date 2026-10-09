@@ -2303,7 +2303,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   one. 16/16 test executables pass.
 
 ### T111 — Controller: prepare Reply, Reply All, Forward
-- status: todo
+- status: done
 - depends on: T110, T88
 - parallel-safe with: T109
 - files: src/app/mailcontroller.h, src/app/mailcontroller.cpp
@@ -2311,7 +2311,13 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - output: `Q_INVOKABLE QVariantMap composeFor(const QString &kind)` ("reply", "replyAll",
   "forward") → {from, to, cc, subject, body, inReplyTo, references}.
 - verify: build; all tests pass.
-- notes:
+- notes: Done 2026-10-09. `composeFor(kind)` ("reply" | "replyAll" | "forward") returns a map:
+  `kind`, `account` (the sending account = the open message's), `from` ("Name <address>" or just
+  the address), `to`, `cc` (comma separated), `subject`, `body` ("\n\n" + the quoted text or the
+  forwarded block, so the cursor can go on top), `inReplyTo`, `references`; empty when nothing is
+  loaded. The controller now keeps the parsed open message (`m_openMessage`, set in `showMessage`,
+  which takes a `shared_ptr` now; cleared with the message). Property `canCompose` (a message is
+  open and loaded) for the buttons (T114). Build; 16/16 tests; not used by QML yet (T112/T114).
 
 ### T112 — Compose window: Send, prefilled
 - status: todo

@@ -75,6 +75,8 @@ class MailController : public QObject
     // The open message can be moved to another folder: its account is connected and it is not
     // being moved.
     Q_PROPERTY(bool canMove READ canMove NOTIFY currentMessageChanged)
+    // Reply, Reply All and Forward can start from the open message (it has been loaded).
+    Q_PROPERTY(bool canCompose READ canCompose NOTIFY currentMessageChanged)
     // The folders of the open message's account (for the Move to Folder menu).
     Q_PROPERTY(QAbstractListModel *messageFolderModel READ messageFolderModel NOTIFY currentMessageChanged)
     // Local storage settings. importSince is an ISO date ("yyyy-MM-dd"), empty = all mail; the
@@ -150,6 +152,7 @@ public:
     [[nodiscard]] bool canArchive() const;
     [[nodiscard]] bool canDelete() const;
     [[nodiscard]] bool canMove() const;
+    [[nodiscard]] bool canCompose() const;
     [[nodiscard]] QAbstractListModel *messageFolderModel() const;
     [[nodiscard]] bool storageEnabled() const;
     [[nodiscard]] QString importSince() const;
@@ -235,6 +238,11 @@ public:
     Q_INVOKABLE void configureNotifications();
     // Connects a failed account again, the way startup does (reads its password or token).
     Q_INVOKABLE void reconnect(const QString &account);
+    // What a new message starts with when answering the open message. kind: "reply", "replyAll"
+    // or "forward". The map has: account (the sending account), from ("Name <address>"), to, cc
+    // (comma separated), subject, body (the cursor goes above the quoted text), inReplyTo, references
+    // (a list), kind. Empty when no message is open or loaded.
+    Q_INVOKABLE QVariantMap composeFor(const QString &kind) const;
     Q_INVOKABLE void archiveMessage();
     Q_INVOKABLE void deleteMessage();
     Q_INVOKABLE void moveMessage(const QString &folderPath);
@@ -317,7 +325,7 @@ private:
     [[nodiscard]] static bool isSharedView(const QString &path);
     void onHeadersFetched(AccountSession *session, const QString &folder, ImapClient::HeaderFilter filter, const QList<MessageSummary> &messages);
     void onMessageFetched(AccountSession *session, const QString &folder, qint64 uid, const std::shared_ptr<KMime::Message> &message);
-    void showMessage(AccountSession *session, const QString &folder, qint64 uid, const KMime::Message &message);
+    void showMessage(AccountSession *session, const QString &folder, qint64 uid, const std::shared_ptr<KMime::Message> &message);
     // The stored messages for a folder or shared-view path, filtered like the server's list.
     [[nodiscard]] QList<MessageSummary> storedMessages(const AccountSession *session, const QString &path) const;
     [[nodiscard]] bool storageActive() const; // storage on and the open account's store open
@@ -366,6 +374,7 @@ private:
     QStringList m_messageAttachments;
     bool m_messageFlagged = false;
     bool m_messageUnread = false;
+    std::shared_ptr<KMime::Message> m_openMessage; // the loaded open message, for composeFor()
     StorageSettings m_storage;
     qint64 m_storageUsedBytes = 0;
     bool m_syncing = false;

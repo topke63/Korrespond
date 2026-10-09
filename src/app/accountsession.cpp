@@ -5,6 +5,7 @@
 
 #include "foldermodel.h"
 #include "messagestore.h"
+#include "oauthclient.h"
 #include "retention.h"
 #include "syncmanager.h"
 
@@ -99,6 +100,49 @@ qint64 AccountSession::storageUsedBytes() const
 bool AccountSession::syncing() const
 {
     return m_syncing;
+}
+
+OAuthClient *AccountSession::oauth()
+{
+    if (!m_oauth) {
+        m_oauth = new OAuthClient(this);
+        connect(m_oauth, &OAuthClient::signedIn, this, [this](const QString &accessToken, const QString &refreshToken) {
+            m_refreshToken = refreshToken;
+            onAccessToken(accessToken);
+        });
+        connect(m_oauth, &OAuthClient::accessTokenChanged, this, &AccountSession::onAccessToken);
+        connect(m_oauth, &OAuthClient::failed, this, &AccountSession::errorOccurred);
+    }
+    return m_oauth;
+}
+
+// The first token connects; later ones only replace the secret for future logins.
+void AccountSession::onAccessToken(const QString &accessToken)
+{
+    if (m_loggedIn) {
+        m_client->setAccessToken(accessToken);
+        return;
+    }
+    m_loggedIn = true;
+    connectWithSecret(accessToken);
+}
+
+void AccountSession::signInWithGoogle()
+{
+    m_loggedIn = false;
+    oauth()->signIn(m_account.email);
+}
+
+void AccountSession::connectWithRefreshToken(const QString &refreshToken)
+{
+    m_loggedIn = false;
+    m_refreshToken = refreshToken;
+    oauth()->refresh(refreshToken);
+}
+
+QString AccountSession::refreshToken() const
+{
+    return m_refreshToken;
 }
 
 void AccountSession::connectWithSecret(const QString &secret)

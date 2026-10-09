@@ -76,6 +76,8 @@ class MailController : public QObject
     Q_PROPERTY(bool syncing READ syncing NOTIFY syncingChanged)
     // False when the local store could not be opened; usage, cleanup and sync then do nothing.
     Q_PROPERTY(bool storageReady READ storageReady NOTIFY accountChanged)
+    // The Google OAuth client is set up (read once at startup).
+    Q_PROPERTY(bool googleConfigured READ googleConfigured CONSTANT)
 
 public:
     explicit MailController(QObject *parent = nullptr);
@@ -111,6 +113,7 @@ public:
     [[nodiscard]] qint64 storageUsedBytes() const;
     [[nodiscard]] bool syncing() const;
     [[nodiscard]] bool storageReady() const;
+    [[nodiscard]] bool googleConfigured() const;
 
     // Checks the credentials by logging in and listing folders; only then stores the password
     // in the keychain and adds the account after the existing ones (an email that is already
@@ -124,6 +127,13 @@ public:
                                   int imapPort = 993,
                                   const QString &smtpHost = {},
                                   int smtpPort = 465);
+    // Adds a Gmail account with Google's browser sign-in (OAuth2, no password): opens the browser,
+    // then verifies by logging in and listing folders, keeps the refresh token in the keychain
+    // and adds the account. Needs googleConfigured. On failure nothing is saved and
+    // errorOccurred is emitted.
+    Q_INVOKABLE void setupGoogleAccount(const QString &email, const QString &displayName);
+    // Gives up an account setup that is still waiting (e.g. for the browser).
+    Q_INVOKABLE void cancelSetup();
     // Disconnects one account and deletes its password from the keychain, its local copies and
     // its entry in the config. The other accounts keep running.
     Q_INVOKABLE void removeAccount(const QString &account);
@@ -222,6 +232,7 @@ private:
     QList<AccountSession *> m_sessions; // saved accounts, in order
     AccountSession *m_pending = nullptr; // being verified by setupAccount()
     QString m_pendingPassword;
+    bool m_googleConfigured = false;
     // The open shared view: each account's part of the merged list, and the accounts already asked.
     std::map<QString, QList<MessageSummary>> m_sharedParts;
     std::set<AccountSession *> m_sharedRequested;

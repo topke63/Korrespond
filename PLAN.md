@@ -1948,7 +1948,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   Build and 12/12 tests pass.
 
 ### T92 — `MailController`: Google accounts (sign-in, startup, refresh)
-- status: todo
+- status: done
 - depends on: T76, T77, T90
 - parallel-safe with: T93, T94
 - files: src/app/mailcontroller.h, src/app/mailcontroller.cpp (may use src/app/accountsession.cpp)
@@ -1958,7 +1958,16 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   account reads its refresh token, gets an access token, connects; new tokens go to the client.
   Property `googleConfigured` for the setup page.
 - verify: build succeeds; manual in T95.
-- notes:
+- notes: Done 2026-10-09. The OAuth work sits in `AccountSession` (`signInWithGoogle()`,
+  `connectWithRefreshToken()`, `refreshToken()`; it owns an `OAuthClient` for Google accounts; the
+  first access token connects, later ones go to `ImapClient::setAccessToken`). Controller:
+  `setupGoogleAccount(email, displayName)` (Gmail preset, authMethod oauth; refused when the
+  client isn't configured or the email exists), `cancelSetup()` (extra: the browser wait has no
+  timeout, so the setup page needs a Cancel), property `googleConfigured` (CONSTANT, read at
+  startup: set the client, then restart the app). The keychain entry of a Google account holds the
+  refresh token; at startup it is read and used for the refresh. A revoked token shows the
+  "sign in again" message; there is no re-sign-in button yet (would be a new task). Build and 12/12
+  tests pass; offline start unchanged; the live flow is T80/T95.
 
 ### T93 — Sidebar: one section per account
 - status: todo

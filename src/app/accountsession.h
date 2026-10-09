@@ -15,6 +15,7 @@
 
 class FolderModel;
 class MessageStore;
+class OAuthClient;
 class SyncManager;
 
 // Everything that belongs to one account: its IMAP connection, folder list, local store and
@@ -41,6 +42,13 @@ public:
 
     // Logs in (secret = password, or for OAuth accounts the access token) and lists the folders.
     void connectWithSecret(const QString &secret);
+    // Google (OAuth) accounts: opens the browser to sign in, then logs in and lists the folders.
+    // refreshToken() has the token to keep in the keychain once this has succeeded.
+    void signInWithGoogle();
+    // Google accounts at startup: gets an access token from the saved refresh token, then logs in
+    // and lists the folders. Later renewals reach the client by themselves.
+    void connectWithRefreshToken(const QString &refreshToken);
+    [[nodiscard]] QString refreshToken() const; // empty until signed in
     // Fills the folder model from the stored folder list, before connecting. False when storage
     // is off or nothing is stored.
     bool showStoredFolders();
@@ -66,10 +74,15 @@ Q_SIGNALS:
 
 private:
     void onFoldersListed(const QList<FolderInfo> &folders);
+    OAuthClient *oauth();
+    void onAccessToken(const QString &accessToken);
     void updateStorageUsage();
     void setSyncing(bool syncing);
 
     Account m_account;
+    OAuthClient *m_oauth = nullptr; // created for Google accounts
+    QString m_refreshToken;
+    bool m_loggedIn = false; // the first access token has been used to connect
     ImapClient *m_client;
     FolderModel *m_folderModel;
     std::unique_ptr<MessageStore> m_store;

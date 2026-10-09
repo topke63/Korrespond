@@ -10,6 +10,7 @@
 #include "messagelistmodel.h"
 #include "messagerenderer.h"
 #include "messagestore.h"
+#include "oauthsettings.h"
 #include "secretstore.h"
 
 #include <KLocalizedString>
@@ -33,6 +34,7 @@ MailController::MailController(QObject *parent)
     , m_messageModel(new MessageListModel(this))
 {
     connect(m_secrets, &SecretStore::passwordRead, this, &MailController::onSecretRead);
+    m_googleConfigured = GoogleOAuthSettings::load().isConfigured();
 
     m_storage = StorageSettings::load();
     const QList<Account> accounts = Account::loadAll();
@@ -331,6 +333,11 @@ qint64 MailController::storageUsedBytes() const
 bool MailController::syncing() const
 {
     return m_syncing;
+}
+
+bool MailController::googleConfigured() const
+{
+    return m_googleConfigured;
 }
 
 bool MailController::storageReady() const
@@ -707,6 +714,44 @@ void MailController::setupAccount(const QString &provider,
     m_pending->connectWithSecret(password);
 }
 
+void MailController::setupGoogleAccount(const QString &email, const QString &displayName)
+{
+    Account account;
+    Account::applyPreset(account, u"gmail"_s);
+    account.authMethod = u"oauth"_s;
+    account.email = email.trimmed();
+    account.displayName = displayName.trimmed();
+    if (!account.isValid()) {
+        Q_EMIT errorOccurred(i18n("Please enter your Gmail address."));
+        return;
+    }
+    if (!m_googleConfigured) {
+        Q_EMIT errorOccurred(i18n("No Google OAuth client is set up. Add ClientId and ClientSecret to the [GoogleOAuth] group of plasmamailrc."));
+        return;
+    }
+    if (sessionFor(account.email)) {
+        Q_EMIT errorOccurred(i18n("%1 is already added.", account.email));
+        return;
+    }
+    if (m_pending) {
+        discardSession(std::exchange(m_pending, nullptr), false);
+    }
+    m_pendingPassword.clear();
+    m_pending = createSession(account);
+    m_awaitingFolders.insert(m_pending);
+    beginRequest(); // until the folders arrive: the browser sign-in is part of it
+    m_pending->signInWithGoogle();
+}
+
+void MailController::cancelSetup()
+{
+    if (!m_pending) {
+        return;
+    }
+    discardSession(std::exchange(m_pending, nullptr), false); // also ends its busy request
+    m_pendingPassword.clear();
+}
+
 void MailController::removeAccount()
 {
     removeAccount(accountEmail());
@@ -777,9 +822,6 @@ void MailController::saveAccounts() const
 void MailController::connectSavedAccounts()
 {
     for (AccountSession *session : std::as_const(m_sessions)) {
-        if (session->account().authMethod == "oauth"_L1) {
-            continue; // Google accounts connect through the OAuth client (T92)
-        }
         if (session == uiSession()) {
             m_awaitingFolders.insert(session);
             beginRequest(); // ends when its folders arrive or it fails
@@ -805,7 +847,12 @@ void MailController::onSecretRead(const QString &key, const QString &password, c
         Q_EMIT errorOccurred(i18n("Could not read the password for %1 from the keychain: %2", key, error));
         return;
     }
-    (*it)->connectWithSecret(password);
+    // For a Google account the keychain holds the refresh token, not a password.
+    if ((*it)->account().authMethod == "oauth"_L1) {
+        (*it)->connectWithRefreshToken(password);
+    } else {
+        (*it)->connectWithSecret(password);
+    }
 }
 
 void MailController::onSessionError(AccountSession *session, const QString &message)
@@ -855,7 +902,9 @@ void MailController::onSessionFolders(AccountSession *session)
     }
     m_pending = nullptr;
     const Account account = session->account();
-    const QString password = std::exchange(m_pendingPassword, QString());
+    // Google accounts keep the refresh token in the keychain.
+    const QString password = account.authMethod == "oauth"_L1 ? session->refreshToken() : std::exchange(m_pendingPassword, QString());
+    m_pendingPassword.clear();
     connect(
         m_secrets,
         &SecretStore::passwordWritten,

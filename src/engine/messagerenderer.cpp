@@ -137,7 +137,8 @@ int leadingDoctypeLength(const QString &html)
         ++pos;
     }
     static const QRegularExpression re(u"^<!DOCTYPE\\s+html\\b[^<>]*>"_s, QRegularExpression::CaseInsensitiveOption);
-    const QRegularExpressionMatch m = re.match(QStringView(html).mid(pos));
+    const QStringView rest = QStringView(html).mid(pos);
+    const QRegularExpressionMatch m = re.matchView(rest);
     return m.hasMatch() ? int(pos + m.capturedLength(0)) : 0;
 }
 

@@ -2065,7 +2065,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   Closed 2026-10-09: the user signed in to Gmail in the app (own OAuth client, after the T147 fix) and confirmed "gmail works" next to Yahoo. T80 was done through the app, not the `imap-probe --google` command.
 
 ### T98 — Global verify (Milestone 2)
-- status: todo
+- status: done
 - depends on: T68–T97
 - parallel-safe with: none
 - files: none
@@ -2075,6 +2075,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - notes: 2026-10-09: the verify command ran clean: `rm -rf build`, configure, full build (no
   warnings, no errors), 12/12 test executables pass. **Stays `todo`**: it depends on T80 and T95,
   the two manual checks that need the Google client (Q4). Run it once more after them.
+  2026-10-09, final run (user closed the app first): `rm -rf build`, configure, full build, 17/17 tests pass. The build showed one compiler warning (deprecated `QRegularExpression::match` on a temporary `QStringView`, from T163 in `messagerenderer.cpp`); fixed in the same commit with `matchView`, rebuilt without warnings, 17/17 pass. Google sign-in and Gmail next to Yahoo confirmed by the user (T80, T95).
 
 ---
 

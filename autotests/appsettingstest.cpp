@@ -40,8 +40,8 @@ private Q_SLOTS:
         const AppSettings settings = AppSettings::load();
         QVERIFY(!settings.keepInTray);
         QCOMPARE(settings.checkMinutes, 5);
-        QCOMPARE(settings.sidebarWidth, 224);
-        QCOMPARE(settings.listWidth, 448);
+        QCOMPARE(settings.sidebarWidth, 252);
+        QCOMPARE(settings.listWidth, 504);
     }
 
     void testRoundTrip()

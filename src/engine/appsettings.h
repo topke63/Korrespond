@@ -8,10 +8,10 @@ struct AppSettings {
     static constexpr int minCheckMinutes = 1;
     static constexpr int maxCheckMinutes = 60;
     // Panel widths in logical pixels: the folder sidebar and the message list column.
-    static constexpr int defaultSidebarWidth = 224;
+    static constexpr int defaultSidebarWidth = 252;
     static constexpr int minSidebarWidth = 160;
     static constexpr int maxSidebarWidth = 420;
-    static constexpr int defaultListWidth = 448;
+    static constexpr int defaultListWidth = 504;
     static constexpr int minListWidth = 280;
     static constexpr int maxListWidth = 800;
 

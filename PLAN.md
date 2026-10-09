@@ -2646,7 +2646,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   `SidebarWidth` / `ListWidth`, clamped to 160–420 and 280–800 on load and save; constants for the
   bounds and defaults; tests: defaults, round trip, clamping on load and save, other options kept.
 - verify: `ctest --test-dir build -R appsettingstest --output-on-failure`
-- notes: Done 2026-10-09. `AppSettings::sidebarWidth` (224, 160–420) and `listWidth` (448,
+- notes: Done 2026-10-09. `AppSettings::sidebarWidth` (252, 160–420) and `listWidth` (504,
   280–800), keys `SidebarWidth` / `ListWidth` in `[General]`, clamped on load and on save; the
   default/min/max values are public constants for QML (T131). 3 new tests (clamp on load, clamp on
   save, garbage → defaults) and the defaults/round-trip tests now cover the widths. **Watch out
@@ -2691,7 +2691,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   T133/T134 (and by hand in T135).
 
 ### T133 — Sidebar: resizable
-- status: todo
+- status: done
 - depends on: T131, T132
 - parallel-safe with: none
 - files: src/qml/FolderSidebar.qml
@@ -2699,7 +2699,14 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - output: the sidebar's width follows `MailController.sidebarWidth` (live while dragging) with a
   handle on its right edge when docked (not modal); release saves; double-click resets.
 - verify: offscreen start prints no new QML warnings; the sidebar looks unchanged at the default.
-- notes:
+- notes: Done 2026-10-09 (drag not tried yet — T135). `FolderSidebar.qml`: the content is now an
+  `Item` holding the old `ColumnLayout` (re-indented) and a `PanelResizer` on the right edge.
+  Docked (not modal): `width` = `MailController.sidebarWidth`, or the resizer's `liveWidth` while
+  dragging; release → `savePanelWidths(width, listWidth)`; double-click → default. Modal (narrow
+  window): no handle and the old fixed 14 grid units. **Defaults corrected:** a grid unit is
+  18 px here, so "today's sizes" are 252 px (sidebar, 14 units) and 504 px (list, 28 units), not the
+  224/448 first planned; `AppSettings` and its test now use 252/504. Checked offscreen/offline:
+  the sidebar and list look identical to before at the default, no new QML warnings; 14/14 tests.
 
 ### T134 — Message list: resizable
 - status: todo

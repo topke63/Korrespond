@@ -39,7 +39,8 @@ Kirigami.OverlayDrawer {
     }
 
     edge: Qt.application.layoutDirection === Qt.RightToLeft ? Qt.RightEdge : Qt.LeftEdge
-    width: Kirigami.Units.gridUnit * 14
+    // Docked: the width the user chose (live while dragging). Sliding over a narrow window: fixed.
+    width: modal ? Kirigami.Units.gridUnit * 14 : (resizer.dragging ? resizer.liveWidth : MailController.sidebarWidth)
     handleVisible: modal && enabled
     leftPadding: 0
     rightPadding: 0
@@ -49,159 +50,178 @@ Kirigami.OverlayDrawer {
     Kirigami.Theme.colorSet: Kirigami.Theme.Window
     Kirigami.Theme.inherit: false
 
-    contentItem: ColumnLayout {
-        spacing: 0
+    // The folder list, with the drag handle for the width on its right edge.
+    contentItem: Item {
+        ColumnLayout {
+            anchors.fill: parent
+            spacing: 0
 
-        QQC2.ToolBar {
-            Layout.fillWidth: true
-            Layout.preferredHeight: applicationWindow().pageStack.globalToolBar.preferredHeight
+            QQC2.ToolBar {
+                Layout.fillWidth: true
+                Layout.preferredHeight: applicationWindow().pageStack.globalToolBar.preferredHeight
 
-            contentItem: RowLayout {
-                spacing: Kirigami.Units.smallSpacing
+                contentItem: RowLayout {
+                    spacing: Kirigami.Units.smallSpacing
 
-                Kirigami.Heading {
-                    Layout.fillWidth: true
-                    Layout.leftMargin: Kirigami.Units.largeSpacing
-                    level: 2
-                    font.weight: Font.Bold
-                    text: KI18n.i18nc("@title", "Mail")
-                    elide: Text.ElideRight
+                    Kirigami.Heading {
+                        Layout.fillWidth: true
+                        Layout.leftMargin: Kirigami.Units.largeSpacing
+                        level: 2
+                        font.weight: Font.Bold
+                        text: KI18n.i18nc("@title", "Mail")
+                        elide: Text.ElideRight
+                    }
+                    QQC2.ToolButton {
+                        icon.name: "application-menu"
+                        display: QQC2.AbstractButton.IconOnly
+                        text: KI18n.i18nc("@action:button", "Main Menu")
+                        down: accountMenu.visible
+                        onClicked: accountMenu.popup(this, 0, height)
+
+                        QQC2.ToolTip.text: text
+                        QQC2.ToolTip.visible: hovered
+                        QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
+
+                        QQC2.Menu {
+                            id: accountMenu
+
+                            QQC2.MenuItem {
+                                text: KI18n.i18nc("@action:inmenu", "Settings…")
+                                icon.name: "settings-configure"
+                                onTriggered: sidebar.settingsRequested()
+                            }
+                            QQC2.MenuItem {
+                                text: KI18n.i18nc("@action:inmenu", "About Plasma Mail")
+                                icon.name: "help-about"
+                                onTriggered: sidebar.aboutRequested()
+                            }
+
+                        }
+                    }
                 }
-                QQC2.ToolButton {
-                    icon.name: "application-menu"
-                    display: QQC2.AbstractButton.IconOnly
-                    text: KI18n.i18nc("@action:button", "Main Menu")
-                    down: accountMenu.visible
-                    onClicked: accountMenu.popup(this, 0, height)
+            }
 
-                    QQC2.ToolTip.text: text
-                    QQC2.ToolTip.visible: hovered
-                    QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
+            QQC2.ScrollView {
+                id: scroll
 
-                    QQC2.Menu {
-                        id: accountMenu
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                contentWidth: availableWidth
 
-                        QQC2.MenuItem {
-                            text: KI18n.i18nc("@action:inmenu", "Settings…")
-                            icon.name: "settings-configure"
-                            onTriggered: sidebar.settingsRequested()
+                ColumnLayout {
+                    width: scroll.availableWidth
+                    spacing: 1
+
+                    SectionLabel {
+                        text: KI18n.i18nc("@title:group", "All Accounts")
+                    }
+
+                    Repeater {
+                        model: MailController.sharedFolders
+
+                        delegate: FolderRow {
+                            required property var modelData
+
+                            path: modelData.path
+                            text: modelData.name
+                            icon.name: modelData.iconName
+                            icon.color: sidebar.sharedColor(modelData.path)
                         }
-                        QQC2.MenuItem {
-                            text: KI18n.i18nc("@action:inmenu", "About Plasma Mail")
-                            icon.name: "help-about"
-                            onTriggered: sidebar.aboutRequested()
-                        }
+                    }
 
+                    // One section per account, in the order they were added.
+                    Repeater {
+                        model: MailController.accounts
+
+                        delegate: ColumnLayout {
+                            id: accountSection
+
+                            required property string email
+                            required property var folderModel
+                            property bool expanded: true
+
+                            Layout.fillWidth: true
+                            spacing: 1
+
+                            QQC2.ItemDelegate {
+                                id: accountHeader
+
+                                Layout.fillWidth: true
+                                Layout.topMargin: Kirigami.Units.largeSpacing
+                                Layout.leftMargin: Kirigami.Units.smallSpacing
+                                Layout.rightMargin: Kirigami.Units.smallSpacing
+                                topPadding: Kirigami.Units.smallSpacing
+                                bottomPadding: Kirigami.Units.smallSpacing
+                                onClicked: accountSection.expanded = !accountSection.expanded
+                                Accessible.name: KI18n.i18nc("@action:button", "Show or hide the folders of %1", accountSection.email)
+
+                                background: Rectangle {
+                                    radius: Kirigami.Units.cornerRadius
+                                    color: accountHeader.hovered ? Qt.alpha(Kirigami.Theme.textColor, 0.05) : "transparent"
+                                }
+                                contentItem: RowLayout {
+                                    spacing: Kirigami.Units.smallSpacing
+
+                                    Kirigami.Icon {
+                                        implicitWidth: Kirigami.Units.iconSizes.small
+                                        implicitHeight: Kirigami.Units.iconSizes.small
+                                        source: accountSection.expanded ? "arrow-down" : "arrow-right"
+                                        color: Kirigami.Theme.disabledTextColor
+                                        isMask: true
+                                    }
+                                    SenderAvatar {
+                                        implicitWidth: Kirigami.Units.iconSizes.smallMedium
+                                        name: accountSection.email
+                                    }
+                                    QQC2.Label {
+                                        Layout.fillWidth: true
+                                        text: accountSection.email
+                                        elide: Text.ElideRight
+                                        font.weight: Font.DemiBold
+                                    }
+                                }
+                            }
+
+                            Repeater {
+                                model: accountSection.expanded ? accountSection.folderModel : null
+
+                                // Model data via `model`: redeclaring `path` here would hide FolderRow's own
+                                // `path`, which its click handler reads (that left folder clicks doing nothing).
+                                delegate: FolderRow {
+                                    required property var model
+
+                                    account: accountSection.email
+                                    path: model.path
+                                    // Indented under the account header.
+                                    leftPadding: Kirigami.Units.gridUnit * 1.5 + model.depth * Kirigami.Units.gridUnit
+                                    text: model.name
+                                    icon.name: model.iconName
+                                    icon.color: sidebar.roleColor(model.folderRole)
+                                }
+                            }
+                        }
+                    }
+
+                    Item {
+                        Layout.preferredHeight: Kirigami.Units.smallSpacing
                     }
                 }
             }
         }
 
-        QQC2.ScrollView {
-            id: scroll
+        PanelResizer {
+            id: resizer
 
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            contentWidth: availableWidth
-
-            ColumnLayout {
-                width: scroll.availableWidth
-                spacing: 1
-
-                SectionLabel {
-                    text: KI18n.i18nc("@title:group", "All Accounts")
-                }
-
-                Repeater {
-                    model: MailController.sharedFolders
-
-                    delegate: FolderRow {
-                        required property var modelData
-
-                        path: modelData.path
-                        text: modelData.name
-                        icon.name: modelData.iconName
-                        icon.color: sidebar.sharedColor(modelData.path)
-                    }
-                }
-
-                // One section per account, in the order they were added.
-                Repeater {
-                    model: MailController.accounts
-
-                    delegate: ColumnLayout {
-                        id: accountSection
-
-                        required property string email
-                        required property var folderModel
-                        property bool expanded: true
-
-                        Layout.fillWidth: true
-                        spacing: 1
-
-                        QQC2.ItemDelegate {
-                            id: accountHeader
-
-                            Layout.fillWidth: true
-                            Layout.topMargin: Kirigami.Units.largeSpacing
-                            Layout.leftMargin: Kirigami.Units.smallSpacing
-                            Layout.rightMargin: Kirigami.Units.smallSpacing
-                            topPadding: Kirigami.Units.smallSpacing
-                            bottomPadding: Kirigami.Units.smallSpacing
-                            onClicked: accountSection.expanded = !accountSection.expanded
-                            Accessible.name: KI18n.i18nc("@action:button", "Show or hide the folders of %1", accountSection.email)
-
-                            background: Rectangle {
-                                radius: Kirigami.Units.cornerRadius
-                                color: accountHeader.hovered ? Qt.alpha(Kirigami.Theme.textColor, 0.05) : "transparent"
-                            }
-                            contentItem: RowLayout {
-                                spacing: Kirigami.Units.smallSpacing
-
-                                Kirigami.Icon {
-                                    implicitWidth: Kirigami.Units.iconSizes.small
-                                    implicitHeight: Kirigami.Units.iconSizes.small
-                                    source: accountSection.expanded ? "arrow-down" : "arrow-right"
-                                    color: Kirigami.Theme.disabledTextColor
-                                    isMask: true
-                                }
-                                SenderAvatar {
-                                    implicitWidth: Kirigami.Units.iconSizes.smallMedium
-                                    name: accountSection.email
-                                }
-                                QQC2.Label {
-                                    Layout.fillWidth: true
-                                    text: accountSection.email
-                                    elide: Text.ElideRight
-                                    font.weight: Font.DemiBold
-                                }
-                            }
-                        }
-
-                        Repeater {
-                            model: accountSection.expanded ? accountSection.folderModel : null
-
-                            // Model data via `model`: redeclaring `path` here would hide FolderRow's own
-                            // `path`, which its click handler reads (that left folder clicks doing nothing).
-                            delegate: FolderRow {
-                                required property var model
-
-                                account: accountSection.email
-                                path: model.path
-                                // Indented under the account header.
-                                leftPadding: Kirigami.Units.gridUnit * 1.5 + model.depth * Kirigami.Units.gridUnit
-                                text: model.name
-                                icon.name: model.iconName
-                                icon.color: sidebar.roleColor(model.folderRole)
-                            }
-                        }
-                    }
-                }
-
-                Item {
-                    Layout.preferredHeight: Kirigami.Units.smallSpacing
-                }
-            }
+            // Only beside the pages; the sliding sidebar of a narrow window keeps its width.
+            visible: !sidebar.modal
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            panelWidth: MailController.sidebarWidth
+            minimum: MailController.sidebarMinWidth
+            maximum: MailController.sidebarMaxWidth
+            onResized: width => MailController.savePanelWidths(width, MailController.listWidth)
+            onResetRequested: MailController.savePanelWidths(MailController.sidebarDefaultWidth, MailController.listWidth)
         }
     }
 

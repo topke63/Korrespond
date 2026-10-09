@@ -2246,14 +2246,16 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - notes:
 
 ### T108 — Link KSMTP
-- status: todo
+- status: done
 - depends on: none
 - parallel-safe with: T99–T107
 - files: CMakeLists.txt, src/CMakeLists.txt
 - inputs: `KPim6SMTP` is installed.
 - output: `find_package(KPim6SMTP)` and `plasmamail_engine` links it.
 - verify: `cmake --preset dev && cmake --build --preset dev`.
-- notes:
+- notes: Done 2026-10-09. `find_package(KPim6SMTP REQUIRED)` next to the IMAP one; `plasmamail_engine`
+  links `KPim6::SMTP` (the executable now loads libKPim6SMTP.so.6). Build without warnings;
+  14/14 tests.
 
 ### T109 — `SmtpClient`: send a message
 - status: todo

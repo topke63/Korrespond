@@ -25,6 +25,7 @@ target_link_libraries(plasmamail_engine PUBLIC
     KF6::I18n
     KF6::Mime
     KPim6::IMAP
+    KPim6::SMTP
     Qt6::Network
     Qt6::NetworkAuth
     Qt6Keychain::Qt6Keychain

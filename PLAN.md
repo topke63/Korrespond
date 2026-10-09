@@ -3432,6 +3432,72 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - notes: needs the user's OK: it changes the "CSP meta first" rule slightly (still before any markup
   that could load something).
 
+# Milestone 3g — Load remote images on request (user request 2026-10-09)
+
+- **Goal**: remote images in a message stay blocked by default (privacy: they tell the sender
+  you opened the mail). When a message has some, a bar above the body says so, and a button
+  "Load images" shows them for **that message only**.
+- **Decisions** (made while planning; change only with the user):
+  - Per message, one click, not remembered: closing or switching the message blocks again.
+    "Always load from this sender" is a later request.
+  - Only `https:` images are allowed when the user asks (`img-src https:` in the CSP for that
+    message and the web view's `autoLoadImages` on); plain `http:` stays blocked. Scripts, remote
+    styles, fonts, frames and everything else stay blocked as before.
+  - The bar only appears when the HTML really refers to remote images (`<img src="http(s)://…">`,
+    `background=` or CSS `url(http…)`), found by a simple scan in the engine.
+  - `cid:` images (pictures embedded in the message itself) are a separate feature and are not
+    part of this milestone.
+- **Out of scope**: remembering senders, a global setting, `http:` images, `cid:` images,
+  proxying images through a privacy service.
+
+### T164 — Engine: detect remote images and allow them in the policy
+- status: todo
+- depends on: T161
+- parallel-safe with: none
+- files: src/engine/messagerenderer.h, src/engine/messagerenderer.cpp, and the file that defines
+  `messageContentSecurityPolicy` (find it with grep), autotests/messagerenderertest.cpp
+- inputs: `messageBodyHtml(...)`, `cspMeta()`, the current policy (no remote loads at all).
+- output: `bool htmlHasRemoteImages(const QString &html)`; `messageBodyHtml` takes a flag
+  `allowRemoteImages` (default false) that adds `img-src https:` to the policy for that render
+  only (other directives unchanged; the policy text must still start the document as it does
+  today); the flag has no effect on plain text. The existing callers keep their behaviour.
+- verify: build succeeds; renderer test rows: a mail with `<img src="https://…">` → true; with
+  `http://`, with CSS `url(https://…)`, with only `cid:` → (http and https true, cid false); the
+  policy contains `img-src https:` only when the flag is set and never lists `http:`, scripts or
+  frames; `ctest --preset dev` passes.
+- notes:
+
+### T165 — Message view: "Load images" bar
+- status: todo
+- depends on: T164
+- parallel-safe with: none
+- files: src/app/mailcontroller.h, src/app/mailcontroller.cpp, src/qml/MessagePage.qml
+- inputs: T164; `showMessage()` builds `m_messageHtml`; the `WebEngineView` has
+  `settings.autoLoadImages: false`.
+- output: property `messageHasRemoteImages` (true when the open message has remote images and they
+  are not loaded yet) and `Q_INVOKABLE void loadRemoteImages()` that rebuilds `m_messageHtml` with
+  the flag, emits `currentMessageChanged` and sets the property false; a thin bar above the body
+  ("This message has images that were not loaded.  [Load images]", theme colours, an info icon)
+  shown only while the property is true; the web view's `autoLoadImages` follows a QML property
+  that is true only after the button was pressed for the open message and resets on every other
+  message. Opening another message always starts blocked.
+- verify: build succeeds; real qmllint (`cmake --build --preset dev --target all_qmllint`) adds no
+  warnings over the baseline; `ctest --preset dev` passes; offscreen start with a throw-away
+  profile and a seeded local message that has an `<img src="https://…">` (the tester may use the
+  screenshot hook): the bar shows; after `loadRemoteImages()` it is gone. No network is used.
+- notes:
+
+### T166 — Manual check: load images
+- status: todo
+- depends on: T165
+- parallel-safe with: none
+- files: none
+- inputs: the user's desktop; a newsletter with pictures.
+- output: confirmed: pictures are blocked and the bar shows; "Load images" shows them; another
+  message is blocked again; a message without images shows no bar.
+- verify: manual, with the user.
+- notes:
+
 ## Execution Loop
 
 Execute the plan as a loop. Each iteration handles one task in a fresh context, then ends.

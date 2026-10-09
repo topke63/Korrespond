@@ -2374,7 +2374,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   from MessagePage. Click path is checked live in T115.
 
 ### T115 — Manual check: send, reply, forward
-- status: todo
+- status: done
 - depends on: T113, T114
 - parallel-safe with: none
 - files: none
@@ -2383,6 +2383,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   shows a copy in Sent; Gmail has exactly one copy.
 - verify: manual, with the user.
 - notes:
+  Closed 2026-10-09: the user tried send, reply, reply all and forward and said it passed.
 
 ### T116 — `ImapClient`: search
 - status: done
@@ -2939,6 +2940,62 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   sizes of the bar). **Not reported yet:** the network-off test (red chip, error tooltip,
   click-to-reconnect), a live "Syncing …" text, and unread count vs tray tooltip — so this stays
   `todo` until the user confirms them or says to close it.
+
+# Milestone 3d — Last action in the status bar (user request 2026-10-09)
+
+- **Goal**: the status bar shows the last thing that happened, such as "New mail in <account>",
+  "Message sent", "Message archived", with the time, so the user can see what the app did.
+- **Decisions** (made while planning; change only with the user):
+  - It is a separate label in the bar, next to the existing activity text ("Up to date · checked
+    HH:MM" / "Syncing …"), which stays as it is.
+  - Events recorded: new mail (counts only, never sender or subject), message sent, message
+    archived, deleted, moved (with the folder name), and failures of those ("Sending failed").
+    Marking read/unread and flagging are too frequent and are not recorded.
+  - Only the last one is kept, in memory; it is not saved between starts.
+  - Never put message content (sender, subject, text) in it: it is shown on screen and may be
+    screenshotted.
+- **Out of scope**: a history list, clicking the label, saving it to disk.
+
+### T142 — Controller: `lastAction` property
+- status: todo
+- depends on: T104, T113, T127
+- parallel-safe with: none
+- files: src/app/mailcontroller.h, src/app/mailcontroller.cpp
+- inputs: the existing signals/places: `messageSent`, `sendFailed`, `newMailArrived`, and the
+  archive / delete / move code paths.
+- output: `Q_PROPERTY(QString lastActionText READ lastActionText NOTIFY lastActionChanged)` (empty
+  at start; a `QString` such as "Message sent · 17:05", time as HH:MM), set by a private
+  `setLastAction(const QString &)` that emits `lastActionChanged` only when the text changed. Called
+  on the events listed under Decisions. Texts go through `i18n()`.
+- verify: build succeeds; `ctest --preset dev` passes; a unit test is not needed (the controller
+  has none) but the signal must be declared, since an earlier attempt had a property with no
+  `NOTIFY` signal (rejected).
+- notes:
+
+### T143 — Status bar: show the last action
+- status: todo
+- depends on: T142
+- parallel-safe with: none
+- files: src/qml/StatusBar.qml
+- inputs: T142.
+- output: a small label with `MailController.lastActionText`, visible only when it is not empty,
+  placed between the activity text and the counters, elided on the right when space is short;
+  tooltip with the full text.
+- verify: `qmllint` clean on the file; offscreen start prints no new QML warnings; screenshot hook
+  shows the bar still fits at the default window width.
+- notes:
+
+### T144 — Manual check: last action in the status bar
+- status: todo
+- depends on: T143
+- parallel-safe with: none
+- files: none
+- inputs: the user's desktop; send a message to the user's own address.
+- output: confirmed: after sending, the bar says "Message sent · HH:MM"; a new mail from the
+  background check says so; archiving or moving a test message shows it; nothing from the message
+  (sender, subject) appears.
+- verify: manual, with the user.
+- notes:
 
 ## Execution Loop
 

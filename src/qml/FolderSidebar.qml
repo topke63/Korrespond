@@ -125,62 +125,76 @@ Kirigami.OverlayDrawer {
                     }
                 }
 
-                // One section per account (only one account until milestones 2–3).
-                QQC2.ItemDelegate {
-                    id: accountHeader
-
-                    property bool expanded: true
-
-                    Layout.fillWidth: true
-                    Layout.topMargin: Kirigami.Units.largeSpacing
-                    Layout.leftMargin: Kirigami.Units.smallSpacing
-                    Layout.rightMargin: Kirigami.Units.smallSpacing
-                    topPadding: Kirigami.Units.smallSpacing
-                    bottomPadding: Kirigami.Units.smallSpacing
-                    onClicked: expanded = !expanded
-                    Accessible.name: KI18n.i18nc("@action:button", "Show or hide the folders of %1", MailController.accountEmail)
-
-                    background: Rectangle {
-                        radius: Kirigami.Units.cornerRadius
-                        color: accountHeader.hovered ? Qt.alpha(Kirigami.Theme.textColor, 0.05) : "transparent"
-                    }
-                    contentItem: RowLayout {
-                        spacing: Kirigami.Units.smallSpacing
-
-                        Kirigami.Icon {
-                            implicitWidth: Kirigami.Units.iconSizes.small
-                            implicitHeight: Kirigami.Units.iconSizes.small
-                            source: accountHeader.expanded ? "arrow-down" : "arrow-right"
-                            color: Kirigami.Theme.disabledTextColor
-                            isMask: true
-                        }
-                        SenderAvatar {
-                            implicitWidth: Kirigami.Units.iconSizes.smallMedium
-                            name: MailController.accountEmail
-                        }
-                        QQC2.Label {
-                            Layout.fillWidth: true
-                            text: MailController.accountEmail
-                            elide: Text.ElideRight
-                            font.weight: Font.DemiBold
-                        }
-                    }
-                }
-
+                // One section per account, in the order they were added.
                 Repeater {
-                    model: accountHeader.expanded ? MailController.folderModel : null
+                    model: MailController.accounts
 
-                    // Model data via `model`: redeclaring `path` here would hide FolderRow's own
-                    // `path`, which its click handler reads (that left folder clicks doing nothing).
-                    delegate: FolderRow {
-                        required property var model
+                    delegate: ColumnLayout {
+                        id: accountSection
 
-                        path: model.path
-                        // Indented under the account header.
-                        leftPadding: Kirigami.Units.gridUnit * 1.5 + model.depth * Kirigami.Units.gridUnit
-                        text: model.name
-                        icon.name: model.iconName
-                        icon.color: sidebar.roleColor(model.folderRole)
+                        required property string email
+                        required property var folderModel
+                        property bool expanded: true
+
+                        Layout.fillWidth: true
+                        spacing: 1
+
+                        QQC2.ItemDelegate {
+                            id: accountHeader
+
+                            Layout.fillWidth: true
+                            Layout.topMargin: Kirigami.Units.largeSpacing
+                            Layout.leftMargin: Kirigami.Units.smallSpacing
+                            Layout.rightMargin: Kirigami.Units.smallSpacing
+                            topPadding: Kirigami.Units.smallSpacing
+                            bottomPadding: Kirigami.Units.smallSpacing
+                            onClicked: accountSection.expanded = !accountSection.expanded
+                            Accessible.name: KI18n.i18nc("@action:button", "Show or hide the folders of %1", accountSection.email)
+
+                            background: Rectangle {
+                                radius: Kirigami.Units.cornerRadius
+                                color: accountHeader.hovered ? Qt.alpha(Kirigami.Theme.textColor, 0.05) : "transparent"
+                            }
+                            contentItem: RowLayout {
+                                spacing: Kirigami.Units.smallSpacing
+
+                                Kirigami.Icon {
+                                    implicitWidth: Kirigami.Units.iconSizes.small
+                                    implicitHeight: Kirigami.Units.iconSizes.small
+                                    source: accountSection.expanded ? "arrow-down" : "arrow-right"
+                                    color: Kirigami.Theme.disabledTextColor
+                                    isMask: true
+                                }
+                                SenderAvatar {
+                                    implicitWidth: Kirigami.Units.iconSizes.smallMedium
+                                    name: accountSection.email
+                                }
+                                QQC2.Label {
+                                    Layout.fillWidth: true
+                                    text: accountSection.email
+                                    elide: Text.ElideRight
+                                    font.weight: Font.DemiBold
+                                }
+                            }
+                        }
+
+                        Repeater {
+                            model: accountSection.expanded ? accountSection.folderModel : null
+
+                            // Model data via `model`: redeclaring `path` here would hide FolderRow's own
+                            // `path`, which its click handler reads (that left folder clicks doing nothing).
+                            delegate: FolderRow {
+                                required property var model
+
+                                account: accountSection.email
+                                path: model.path
+                                // Indented under the account header.
+                                leftPadding: Kirigami.Units.gridUnit * 1.5 + model.depth * Kirigami.Units.gridUnit
+                                text: model.name
+                                icon.name: model.iconName
+                                icon.color: sidebar.roleColor(model.folderRole)
+                            }
+                        }
                     }
                 }
 
@@ -205,6 +219,8 @@ Kirigami.OverlayDrawer {
     component FolderRow: QQC2.ItemDelegate {
         id: folderRow
 
+        // The account a folder belongs to; empty for the shared views.
+        property string account
         property string path
 
         Layout.fillWidth: true
@@ -213,10 +229,10 @@ Kirigami.OverlayDrawer {
         leftPadding: Kirigami.Units.largeSpacing
         topPadding: Kirigami.Units.smallSpacing + 1
         bottomPadding: Kirigami.Units.smallSpacing + 1
-        highlighted: path === MailController.currentFolder
+        highlighted: path === MailController.currentFolder && account === MailController.currentAccount
         font.weight: highlighted ? Font.DemiBold : Font.Normal
         onClicked: {
-            MailController.selectFolder(path);
+            MailController.selectFolder(account, path);
             if (sidebar.modal) {
                 sidebar.close();
             }

@@ -1970,7 +1970,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   tests pass; offline start unchanged; the live flow is T80/T95.
 
 ### T93 — Sidebar: one section per account
-- status: todo
+- status: done
 - depends on: T88
 - parallel-safe with: T94, T96
 - files: src/qml/FolderSidebar.qml
@@ -1978,7 +1978,12 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - output: a Repeater over accounts, each with its own header (avatar, email, expand arrow) and
   its folders; clicking a folder selects it for that account; highlight checks account + path.
 - verify: offscreen start prints no new QML warnings; `run it again` reviewed by the user.
-- notes:
+- notes: Done 2026-10-09 (user review pending). A Repeater over `MailController.accounts`; each
+  section has its own expand state, header (avatar, email) and folder list; `FolderRow` got an
+  `account` property (empty for the shared views): click → `selectFolder(account, path)`,
+  highlight = path and account match. Checked offscreen/offline on a copy of the user's data with
+  a made-up second account: two sections with their folders, no new QML warnings (the two
+  "not placed in the graphics scene" ones were there before).
 
 ### T94 — Message list and message view pass the account
 - status: todo

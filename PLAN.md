@@ -3215,7 +3215,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   qmllint clean, ctest 17/17, offscreen clean. Chip labels still show the raw names (display only).
 
 ### T154 — Manual check: open and save attachments
-- status: waiting (manual check with the user)
+- status: done
 - depends on: T153
 - parallel-safe with: none
 - files: none
@@ -3225,6 +3225,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   `.sh` attachment offers Save As only.
 - verify: manual, with the user.
 - notes:
+  Closed 2026-10-09: the user tried the final build and said "it's fine now" (a general confirmation; no per-case details given).
 
 ### T155 — Message builder: attachments
 - status: done
@@ -3272,7 +3273,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   access" warnings of the kind the file already has (singleton + root id in a delegate) → T159.
 
 ### T157 — Manual check: send an attachment
-- status: waiting (manual check with the user)
+- status: done
 - depends on: T156, T154
 - parallel-safe with: none
 - files: none
@@ -3282,6 +3283,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   a too large file is refused.
 - verify: manual, with the user.
 - notes:
+  Closed 2026-10-09: the user tried the final build and said "it's fine now" (a general confirmation; no per-case details given).
 
 ### T158 — Attachments: follow-ups from T152
 - status: todo

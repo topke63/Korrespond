@@ -2398,7 +2398,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   Build ok, ctest 16/16; no ImapClient unit test (no fake server), live check in T117.
 
 ### T117 — Search field in the toolbar
-- status: todo
+- status: waiting (code done; manual check with the user)
 - depends on: T116, T88
 - parallel-safe with: none
 - files: src/app/mailcontroller.h, src/app/mailcontroller.cpp, src/qml/MessagePage.qml
@@ -2406,7 +2406,14 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - output: the search field is enabled; typing + Enter lists matches of the current folder (all
   accounts for the shared views), Escape returns to the folder; the list header says "Search".
 - verify: offscreen start prints no new QML warnings; manual with the user.
-- notes:
+- notes: Code done 2026-10-09. Also touched src/qml/MessageListPage.qml (the list header lives
+  there). MailController: search(text), clearSearch(), searchActive; per-session FIFO
+  `m_inflight` {isSearch, generation} drops stale headersFetched replies (cleared on session
+  error/discard/reconnect); shared views search every inbox (merge cap 200), Unread/Flagged filter
+  the matches client-side; results never reach the store, unread counts or the new-mail tracker.
+  Build ok, ctest 16/16, qmllint clean, offscreen start clean. Known limits: a non-fatal IMAP error
+  clears the whole FIFO (may show one stale listing); m_requests can leak when a reconnect drops
+  jobs (pre-existing). Waiting: user tries search in a folder, in All Inboxes, Escape returns.
 
 ### T118 — Label (needs Q5)
 - status: todo

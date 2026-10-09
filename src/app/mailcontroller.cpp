@@ -164,6 +164,7 @@ bool MailController::isKnown(const AccountSession *session) const
 void MailController::discardSession(AccountSession *session, bool deleteStore)
 {
     m_sharedRequested.erase(session);
+    m_inflight.erase(session);
     if (m_awaitingFolders.erase(session) > 0) {
         endRequest();
     }
@@ -742,6 +743,7 @@ void MailController::selectFolder(const QString &account, const QString &path)
     }
     const QString newAccount = isSharedView(path) ? QString() : session->account().email;
     if (path != m_currentFolder || newAccount != m_currentAccount) {
+        endSearch(); // a search belongs to the folder it was made in
         m_currentAccount = newAccount;
         m_currentFolder = path;
         m_sharedParts.clear();
@@ -758,11 +760,95 @@ void MailController::selectFolder(const QString &account, const QString &path)
         }
         return;
     }
+    if (m_searchActive) {
+        runSearch(); // e.g. a refresh: search again, the listing stays out of the way
+        return;
+    }
     if (session->storageActive() && m_messageModel->rowCount() == 0) {
         m_messageModel->setMessages(storedMessages(session, path));
     }
+    requestHeaders(session, path, filterFor(path));
+}
+
+void MailController::requestHeaders(AccountSession *session, const QString &folder, ImapClient::HeaderFilter filter)
+{
     beginRequest();
-    session->client()->fetchHeaders(path, messageLimit, filterFor(path));
+    m_inflight[session].push_back({false, 0});
+    session->client()->fetchHeaders(folder, messageLimit, filter);
+}
+
+void MailController::requestSearch(AccountSession *session, const QString &folder)
+{
+    beginRequest();
+    m_inflight[session].push_back({true, m_searchGeneration});
+    session->client()->search(folder, m_searchText);
+}
+
+bool MailController::searchActive() const
+{
+    return m_searchActive;
+}
+
+void MailController::search(const QString &text)
+{
+    const QString trimmed = text.trimmed();
+    if (trimmed.isEmpty()) {
+        clearSearch();
+        return;
+    }
+    if (m_currentFolder.isEmpty() || !currentSession()) {
+        return;
+    }
+    m_searchText = trimmed;
+    ++m_searchGeneration; // answers of an earlier search are dropped
+    m_sharedParts.clear();
+    m_messageModel->clear();
+    if (!std::exchange(m_searchActive, true)) {
+        Q_EMIT searchActiveChanged();
+    }
+    if (isSharedView(m_currentFolder)) {
+        m_sharedRequested.clear();
+        for (AccountSession *each : std::as_const(m_sessions)) {
+            fetchSharedPart(each);
+        }
+    } else {
+        runSearch();
+    }
+}
+
+void MailController::runSearch()
+{
+    AccountSession *session = currentSession();
+    if (!session || isSharedView(m_currentFolder)) {
+        return;
+    }
+    ++m_searchGeneration;
+    m_messageModel->clear();
+    requestSearch(session, m_currentFolder);
+}
+
+void MailController::endSearch()
+{
+    if (!m_searchActive) {
+        return;
+    }
+    m_searchActive = false;
+    m_searchText.clear();
+    ++m_searchGeneration;
+    Q_EMIT searchActiveChanged();
+}
+
+void MailController::clearSearch()
+{
+    if (!m_searchActive) {
+        return;
+    }
+    endSearch();
+    m_sharedParts.clear();
+    m_messageModel->clear();
+    if (!m_currentFolder.isEmpty()) {
+        selectFolder(m_currentAccount, m_currentFolder); // the normal listing, from the store first
+    }
 }
 
 // Asks one account for its part of the open shared view, once per selection.
@@ -776,13 +862,16 @@ void MailController::fetchSharedPart(AccountSession *session)
     if (folder.isEmpty()) {
         return;
     }
+    if (m_searchActive) {
+        requestSearch(session, folder);
+        return;
+    }
     const QString email = session->account().email;
     if (session->storageActive() && !m_sharedParts.contains(email)) {
         m_sharedParts.insert_or_assign(email, storedMessages(session, m_currentFolder));
         mergeSharedParts();
     }
-    beginRequest();
-    session->client()->fetchHeaders(folder, messageLimit, filterFor(m_currentFolder));
+    requestHeaders(session, folder, filterFor(m_currentFolder));
 }
 
 // Shows the newest messageLimit messages of all accounts' parts, newest first.
@@ -802,8 +891,9 @@ void MailController::mergeSharedParts()
         }
         return a.date > b.date;
     });
-    if (merged.size() > messageLimit) {
-        merged.resize(messageLimit);
+    const int limit = m_searchActive ? searchLimit : messageLimit;
+    if (merged.size() > limit) {
+        merged.resize(limit);
     }
     m_messageModel->setMessages(merged);
 }
@@ -863,12 +953,31 @@ void MailController::refresh()
 void MailController::onHeadersFetched(AccountSession *session, const QString &folder, ImapClient::HeaderFilter filter, const QList<MessageSummary> &messages)
 {
     endRequest();
+    // What was asked for this answer? Without a record (a failure cleared them), assume the current mode.
+    Inflight asked{m_searchActive, m_searchGeneration};
+    const auto queue = m_inflight.find(session);
+    if (queue != m_inflight.end() && !queue->second.empty()) {
+        asked = queue->second.front();
+        queue->second.pop_front();
+    }
     const bool shared = isSharedView(m_currentFolder);
+    if (asked.search != m_searchActive || (asked.search && asked.generation != m_searchGeneration)) {
+        return; // a listing that a search replaced, or a search that was replaced or cleared
+    }
     if (!isKnown(session) || (!shared && session != currentSession()) || folder != imapFolderFor(session, m_currentFolder)
-        || filter != filterFor(m_currentFolder)) {
+        || (!asked.search && filter != filterFor(m_currentFolder))) {
         return; // the user switched folders while this was loading
     }
     QList<MessageSummary> shown = messages;
+    if (asked.search) {
+        // A search finds every message of the inbox; the Unread and Flagged views keep their own.
+        const ImapClient::HeaderFilter view = filterFor(m_currentFolder);
+        if (view != ImapClient::AllMessages) {
+            shown.removeIf([view](const MessageSummary &m) {
+                return view == ImapClient::Unread ? !m.unread : !m.flagged;
+            });
+        }
+    }
     if (session->storageActive()) {
         // The server sends no body text; previews come from the local copies.
         const QHash<qint64, QString> previews = session->store()->previews(folder);
@@ -1329,6 +1438,7 @@ void MailController::removeAccount(const QString &account)
     }
     if (m_currentAccount == email || m_sessions.isEmpty()) {
         // The open folder is gone: back to All Inboxes, or to nothing without accounts.
+        endSearch();
         m_showingStored = false;
         m_currentAccount.clear();
         m_sharedParts.clear();
@@ -1386,6 +1496,8 @@ void MailController::onSecretRead(const QString &key, const QString &password, c
         Q_EMIT errorOccurred(i18n("Could not read the password for %1 from the keychain: %2", key, error));
         return;
     }
+    // The connection is set up again, which drops the old session's jobs without a reply.
+    m_inflight.erase(*it);
     // For a Google account the keychain holds the refresh token, not a password.
     if ((*it)->account().authMethod == "oauth"_L1) {
         (*it)->connectWithRefreshToken(password);
@@ -1399,6 +1511,7 @@ void MailController::onSessionError(AccountSession *session, const QString &mess
     if (!isKnown(session)) {
         return;
     }
+    m_inflight.erase(session); // its queued answers will not come
     // A failed background check is only logged: offline, it would complain every few minutes.
     const bool quiet = m_checking.erase(session) > 0;
     updateActivity();
@@ -1489,6 +1602,7 @@ void MailController::onSessionFolders(AccountSession *session)
             updateSyncing();
             Q_EMIT accountChanged();
             if (firstAccount) {
+                endSearch();
                 m_showingStored = false;
                 m_currentAccount.clear();
                 m_sharedParts.clear();
@@ -1517,6 +1631,7 @@ void MailController::applyFolderList()
                                     });
     if (!currentStillExists) {
         // First list after connecting, or the folder was deleted elsewhere: show All Inboxes.
+        endSearch();
         m_currentFolder.clear();
         m_messageModel->clear();
         clearMessage(true);

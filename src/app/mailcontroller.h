@@ -17,6 +17,7 @@
 #include <QTimer>
 #include <QVariantMap>
 
+#include <deque>
 #include <map>
 #include <memory>
 #include <set>
@@ -94,6 +95,8 @@ class MailController : public QObject
     Q_PROPERTY(qint64 storageUsedBytes READ storageUsedBytes NOTIFY storageUsageChanged)
     // True while mail is being copied from the server into local storage.
     Q_PROPERTY(bool syncing READ syncing NOTIFY syncingChanged)
+    // True while the list shows search results instead of the folder's listing.
+    Q_PROPERTY(bool searchActive READ searchActive NOTIFY searchActiveChanged)
     // False when the local store could not be opened; usage, cleanup and sync then do nothing.
     Q_PROPERTY(bool storageReady READ storageReady NOTIFY accountChanged)
     // The Google OAuth client is set up (read once at startup).
@@ -166,6 +169,12 @@ public:
     [[nodiscard]] int sizeUnit() const;
     [[nodiscard]] qint64 storageUsedBytes() const;
     [[nodiscard]] bool syncing() const;
+    [[nodiscard]] bool searchActive() const;
+    // Searches the open folder (every account's inbox in a shared view) for text in Subject, From
+    // or Body, on the server. The results are only shown; the stored listing is left alone.
+    Q_INVOKABLE void search(const QString &text);
+    // Ends the search and shows the folder's normal listing again.
+    Q_INVOKABLE void clearSearch();
     [[nodiscard]] bool storageReady() const;
     [[nodiscard]] bool googleConfigured() const;
     [[nodiscard]] int unreadCount() const;
@@ -269,6 +278,8 @@ public:
 
     // How many of the newest messages a folder shows.
     static constexpr int messageLimit = 50;
+    // How many results a search shows (the most the server returns per account).
+    static constexpr int searchLimit = 200;
 
 Q_SIGNALS:
     void accountChanged();
@@ -278,6 +289,7 @@ Q_SIGNALS:
     void storageSettingsChanged();
     void storageUsageChanged();
     void syncingChanged();
+    void searchActiveChanged();
     void unreadCountChanged();
     void appSettingsChanged();
     void activityChanged();
@@ -330,6 +342,11 @@ private:
     void applyFolderList();
     void saveAccounts() const; // writes the sessions' accounts to the config, in order
     void fetchSharedPart(AccountSession *session);
+    // Asks the server for the headers of the open folder; remembered so the answer can be told from a search's.
+    void requestHeaders(AccountSession *session, const QString &folder, ImapClient::HeaderFilter filter);
+    void requestSearch(AccountSession *session, const QString &folder);
+    void runSearch(); // sends the search of the open single folder
+    void endSearch(); // leaves search mode without touching the list
     void mergeSharedParts();
     // The IMAP folder and filter behind a folder or shared-view path. A shared view reads each
     // account's own inbox.
@@ -394,4 +411,14 @@ private:
     bool m_syncing = false;
     bool m_showingStored = false; // the view came from the store; refresh it once connected
     int m_requests = 0;
+    // Search results are only shown, never stored. Replies of each session come in the order asked,
+    // so this tells a search's answer from a folder listing's, and an old search's from the current one's.
+    struct Inflight {
+        bool search;
+        int generation;
+    };
+    std::map<AccountSession *, std::deque<Inflight>> m_inflight;
+    bool m_searchActive = false;
+    QString m_searchText;
+    int m_searchGeneration = 0;
 };

@@ -18,7 +18,7 @@ Kirigami.ScrollablePage {
         applicationWindow().pageStack.currentIndex = Kirigami.ColumnView.index + 1;
     }
 
-    title: MailController.currentFolderName
+    title: MailController.searchActive ? KI18n.i18nc("@title", "Search") : MailController.currentFolderName
     // Fixed accent for unread: the theme's highlight turns dull when the window is inactive.
     readonly property color unreadColor: "#3daee9"
     titleDelegate: Kirigami.Heading {

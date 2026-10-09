@@ -210,9 +210,33 @@ Kirigami.Page {
         }
 
         Kirigami.SearchField {
+            id: searchField
+
             Layout.preferredWidth: Kirigami.Units.gridUnit * 14
             Layout.rightMargin: Kirigami.Units.smallSpacing
-            enabled: false // search comes in a later milestone
+            enabled: MailController.currentFolder !== ""
+            // Enter searches the open folder on the server; Escape or an empty field shows the folder again.
+            onAccepted: MailController.search(text)
+            onTextChanged: {
+                if (text === "") {
+                    MailController.clearSearch();
+                }
+            }
+            Keys.onEscapePressed: {
+                text = "";
+                MailController.clearSearch();
+            }
+
+            // The search ends by itself when another folder is opened.
+            Connections {
+                target: MailController
+
+                function onSearchActiveChanged() {
+                    if (!MailController.searchActive) {
+                        searchField.text = "";
+                    }
+                }
+            }
         }
     }
     padding: 0

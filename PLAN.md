@@ -27,7 +27,8 @@
 2. Gmail via OAuth2, alongside Yahoo: **planned below as "Milestone 2"** (multiple accounts +
    Google sign-in). Gmail extensions (X-GM-THRID threads, X-GM-LABELS) stay for later.
 3. Outlook/Microsoft via OAuth2 (reuses milestone 2 code).
-4. Compose / reply / forward over SMTP (KPim6::SMTP is installed).
+4. Compose / reply / forward over SMTP (KPim6::SMTP is installed): **pulled into Milestone 3**
+   (2026-10-09, with all the message-toolbar actions).
 5. IDLE, notifications, background sync timer, and **reordering accounts** (user request
    2026-10-08: drag handle or move up/down in Settings → Accounts, saved in the config and
    mirrored in the sidebar's account sections). The rest of multiple accounts (account manager
@@ -1818,7 +1819,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   static `providerName()` (T85 should make MailController::accountProvider use it).
 
 ### T85 — `MailController`: run every saved account through `AccountSession`
-- status: todo
+- status: done
 - depends on: T83, T84
 - parallel-safe with: none
 - files: src/app/mailcontroller.h, src/app/mailcontroller.cpp
@@ -1828,7 +1829,17 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   existing QML API keeps working against the **first** account (folderModel, selectFolder(path),
   openMessage(uid), setFlagged, storage) so the app behaves as before with one account.
 - verify: build succeeds, all tests pass, `run it again` shows Yahoo exactly as before.
-- notes:
+- notes: Done 2026-10-09 (user's "run it again" check still to do). One `AccountSession` per saved
+  account (`m_sessions`), created at startup; the legacy store moves into the first account's folder
+  first. QML API works on the first account ("UI session"); `folderModel` and `storageReady` now
+  notify via `accountChanged` (the folder model is the UI session's). `accounts` property added.
+  Storage settings go to every session; usage/syncing are sums/any. A new account is verified in
+  a pending session, then (after the keychain write) **replaces** the saved account — T90 changes
+  this to adding. `removeAccount()` removes the first account only (T90). OAuth accounts get a
+  session but no connect yet (T92). Errors of non-UI sessions are prefixed with the email.
+  Checked: build, 12/12 tests, and an offline run (`unshare -n`, offscreen) on a *copy* of the
+  user's data: legacy store moved into `accounts/<sha1>/`, sidebar + All Inboxes from storage
+  looked as before. The user's real data dir has not been touched yet by the new code.
 
 ### T86 — Messages carry their account
 - status: todo
@@ -1984,6 +1995,269 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - notes:
 
 ---
+
+# Milestone 3 — Message actions (user request 2026-10-09: "enable all the action buttons")
+
+- **Goal**: every button in the message toolbar works: Mark as Unread, Archive, Delete, Move to
+  Folder, Label, Reply, Reply All, Forward; plus the Search field. Flag already works.
+- **Decision (user, 2026-10-09)**: all of them. This **lifts the milestone-1 rule** "the app never
+  deletes or moves mail on the server": moving to Archive/Trash/another folder is now allowed,
+  always through a move (never permanent deletion; "Delete" = move to the Trash folder).
+  Sending mail (formerly milestone 4) is pulled into this milestone because Reply/Forward need it.
+- **Order**: runs **after Milestone 2** (it needs T86's account-aware messages and T88's
+  per-account folders). Can be moved earlier if the user says so.
+- **Out of scope**: permanent deletion / emptying Trash, drafts saved on the server, attachments
+  in new messages, rich-text composing, signatures, Outlook, Gmail threads.
+- **Global verify**: as milestone 2.
+- **Design decisions** (made while planning; change only with the user):
+  - Every action works on the open message of the **account it belongs to** (T86).
+  - Server first, UI after: the list row disappears / changes only when the server accepted the
+    command; on failure an error toast shows and nothing changes locally.
+  - Move = IMAP `UID MOVE` when the server lists MOVE, else `UID COPY` + `\Deleted` + `UID EXPUNGE`
+    (UIDPLUS) — never a plain EXPUNGE, which would remove other messages marked deleted.
+  - Archive: the account's `archive` folder; Gmail: its All Mail (`all`) — moving from INBOX
+    there is Gmail's archive. Delete: the `trash` folder. If the folder doesn't exist the button
+    is disabled with a tooltip saying why.
+  - After Archive/Delete/Move the next message in the list opens (or none if it was the last).
+  - Local store follows the server: moved/deleted messages are removed from the store; the
+    target folder's copy arrives with the next sync.
+  - Reply/Forward: plain-text body (quoted for replies), `In-Reply-To`/`References` set,
+    "Re:"/"Fwd:" subjects without doubling, From = the message's account.
+  - Sending uses KSMTP with the same login as IMAP (password, or XOAUTH2 for Google). After
+    sending, a copy is appended to the Sent folder, except for Gmail, which does it itself.
+- **Open questions**:
+  - **Q5**: What should "Label" do for Yahoo (no labels)? Proposal: Gmail only (X-GM-LABELS);
+    for other accounts it uses IMAP keywords if the server allows them, else is disabled with a
+    tooltip. Needed by T118.
+
+### T99 — `ImapClient`: mark a message unread
+- status: todo
+- depends on: none
+- parallel-safe with: T100–T102
+- files: src/engine/imapclient.h, src/engine/imapclient.cpp
+- inputs: `markSeen` (existing StoreJob usage).
+- output: `void setSeen(const QString &folder, qint64 uid, bool seen)`; `markSeen` calls it.
+- verify: `cmake --build build --target plasmamail_engine`.
+- notes:
+
+### T100 — Mark as Unread / Read in the controller and toolbar
+- status: todo
+- depends on: T99
+- parallel-safe with: T101, T102
+- files: src/app/mailcontroller.h, src/app/mailcontroller.cpp, src/qml/MessagePage.qml
+- inputs: T99; `setFlagged` as the pattern.
+- output: `Q_INVOKABLE void setUnread(qint64 uid, bool unread)` (list, store, server);
+  `messageUnread` property; the button toggles "Mark as Unread" / "Mark as Read"; it does not
+  re-mark the message read while it stays open.
+- verify: build; offscreen start has no new QML warnings.
+- notes:
+
+### T101 — `ImapClient`: move a message
+- status: todo
+- depends on: none
+- parallel-safe with: T99, T100, T102
+- files: src/engine/imapclient.h, src/engine/imapclient.cpp
+- inputs: `KIMAP::MoveJob`, `CopyJob`, `StoreJob`, `ExpungeJob`, `CapabilitiesJob` (MOVE, UIDPLUS).
+- output: `void moveMessage(const QString &from, qint64 uid, const QString &to)`; signal
+  `messageMoved(from, uid, to)` or `errorOccurred`; the fallback from the design decisions.
+- verify: build. Live check in T107.
+- notes:
+
+### T102 — Folder lookup for Archive and Delete
+- status: todo
+- depends on: none
+- parallel-safe with: T99–T101
+- files: src/engine/folderutils.h, src/engine/folderutils.cpp, autotests/folderutilstest.cpp
+- inputs: `FolderInfo::role`.
+- output: `QString folderForRole(const QList<FolderInfo>&, const QString &role)` (empty if none)
+  and `archiveTarget(...)` (archive, else all for Gmail) with tests.
+- verify: `ctest --test-dir build -R folderutilstest --output-on-failure`
+- notes:
+
+### T103 — `MessageStore`: remove one message
+- status: todo
+- depends on: none
+- parallel-safe with: T99–T102
+- files: src/engine/messagestore.h, src/engine/messagestore.cpp, autotests/messagestoretest.cpp
+- inputs: existing remove functions.
+- output: `bool removeMessage(const QString &folder, qint64 uid)` (row and .eml); tests.
+- verify: `ctest --test-dir build -R messagestoretest --output-on-failure`
+- notes:
+
+### T104 — Controller: Archive, Delete, Move
+- status: todo
+- depends on: T101, T102, T103, T88
+- parallel-safe with: none
+- files: src/app/mailcontroller.h, src/app/mailcontroller.cpp
+- inputs: T101–T103; the account of the open message.
+- output: `archiveMessage()`, `deleteMessage()`, `moveMessage(folderPath)` on the open message;
+  properties `canArchive`, `canDelete`; on `messageMoved` the row and store copy go and the next
+  message opens; on error the list stays and `errorOccurred` fires.
+- verify: build; all tests pass.
+- notes:
+
+### T105 — Toolbar: Archive, Delete, Move to Folder
+- status: todo
+- depends on: T104
+- parallel-safe with: T100
+- files: src/qml/MessagePage.qml
+- inputs: T104.
+- output: Archive and Delete enabled (shortcuts E and Delete, tooltips), disabled with a reason
+  when `canArchive`/`canDelete` is false; Move to Folder opens a menu of the account's folders.
+- verify: offscreen start prints no new QML warnings.
+- notes:
+
+### T106 — Toolbar: keyboard shortcuts and message-list context
+- status: todo
+- depends on: T105
+- parallel-safe with: none
+- files: src/qml/MessagePage.qml, src/qml/MessageListPage.qml
+- inputs: T100, T105.
+- output: shortcuts shown in tooltips (Mark unread U, Archive E, Delete Del); a right-click menu
+  on list rows with the same actions.
+- verify: offscreen start prints no new QML warnings.
+- notes:
+
+### T107 — Manual check: Mark as Unread, Archive, Delete, Move
+- status: todo
+- depends on: T100, T105
+- parallel-safe with: none
+- files: none (record results; new tasks for bugs)
+- inputs: the user's accounts; use test messages the user picks (this changes the real mailbox).
+- output: confirmed in notes: each action changes the server (visible in webmail), the list and
+  the store; failures leave the message where it was.
+- verify: manual, with the user.
+- notes:
+
+### T108 — Link KSMTP
+- status: todo
+- depends on: none
+- parallel-safe with: T99–T107
+- files: CMakeLists.txt, src/CMakeLists.txt
+- inputs: `KPim6SMTP` is installed.
+- output: `find_package(KPim6SMTP)` and `plasmamail_engine` links it.
+- verify: `cmake --preset dev && cmake --build --preset dev`.
+- notes:
+
+### T109 — `SmtpClient`: send a message
+- status: todo
+- depends on: T108, T77
+- parallel-safe with: T99–T107
+- files: src/engine/smtpclient.h, src/engine/smtpclient.cpp (+ CMake line)
+- inputs: `KSMTP::Session/LoginJob/SendJob`; account SMTP settings; password or XOAUTH2.
+- output: `send(account, secret, from, to, cc, bcc, subject, body, inReplyTo, references)` →
+  `sent()` / `failed(message)`; builds the message with KMime; encrypted connection only.
+- verify: build. Live check in T115.
+- notes:
+
+### T110 — Message builder and reply/forward text
+- status: todo
+- depends on: none
+- parallel-safe with: T99–T109
+- files: src/engine/messagecomposer.h, src/engine/messagecomposer.cpp, autotests/messagecomposertest.cpp
+- inputs: `KMime::Message`; `messagebodyplain` logic in messagerenderer.
+- output: `replySubject/forwardSubject`, `quotedBody(message, header line)`, `replyRecipients(
+  message, ownAddress, replyAll)`, `references(message)`; tests for "Re: Re:", reply-all without
+  the own address, Reply-To, References chain.
+- verify: `ctest --test-dir build -R messagecomposertest --output-on-failure`
+- notes:
+
+### T111 — Controller: prepare Reply, Reply All, Forward
+- status: todo
+- depends on: T110, T88
+- parallel-safe with: T109
+- files: src/app/mailcontroller.h, src/app/mailcontroller.cpp
+- inputs: T110; the open message and its account.
+- output: `Q_INVOKABLE QVariantMap composeFor(const QString &kind)` ("reply", "replyAll",
+  "forward") → {from, to, cc, subject, body, inReplyTo, references}.
+- verify: build; all tests pass.
+- notes:
+
+### T112 — Compose window: Send, prefilled
+- status: todo
+- depends on: T109, T111
+- parallel-safe with: none
+- files: src/qml/ComposeWindow.qml, src/app/mailcontroller.h, src/app/mailcontroller.cpp
+- inputs: T109, T111; existing compose window (Send disabled).
+- output: the window takes initial values; From picks an account; Send is enabled when there is a
+  recipient and sends through the controller; shows progress, closes on success, keeps the text
+  and shows the error on failure.
+- verify: offscreen start prints no new QML warnings.
+- notes:
+
+### T113 — Copy of sent mail into the Sent folder
+- status: todo
+- depends on: T112
+- parallel-safe with: none
+- files: src/engine/imapclient.h, src/engine/imapclient.cpp, src/app/mailcontroller.cpp
+- inputs: `KIMAP::AppendJob`; the account's `sent` folder; Gmail saves its own copy.
+- output: after a send, non-Gmail accounts append the sent message to Sent with `\Seen`.
+- verify: build. Live check in T115.
+- notes:
+
+### T114 — Toolbar: Reply, Reply All, Forward
+- status: todo
+- depends on: T112
+- parallel-safe with: T113
+- files: src/qml/MessagePage.qml
+- inputs: T111, T112.
+- output: the three buttons enabled (shortcuts R, Shift+R, Shift+F), each opens the compose window
+  prefilled.
+- verify: offscreen start prints no new QML warnings.
+- notes:
+
+### T115 — Manual check: send, reply, forward
+- status: todo
+- depends on: T113, T114
+- parallel-safe with: none
+- files: none
+- inputs: the user's accounts; send to the user's own address first.
+- output: confirmed: new message, reply, reply all, forward arrive and thread correctly; Yahoo
+  shows a copy in Sent; Gmail has exactly one copy.
+- verify: manual, with the user.
+- notes:
+
+### T116 — `ImapClient`: search
+- status: todo
+- depends on: none
+- parallel-safe with: T99–T115
+- files: src/engine/imapclient.h, src/engine/imapclient.cpp
+- inputs: `KIMAP::SearchJob`, existing `fetchHeaders`.
+- output: `void search(const QString &folder, const QString &text)` → `headersFetched` for the
+  matches (subject, from, body text).
+- verify: build. Live check in T117.
+- notes:
+
+### T117 — Search field in the toolbar
+- status: todo
+- depends on: T116, T88
+- parallel-safe with: none
+- files: src/app/mailcontroller.h, src/app/mailcontroller.cpp, src/qml/MessagePage.qml
+- inputs: T116.
+- output: the search field is enabled; typing + Enter lists matches of the current folder (all
+  accounts for the shared views), Escape returns to the folder; the list header says "Search".
+- verify: offscreen start prints no new QML warnings; manual with the user.
+- notes:
+
+### T118 — Label (needs Q5)
+- status: todo
+- depends on: Q5, T104
+- parallel-safe with: none
+- files: to be set after Q5
+- inputs: Q5's answer.
+- output: to be set after Q5.
+- verify: to be set after Q5.
+- notes:
+
+### T119 — Global verify (Milestone 3)
+- status: todo
+- depends on: T99–T118
+- parallel-safe with: none
+- files: none
+- inputs: global verify command.
+- output: clean build, all tests pass, no new QML warnings.
+- verify: `rm -rf build && cmake --preset dev && cmake --build --preset dev && ctest --preset dev`
+- notes:
 
 ## Execution Loop
 

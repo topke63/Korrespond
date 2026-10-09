@@ -2822,7 +2822,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   again each time) when its state or sync text changes. Build; 14/14 tests; first used by T140.
 
 ### T139 — Controller: activity line
-- status: todo
+- status: done
 - depends on: T138
 - parallel-safe with: none
 - files: src/app/mailcontroller.h, src/app/mailcontroller.cpp
@@ -2832,7 +2832,13 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   a sync → that session's `syncText`, else empty); `reconnect(account)` (invokable) that
   reconnects a failed account the way startup does.
 - verify: build succeeds; all tests pass.
-- notes:
+- notes: Done 2026-10-09. `activityText` (priority: a move → "Moving message…"; an account
+  connecting → "Connecting…"; a sync → that account's sync text; a background check →
+  "Checking for new mail…"; a busy request → "Loading…"; else empty) and `lastCheckedAt`, both
+  with `activityChanged`, recomputed by `updateActivity()` on busy / sync / check / move / session
+  state changes; `reconnect(account)` reads the keychain entry again and lets `onSecretRead` start
+  the connection (a password account logs in, a Google account refreshes its token). Build;
+  14/14 tests; shown in T140.
 
 ### T140 — `StatusBar.qml` in the main window
 - status: todo

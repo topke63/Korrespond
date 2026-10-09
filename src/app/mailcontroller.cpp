@@ -40,6 +40,7 @@ MailController::MailController(QObject *parent)
     connect(m_secrets, &SecretStore::passwordRead, this, &MailController::onSecretRead);
     m_googleConfigured = GoogleOAuthSettings::load().isConfigured();
     connect(m_checkTimer, &QTimer::timeout, this, &MailController::checkForNewMail);
+    connect(this, &MailController::busyChanged, this, &MailController::updateActivity);
     m_app = AppSettings::load();
     m_checkTimer->start(std::chrono::minutes(m_app.checkMinutes));
 
@@ -147,6 +148,8 @@ AccountSession *MailController::createSession(const Account &account)
         onInboxChecked(session, folder, unreadTotal, newestUnread);
     });
     connect(session, &AccountSession::syncingChanged, this, &MailController::updateSyncing);
+    connect(session, &AccountSession::syncTextChanged, this, &MailController::updateActivity);
+    connect(session, &AccountSession::connectionStateChanged, this, &MailController::updateActivity);
     connect(session, &AccountSession::storageUsageChanged, this, &MailController::updateStorageUsage);
     return session;
 }
@@ -488,6 +491,58 @@ void MailController::configureNotifications()
     KNotifyConfigWidget::configure(nullptr, u"plasma-mail"_s);
 }
 
+QString MailController::activityText() const
+{
+    const auto anySession = [this](auto condition) {
+        return std::any_of(m_sessions.cbegin(), m_sessions.cend(), condition);
+    };
+    if (!m_moving.empty()) {
+        return i18nc("@info:status", "Moving message…");
+    }
+    if (anySession([](const AccountSession *s) {
+            return s->connectionState() == AccountSession::Connecting;
+        })) {
+        return i18nc("@info:status", "Connecting…");
+    }
+    for (const AccountSession *session : m_sessions) {
+        if (!session->syncText().isEmpty()) {
+            return session->syncText();
+        }
+    }
+    if (!m_checking.empty()) {
+        return i18nc("@info:status", "Checking for new mail…");
+    }
+    if (m_requests > 0) {
+        return i18nc("@info:status", "Loading…");
+    }
+    return {};
+}
+
+QDateTime MailController::lastCheckedAt() const
+{
+    return m_lastCheckedAt;
+}
+
+void MailController::updateActivity()
+{
+    const QString text = activityText();
+    if (text != m_activityText) {
+        m_activityText = text;
+        Q_EMIT activityChanged();
+    }
+}
+
+void MailController::reconnect(const QString &account)
+{
+    const AccountSession *session = sessionFor(account);
+    if (!session) {
+        return;
+    }
+    // The same road as at startup: the keychain answer (onSecretRead) starts the connection.
+    beginRequest();
+    m_secrets->readPassword(session->account().email);
+}
+
 int MailController::unreadCount() const
 {
     int total = 0;
@@ -819,12 +874,16 @@ void MailController::checkInbox(AccountSession *session)
         return;
     }
     m_checking.insert(session);
+    updateActivity();
     session->client()->checkInbox(inbox, 20);
 }
 
 void MailController::onInboxChecked(AccountSession *session, const QString &folder, int unreadTotal, const QList<MessageSummary> &newestUnread)
 {
     m_checking.erase(session);
+    m_lastCheckedAt = QDateTime::currentDateTime();
+    updateActivity();
+    Q_EMIT activityChanged(); // the time changed even when the text did not
     if (!isKnown(session)) {
         return;
     }
@@ -934,6 +993,7 @@ void MailController::moveOpenMessage(const QString &target)
         return; // already on its way
     }
     beginRequest();
+    updateActivity();
     session->client()->moveMessage(m_messageFolder, m_currentUid, target);
     Q_EMIT currentMessageChanged(); // canArchive / canDelete are false while it moves
 }
@@ -945,6 +1005,7 @@ void MailController::onMessageMoved(AccountSession *session, const QString &from
     if (m_moving.erase(moveKey(email, from, uid)) == 0 || !isKnown(session)) {
         return;
     }
+    updateActivity();
     endRequest();
     // The server has it now; the copy in the target folder arrives with the next sync.
     if (session->storageActive() && !session->store()->removeMessage(from, uid)) {
@@ -1225,6 +1286,7 @@ void MailController::onSessionError(AccountSession *session, const QString &mess
     }
     // A failed background check is only logged: offline, it would complain every few minutes.
     const bool quiet = m_checking.erase(session) > 0;
+    updateActivity();
     if (quiet) {
         qWarning("Checking the inbox of %s failed: %s", qPrintable(session->account().email), qPrintable(message));
     }
@@ -1240,6 +1302,7 @@ void MailController::onSessionError(AccountSession *session, const QString &mess
         }
     }
     if (const bool anyDropped = m_moving.size() != movesBefore; anyDropped) {
+        updateActivity();
         Q_EMIT currentMessageChanged(); // canArchive / canDelete come back
     }
     if (session == m_pending) {

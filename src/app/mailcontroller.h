@@ -96,6 +96,11 @@ class MailController : public QObject
     // Unread messages in all accounts' inboxes (as of the last background check, kept up to date
     // as messages are read here); 0 until the first check.
     Q_PROPERTY(int unreadCount READ unreadCount NOTIFY unreadCountChanged)
+    // What the app is doing right now, for the status bar: "Connecting…", "Moving message…", an
+    // account's sync progress, "Checking for new mail…" or "Loading…"; empty when idle.
+    Q_PROPERTY(QString activityText READ activityText NOTIFY activityChanged)
+    // When a background check last finished (any account); invalid before the first one.
+    Q_PROPERTY(QDateTime lastCheckedAt READ lastCheckedAt NOTIFY activityChanged)
     // General options (see AppSettings): hide to the tray when the window is closed, and the
     // background check interval in minutes.
     Q_PROPERTY(bool keepInTray READ keepInTray NOTIFY appSettingsChanged)
@@ -157,6 +162,8 @@ public:
     [[nodiscard]] bool storageReady() const;
     [[nodiscard]] bool googleConfigured() const;
     [[nodiscard]] int unreadCount() const;
+    [[nodiscard]] QString activityText() const;
+    [[nodiscard]] QDateTime lastCheckedAt() const;
     [[nodiscard]] bool keepInTray() const;
     [[nodiscard]] int checkMinutes() const;
     [[nodiscard]] int sidebarWidth() const;
@@ -226,6 +233,8 @@ public:
     Q_INVOKABLE void savePanelWidths(int sidebar, int list);
     // Opens KDE's dialog for the app's notification events.
     Q_INVOKABLE void configureNotifications();
+    // Connects a failed account again, the way startup does (reads its password or token).
+    Q_INVOKABLE void reconnect(const QString &account);
     Q_INVOKABLE void archiveMessage();
     Q_INVOKABLE void deleteMessage();
     Q_INVOKABLE void moveMessage(const QString &folderPath);
@@ -255,6 +264,7 @@ Q_SIGNALS:
     void syncingChanged();
     void unreadCountChanged();
     void appSettingsChanged();
+    void activityChanged();
     void panelWidthsChanged();
     void showMessageRequested();
     // New mail found by a background check. With count == 1, sender ("Name <address>") and
@@ -317,6 +327,8 @@ private:
     void showStoredMail();
     void updateStorageUsage();
     void updateSyncing();
+    // Recomputes activityText(); emits activityChanged() when it or lastCheckedAt changed.
+    void updateActivity();
 
     QString m_dataDir; // AppDataLocation
     QList<AccountSession *> m_sessions; // saved accounts, in order
@@ -329,6 +341,8 @@ private:
     std::map<QString, QList<MessageSummary>> m_sharedParts;
     std::set<AccountSession *> m_sharedRequested;
     AppSettings m_app;
+    QString m_activityText;
+    QDateTime m_lastCheckedAt;
     NewMailTracker m_newMail;
     QTimer *m_checkTimer;
     std::map<QString, int> m_unreadByAccount; // unread messages per account's inbox

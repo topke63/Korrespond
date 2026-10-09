@@ -44,7 +44,7 @@ Kirigami.Page {
             model: [
                 { icon: "archive-insert", text: KI18n.i18nc("@action:button", "Archive") },
                 { icon: "edit-delete", text: KI18n.i18nc("@action:button", "Delete") },
-                { icon: "mail-mark-unread", text: KI18n.i18nc("@action:button", "Mark as Unread") },
+                { unread: true },
                 { flag: true },
                 { icon: "folder", text: KI18n.i18nc("@action:button", "Move to Folder") },
                 { icon: "tag", text: KI18n.i18nc("@action:button", "Label") },
@@ -59,9 +59,10 @@ Kirigami.Page {
 
                 visible: page.hasMessage
                 sourceComponent: modelData.separator ? separatorComponent
-                               : modelData.flag ? flagComponent : buttonComponent
+                               : modelData.flag ? flagComponent
+                               : modelData.unread ? unreadComponent : buttonComponent
 
-                // The one working action in milestone 1: flag / unflag the open message.
+                // Flag / unflag the open message.
                 Component {
                     id: flagComponent
 
@@ -74,6 +75,23 @@ Kirigami.Page {
                         onClicked: MailController.setFlagged(MailController.currentMessageAccount, MailController.currentUid, !MailController.messageFlagged)
 
                         QQC2.ToolTip.text: text + " (Ctrl+Shift+F)"
+                        QQC2.ToolTip.visible: hovered
+                        QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
+                    }
+                }
+
+                // Toggles the open message between read and unread.
+                Component {
+                    id: unreadComponent
+
+                    QQC2.ToolButton {
+                        icon.name: MailController.messageUnread ? "mail-mark-read" : "mail-mark-unread"
+                        text: MailController.messageUnread ? KI18n.i18nc("@action:button", "Mark as Read")
+                                                           : KI18n.i18nc("@action:button", "Mark as Unread")
+                        display: QQC2.AbstractButton.IconOnly
+                        onClicked: MailController.setUnread(MailController.currentMessageAccount, MailController.currentUid, !MailController.messageUnread)
+
+                        QQC2.ToolTip.text: text
                         QQC2.ToolTip.visible: hovered
                         QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
                     }

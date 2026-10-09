@@ -2119,7 +2119,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   12/12 tests pass; the live check is T107.
 
 ### T100 — Mark as Unread / Read in the controller and toolbar
-- status: todo
+- status: done
 - depends on: T99
 - parallel-safe with: T101, T102
 - files: src/app/mailcontroller.h, src/app/mailcontroller.cpp, src/qml/MessagePage.qml
@@ -2128,7 +2128,12 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   `messageUnread` property; the button toggles "Mark as Unread" / "Mark as Read"; it does not
   re-mark the message read while it stays open.
 - verify: build; offscreen start has no new QML warnings.
-- notes:
+- notes: Done 2026-10-09. `setUnread(account, uid, unread)` (account-aware, like `setFlagged`)
+  updates the list, the stored copy and `messageUnread`, then calls `setSeen` on the server.
+  The toolbar's third button is now a toggle (envelope icon "Mark as Unread" / "Mark as Read",
+  tooltip) and is enabled. An unread open message stays unread: only opening a message marks it
+  read. Checked offscreen/offline: the button is enabled with a message open, no new warnings;
+  the server round trip is T107. Build and 12/12 tests pass.
 
 ### T101 — `ImapClient`: move a message
 - status: todo

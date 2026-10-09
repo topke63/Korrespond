@@ -64,6 +64,7 @@ class MailController : public QObject
     Q_PROPERTY(QString messageHtml READ messageHtml NOTIFY currentMessageChanged)
     Q_PROPERTY(QStringList messageAttachments READ messageAttachments NOTIFY currentMessageChanged)
     Q_PROPERTY(bool messageFlagged READ messageFlagged NOTIFY currentMessageChanged)
+    Q_PROPERTY(bool messageUnread READ messageUnread NOTIFY currentMessageChanged)
     // Local storage settings. importSince is an ISO date ("yyyy-MM-dd"), empty = all mail; the
     // units are StorageSettings::KeepUnit / SizeUnit as ints.
     Q_PROPERTY(bool storageEnabled READ storageEnabled NOTIFY storageSettingsChanged)
@@ -107,6 +108,7 @@ public:
     [[nodiscard]] QString messageHtml() const;
     [[nodiscard]] QStringList messageAttachments() const;
     [[nodiscard]] bool messageFlagged() const;
+    [[nodiscard]] bool messageUnread() const;
     [[nodiscard]] bool storageEnabled() const;
     [[nodiscard]] QString importSince() const;
     [[nodiscard]] int keepValue() const;
@@ -155,6 +157,10 @@ public:
     // Flags or unflags message `uid` of the current list (or the open message): updates the list
     // and the open message at once, then stores the flag on the server.
     Q_INVOKABLE void setFlagged(const QString &account, qint64 uid, bool flagged);
+    // Marks message `uid` of `account` unread or read: updates the list, the local copy and the
+    // open message at once, then stores the \Seen flag on the server. An unread message stays
+    // unread while it is open.
+    Q_INVOKABLE void setUnread(const QString &account, qint64 uid, bool unread);
     // Saves the local storage settings (arguments as the properties), applies them to the local
     // copies at once (turning storage off deletes them) and starts a sync when storage is on.
     Q_INVOKABLE void saveStorageSettings(bool enabled, const QString &importSince, int keepValue, int keepUnit, int sizeValue, int sizeUnit);
@@ -250,6 +256,7 @@ private:
     QString m_messageHtml;
     QStringList m_messageAttachments;
     bool m_messageFlagged = false;
+    bool m_messageUnread = false;
     StorageSettings m_storage;
     qint64 m_storageUsedBytes = 0;
     bool m_syncing = false;

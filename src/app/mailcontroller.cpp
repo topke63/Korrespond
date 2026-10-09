@@ -280,6 +280,11 @@ bool MailController::messageFlagged() const
     return m_messageFlagged;
 }
 
+bool MailController::messageUnread() const
+{
+    return m_messageUnread;
+}
+
 bool MailController::storageEnabled() const
 {
     return m_storage.enabled;
@@ -576,7 +581,9 @@ void MailController::openMessage(const QString &account, qint64 uid)
     m_messageAccount = session->account().email;
     m_messageFolder = imapFolderFor(session, m_currentFolder);
     clearMessage(false);
-    m_messageFlagged = m_messageModel->message(m_messageAccount, uid).flagged; // the parsed message carries no IMAP flags
+    const MessageSummary listed = m_messageModel->message(m_messageAccount, uid); // the parsed message carries no IMAP flags
+    m_messageFlagged = listed.flagged;
+    m_messageUnread = listed.unread;
     Q_EMIT currentMessageChanged(); // the flag shows while the message is still loading
     if (session->storageActive()) {
         if (const QByteArray raw = session->store()->rawMessage(m_messageFolder, uid); !raw.isEmpty()) {
@@ -612,6 +619,29 @@ void MailController::setFlagged(const QString &account, qint64 uid, bool flagged
     session->client()->setFlagged(folder, uid, flagged);
 }
 
+void MailController::setUnread(const QString &account, qint64 uid, bool unread)
+{
+    AccountSession *session = sessionFor(account);
+    if (uid <= 0 || !session) {
+        return;
+    }
+    const bool isOpenMessage = uid == m_currentUid && session->account().email == m_messageAccount;
+    // The open message may belong to a folder the list no longer shows.
+    const QString folder = isOpenMessage ? m_messageFolder : imapFolderFor(session, m_currentFolder);
+    if (folder.isEmpty()) {
+        return;
+    }
+    m_messageModel->setUnread(session->account().email, uid, unread);
+    if (session->storageActive() && session->store()->contains(folder, uid)) {
+        session->store()->setUnread(folder, uid, unread);
+    }
+    if (isOpenMessage && m_messageUnread != unread) {
+        m_messageUnread = unread;
+        Q_EMIT currentMessageChanged();
+    }
+    session->client()->setSeen(folder, uid, !unread);
+}
+
 void MailController::onMessageFetched(AccountSession *session, const QString &folder, qint64 uid, const std::shared_ptr<KMime::Message> &message)
 {
     endRequest();
@@ -637,6 +667,10 @@ void MailController::showMessage(AccountSession *session, const QString &folder,
     if (folder == imapFolderFor(session, m_currentFolder) && m_messageModel->message(email, uid).unread) {
         session->client()->markSeen(folder, uid);
         m_messageModel->setUnread(email, uid, false);
+        if (m_messageUnread) {
+            m_messageUnread = false;
+            Q_EMIT currentMessageChanged();
+        }
         if (session->storageActive() && session->store()->contains(folder, uid)) {
             session->store()->setUnread(folder, uid, false);
         }
@@ -657,6 +691,7 @@ void MailController::clearMessage(bool clearUid)
     m_messageHtml.clear();
     m_messageAttachments.clear();
     m_messageFlagged = false;
+    m_messageUnread = false;
     Q_EMIT currentMessageChanged();
 }
 

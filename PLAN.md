@@ -2738,13 +2738,111 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   287/800: sidebar 287, list 523, message 540 with its whole toolbar; 14/14 tests.
 
 ### T135 — Manual check: resizing panels
-- status: todo
+- status: done
 - depends on: T133, T134
 - parallel-safe with: none
 - files: none
 - inputs: the user's desktop.
 - output: confirmed: both dividers drag smoothly with the right cursor; limits hold; double-click
   resets; sizes survive a restart; narrow window still works (no handles).
+- verify: manual, with the user.
+- notes: Done 2026-10-09 with the user: after the T134 fix both dividers drag, the list is capped
+  so the message column keeps its toolbar, and the user confirmed it works. (Sizes after a restart
+  and the narrow-window layout were not reported separately.)
+
+# Milestone 3d — Status bar (user request 2026-10-09: "status bar at the bottom with connection
+# status and what you think I needed")
+
+- **Goal**: a slim bar at the bottom of the main window that tells, at a glance, whether the
+  accounts are connected and what the app is doing.
+- **Content (my choice, change on request)**, left to right:
+  1. **Connection**: one chip per account — a coloured dot (green connected, amber connecting,
+     red failed/offline, grey not started) and the account's short name; the tooltip has the
+     server and the last error text; clicking a red chip reconnects that account.
+  2. **Activity** (the middle, one line): "Checking for new mail…", "Syncing <folder> 120 / 340",
+     "Moving message…" while busy, otherwise "Up to date · checked 10:26" (the last background
+     check).
+  3. **Counters** (right): "N unread" (all inboxes) and, with local storage on, "12.3 MB stored".
+- **Decisions**:
+  - The bar is the window's `footer`; hidden on the first-run setup page (no account) and in
+    settings layers. It stays one line (`Kirigami.Units.gridUnit * 1.6` high) with the small font.
+  - States come from the accounts themselves (`AccountSession::connectionState`): connecting
+    when a login/list starts, connected when a folder list arrived or any answer came back,
+    failed with the error text when the session reports an error (also "connection lost").
+    Offline is simply failed.
+  - Error toasts stay as they are; the bar is the quiet, permanent view of the same facts.
+  - No settings toggle for now.
+- **Out of scope**: a progress bar, per-folder status, bandwidth numbers, a log viewer.
+
+### T136 — `AccountSession`: connection state
+- status: todo
+- depends on: none
+- parallel-safe with: none
+- files: src/app/accountsession.h, src/app/accountsession.cpp
+- inputs: the client's signals; `connectWithSecret` / `connectWithRefreshToken`.
+- output: enum `ConnectionState { Idle, Connecting, Connected, Failed }`, `connectionState()`,
+  `lastError()` and signal `connectionStateChanged()`: Connecting when a connect starts, Connected
+  when folders/headers/messages arrive, Failed (with the text) on `errorOccurred`; `Idle` before
+  the first connect.
+- verify: build succeeds; all tests pass.
+- notes:
+
+### T137 — `AccountSession`: sync progress text
+- status: todo
+- depends on: none
+- parallel-safe with: T136
+- files: src/app/accountsession.h, src/app/accountsession.cpp
+- inputs: `SyncManager::progress(folder, done, total)`, `syncFinished`, `aborted`.
+- output: `syncText()` (e.g. "Syncing INBOX 120 / 340", empty when idle) and a signal
+  `syncTextChanged()`; cleared when the sync ends.
+- verify: build succeeds; all tests pass.
+- notes:
+
+### T138 — `AccountListModel`: status roles
+- status: todo
+- depends on: T136, T137
+- parallel-safe with: none
+- files: src/models/accountlistmodel.h, src/models/accountlistmodel.cpp
+- inputs: T136, T137.
+- output: roles `connectionState` ("idle" | "connecting" | "connected" | "failed"), `statusText`
+  (the last error or empty) and `syncText`; `dataChanged` when a session's state or text changes.
+- verify: build succeeds; all tests pass.
+- notes:
+
+### T139 — Controller: activity line
+- status: todo
+- depends on: T138
+- parallel-safe with: none
+- files: src/app/mailcontroller.h, src/app/mailcontroller.cpp
+- inputs: `busy`, `syncing`, `m_checking`, `m_moving`, `onInboxChecked`.
+- output: properties `lastCheckedAt` (QDateTime, null before the first check) and `activityText`
+  (busy → "Loading…", moving → "Moving message…", a check in flight → "Checking for new mail…",
+  a sync → that session's `syncText`, else empty); `reconnect(account)` (invokable) that
+  reconnects a failed account the way startup does.
+- verify: build succeeds; all tests pass.
+- notes:
+
+### T140 — `StatusBar.qml` in the main window
+- status: todo
+- depends on: T138, T139
+- parallel-safe with: none
+- files: src/qml/StatusBar.qml (new), src/qml/Main.qml, src/CMakeLists.txt
+- inputs: T138 roles, T139 properties, `unreadCount`, `storageUsedBytes`, `storageEnabled`.
+- output: the bar described above as the window `footer`, visible only with an account and the
+  mail view; a thin top separator; chips with tooltips; clicking a failed chip calls
+  `MailController.reconnect(email)`.
+- verify: offscreen start prints no new QML warnings; screenshots offline (red chip) and normal.
+- notes:
+
+### T141 — Manual check: status bar
+- status: todo
+- depends on: T140
+- parallel-safe with: none
+- files: none
+- inputs: the user's desktop.
+- output: confirmed: the chip is green while connected; turning the network off turns it red with
+  the error in the tooltip and "Up to date" changes when back online; syncing text appears during a
+  sync; counters match the tray tooltip.
 - verify: manual, with the user.
 - notes:
 

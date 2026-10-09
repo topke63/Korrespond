@@ -2418,7 +2418,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   Closed 2026-10-09 by the user after trying full-word search in All Inboxes.
 
 ### T118 — Label (needs Q5)
-- status: todo
+- status: skipped
 - depends on: Q5, T104
 - parallel-safe with: none
 - files: to be set after Q5
@@ -2426,6 +2426,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - output: to be set after Q5.
 - verify: to be set after Q5.
 - notes:
+  Skipped 2026-10-09 on the user's decision (Q5 answered: Label does nothing for Yahoo, so there is nothing to build until a Gmail account needs it; Gmail labels via X-GM-LABELS can be planned then).
 
 ### T119 — Global verify (Milestone 3)
 - status: todo
@@ -2435,7 +2436,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - inputs: global verify command.
 - output: clean build, all tests pass, no new QML warnings.
 - verify: `rm -rf build && cmake --preset dev && cmake --build --preset dev && ctest --preset dev`
-- notes:
+- notes: T118 is skipped (user decision), so it does not block this task.
 
 # Milestone 3b — App icon, tray icon, new-mail notifications (user request 2026-10-09)
 

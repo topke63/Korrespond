@@ -100,6 +100,47 @@ Kirigami.ScrollablePage {
             highlighted: uid === MailController.currentUid && account === MailController.currentMessageAccount
             onClicked: page.openMessage(account, uid)
 
+            // Right click selects the message, then offers the same actions as the toolbar.
+            TapHandler {
+                acceptedButtons: Qt.RightButton
+                onTapped: {
+                    page.openMessage(row.account, row.uid);
+                    rowMenu.popup();
+                }
+            }
+
+            QQC2.Menu {
+                id: rowMenu
+
+                QQC2.MenuItem {
+                    text: MailController.messageUnread ? KI18n.i18nc("@action:inmenu", "Mark as Read") : KI18n.i18nc("@action:inmenu", "Mark as Unread")
+                    icon.name: MailController.messageUnread ? "mail-mark-read" : "mail-mark-unread"
+                    onTriggered: MailController.setUnread(MailController.currentMessageAccount, MailController.currentUid, !MailController.messageUnread)
+                }
+                QQC2.MenuItem {
+                    text: MailController.messageFlagged ? KI18n.i18nc("@action:inmenu", "Unflag") : KI18n.i18nc("@action:inmenu", "Flag")
+                    icon.name: "flag"
+                    onTriggered: MailController.setFlagged(MailController.currentMessageAccount, MailController.currentUid, !MailController.messageFlagged)
+                }
+                QQC2.MenuSeparator {}
+                QQC2.MenuItem {
+                    text: KI18n.i18nc("@action:inmenu", "Archive")
+                    icon.name: "archive-insert"
+                    enabled: MailController.canArchive
+                    onTriggered: MailController.archiveMessage()
+                }
+                QQC2.MenuItem {
+                    text: KI18n.i18nc("@action:inmenu", "Delete")
+                    icon.name: "edit-delete"
+                    enabled: MailController.canDelete
+                    onTriggered: MailController.deleteMessage()
+                }
+                MoveFolderMenu {
+                    title: KI18n.i18nc("@action:inmenu", "Move to Folder")
+                    enabled: MailController.canMove
+                }
+            }
+
             background: Rectangle {
                 radius: Kirigami.Units.cornerRadius
                 color: row.highlighted ? Qt.alpha(Kirigami.Theme.textColor, 0.12)

@@ -2217,7 +2217,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   No new QML warnings; clicking them needs a server (T107). Shortcuts come in T106.
 
 ### T106 — Toolbar: keyboard shortcuts and message-list context
-- status: todo
+- status: done
 - depends on: T105
 - parallel-safe with: none
 - files: src/qml/MessagePage.qml, src/qml/MessageListPage.qml
@@ -2225,7 +2225,14 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - output: shortcuts shown in tooltips (Mark unread U, Archive E, Delete Del); a right-click menu
   on list rows with the same actions.
 - verify: offscreen start prints no new QML warnings.
-- notes:
+- notes: Done 2026-10-09 (user review pending). Shortcuts U (mark unread/read), E (archive), Delete
+  (move to Trash) in `MessagePage` (disabled when the action isn't available; a focused text field
+  takes the key instead); the tooltips show them. Right-clicking a list row opens that message
+  and shows a menu: Mark as Unread/Read, Flag/Unflag, Archive, Delete, Move to Folder ▸ (the
+  actions work on the open message, so right-click also marks it read once it has loaded — mark it
+  unread from the menu if that is not wanted). New file `src/qml/MoveFolderMenu.qml` is shared by
+  the toolbar and the context menu. Offscreen/offline start: no new warnings; right-click, the keys
+  and the menu need the desktop / a server (T107).
 
 ### T107 — Manual check: Mark as Unread, Archive, Delete, Move
 - status: todo

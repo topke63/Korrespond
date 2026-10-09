@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 import QtQuick
-import QtQml
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import QtWebEngine
@@ -95,7 +94,7 @@ Kirigami.Page {
                         display: QQC2.AbstractButton.IconOnly
                         onClicked: MailController.setUnread(MailController.currentMessageAccount, MailController.currentUid, !MailController.messageUnread)
 
-                        QQC2.ToolTip.text: text
+                        QQC2.ToolTip.text: text + " (U)"
                         QQC2.ToolTip.visible: hovered
                         QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
                     }
@@ -112,7 +111,7 @@ Kirigami.Page {
                         enabled: MailController.canArchive
                         onClicked: MailController.archiveMessage()
 
-                        QQC2.ToolTip.text: enabled ? text : KI18n.i18nc("@info:tooltip", "Archive is not available: this account has no archive folder, or the message is already there.")
+                        QQC2.ToolTip.text: enabled ? text + " (E)" : KI18n.i18nc("@info:tooltip", "Archive is not available: this account has no archive folder, or the message is already there.")
                         QQC2.ToolTip.visible: hovered
                         QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
                     }
@@ -128,7 +127,7 @@ Kirigami.Page {
                         enabled: MailController.canDelete
                         onClicked: MailController.deleteMessage()
 
-                        QQC2.ToolTip.text: enabled ? KI18n.i18nc("@info:tooltip", "Move to Trash") : KI18n.i18nc("@info:tooltip", "Delete is not available: this account has no Trash folder, or the message is already there.")
+                        QQC2.ToolTip.text: enabled ? KI18n.i18nc("@info:tooltip", "Move to Trash") + " (Delete)" : KI18n.i18nc("@info:tooltip", "Delete is not available: this account has no Trash folder, or the message is already there.")
                         QQC2.ToolTip.visible: hovered
                         QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
                     }
@@ -152,23 +151,8 @@ Kirigami.Page {
                         QQC2.ToolTip.visible: hovered && !moveMenu.visible
                         QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
 
-                        QQC2.Menu {
+                        MoveFolderMenu {
                             id: moveMenu
-
-                            Instantiator {
-                                model: MailController.messageFolderModel
-
-                                delegate: QQC2.MenuItem {
-                                    required property var model
-
-                                    text: " ".repeat(model.depth * 2) + model.name
-                                    icon.name: model.iconName
-                                    enabled: model.path !== MailController.currentMessageFolder
-                                    onTriggered: MailController.moveMessage(model.path)
-                                }
-                                onObjectAdded: (index, object) => moveMenu.insertItem(index, object)
-                                onObjectRemoved: (index, object) => moveMenu.removeItem(object)
-                            }
                         }
                     }
                 }
@@ -212,6 +196,22 @@ Kirigami.Page {
         sequence: "Ctrl+Shift+F"
         enabled: page.hasMessage
         onActivated: MailController.setFlagged(MailController.currentMessageAccount, MailController.currentUid, !MailController.messageFlagged)
+    }
+    // Single-key shortcuts; a focused text field takes the key instead.
+    Shortcut {
+        sequence: "U"
+        enabled: page.hasMessage
+        onActivated: MailController.setUnread(MailController.currentMessageAccount, MailController.currentUid, !MailController.messageUnread)
+    }
+    Shortcut {
+        sequence: "E"
+        enabled: page.hasMessage && MailController.canArchive
+        onActivated: MailController.archiveMessage()
+    }
+    Shortcut {
+        sequence: "Delete"
+        enabled: page.hasMessage && MailController.canDelete
+        onActivated: MailController.deleteMessage()
     }
     Component.onCompleted: showHtml()
 

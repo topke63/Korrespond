@@ -114,3 +114,10 @@ ecm_add_test(
     TEST_NAME newmailtrackertest
     LINK_LIBRARIES plasmamail_engine Qt6::Test
 )
+
+# Test for IdlePolicy
+ecm_add_test(
+    idlepolicytest.cpp
+    TEST_NAME idlepolicytest
+    LINK_LIBRARIES plasmamail_engine Qt6::Test
+)

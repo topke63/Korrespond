@@ -3644,7 +3644,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   is not running, Gmail threads, a setting for the restart interval.
 
 ### T169 — Idle policy: restart and reconnect timing
-- status: todo
+- status: done
 - depends on: T125
 - parallel-safe with: none
 - files: src/engine/idlepolicy.h, src/engine/idlepolicy.cpp, src/CMakeLists.txt (if sources are
@@ -3656,7 +3656,11 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   `pollInterval(bool idling, int checkMinutes)` (15 min while idling, else `checkMinutes`).
 - verify: build succeeds; the test covers the delay sequence, the reset after stability, a
   failure right after connecting (no reset), and `pollInterval`; `ctest --preset dev` passes.
-- notes:
+- notes: Done 2026-10-09. `IdlePolicy` (pure, time passed in): `restartInterval()` 20 min,
+  `stableDuration()` 2 min, `pollInterval(idling, checkMinutes)` (15 min / max(1, checkMinutes)),
+  `reportConnected(now)`, `reportFailure(now)` (resets the sequence only if the connection had been up
+  ≥ 2 min; always clears the connected state), `nextReconnectDelay()` 30/60/120/300/300 s (call
+  reportFailure first). idlepolicytest; ctest 18/18.
 
 ### T170 — Engine: `ImapIdleWatcher`
 - status: todo
@@ -3676,7 +3680,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - verify: build succeeds; `ctest --preset dev` passes; a test for the parts that run without a
   server (start with an unreachable host → `Failed` then retries with the delays using a fake
   clock or a short override; `stop()` while connecting emits nothing afterwards); real IMAP is
-  checked in T174.
+  checked in T173 (corrected 2026-10-09: the plan said T174).
 - notes:
 
 ### T171 — Controller: use the watcher, poll less

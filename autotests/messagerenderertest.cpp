@@ -19,9 +19,9 @@ render(const QByteArray &raw, const QColor &text = Qt::black, const QColor &back
     return messageBodyHtml(msg, text, background, link);
 }
 
-static QString cspMeta()
+static QString cspMeta(bool allowRemoteImages = false)
 {
-    return u"<meta http-equiv=\"Content-Security-Policy\" content=\""_s + QLatin1StringView(messageContentSecurityPolicy) + u"\">"_s;
+    return u"<meta http-equiv=\"Content-Security-Policy\" content=\""_s + messageContentSecurityPolicy(allowRemoteImages) + u"\">"_s;
 }
 
 static QString preview(const QByteArray &raw, int maxLength = 150)
@@ -115,10 +115,72 @@ private Q_SLOTS:
 
     void testCspBlocksRemoteContent()
     {
-        const QString policy = QLatin1StringView(messageContentSecurityPolicy);
+        const QString policy = messageContentSecurityPolicy();
         QVERIFY(policy.contains(u"default-src 'none'"_s));
         QVERIFY(!policy.contains(u"script-src"_s));
         QVERIFY(!policy.contains(u"http"_s));
+    }
+
+    void testCspPolicyStrings()
+    {
+        QCOMPARE(messageContentSecurityPolicy(), u"default-src 'none'; style-src 'unsafe-inline'; img-src data: cid:"_s);
+        QCOMPARE(messageContentSecurityPolicy(false), messageContentSecurityPolicy());
+        const QString on = messageContentSecurityPolicy(true);
+        QCOMPARE(on, u"default-src 'none'; style-src 'unsafe-inline'; img-src data: cid: https:"_s);
+        const QStringList tokens = on.split(QRegularExpression(u"[\\s;]+"_s), Qt::SkipEmptyParts);
+        QVERIFY(tokens.contains(u"https:"_s));
+        QVERIFY(!tokens.contains(u"http:"_s));
+        QVERIFY(!tokens.contains(u"*"_s));
+        for (const QString &directive : {u"script-src"_s, u"frame-src"_s, u"connect-src"_s, u"font-src"_s, u"media-src"_s, u"object-src"_s}) {
+            QVERIFY(!on.contains(directive));
+        }
+        QVERIFY(on.contains(u"default-src 'none';"_s));
+        QVERIFY(on.contains(u"style-src 'unsafe-inline';"_s));
+        QVERIFY(!messageContentSecurityPolicy().contains(u"https:"_s));
+    }
+
+    void testRemoteImagesAllowedInBody()
+    {
+        const QByteArray html = "Subject: a\nContent-Type: text/html\n\n<img src=\"https://x.invalid/a.png\">\n";
+        KMime::Message msg;
+        msg.setContent(html);
+        msg.parse();
+        const QString on = messageBodyHtml(msg, Qt::black, Qt::white, Qt::blue, true);
+        QVERIFY(on.startsWith(cspMeta(true)));
+        QVERIFY(on.contains(u"img-src data: cid: https:\""_s));
+        const QString off = messageBodyHtml(msg, Qt::black, Qt::white, Qt::blue);
+        QVERIFY(off.startsWith(cspMeta()));
+        QVERIFY(!off.contains(u"img-src data: cid: https:"_s));
+
+        KMime::Message plain;
+        plain.setContent("Subject: a\nContent-Type: text/plain\n\nhi\n");
+        plain.parse();
+        QCOMPARE(messageBodyHtml(plain, Qt::black, Qt::white, Qt::blue, true), messageBodyHtml(plain, Qt::black, Qt::white, Qt::blue));
+    }
+
+    void testRemoteImages_data()
+    {
+        QTest::addColumn<QString>("html");
+        QTest::addColumn<bool>("expected");
+        QTest::newRow("img https") << u"<img src=\"https://x.invalid/a.png\">"_s << true;
+        QTest::newRow("img unquoted upper") << u"<IMG SRC=http://x.invalid/a.png>"_s << true;
+        QTest::newRow("css url") << u"<div style=\"background:url('https://x.invalid/b.png')\">"_s << true;
+        QTest::newRow("background attr") << u"<td background=\"https://x.invalid/c.png\">"_s << true;
+        QTest::newRow("protocol relative") << u"<img src=\"//x.invalid/a.png\">"_s << true;
+        QTest::newRow("srcset") << u"<img srcset=\"https://x.invalid/a.png 2x\">"_s << true;
+        QTest::newRow("picture source") << u"<picture><source srcset=\"https://x.invalid/a.webp\"></picture>"_s << true;
+        QTest::newRow("input image") << u"<input type=image src=https://x.invalid/a.png>"_s << true;
+        QTest::newRow("cid") << u"<img src=\"cid:abc@x\">"_s << false;
+        QTest::newRow("data") << u"<img src=\"data:image/png;base64,AAAA\">"_s << false;
+        QTest::newRow("text only") << u"<p>see https://x.invalid</p>"_s << false;
+        QTest::newRow("link") << u"<a href=\"https://x.invalid\">x</a>"_s << false;
+    }
+
+    void testRemoteImages()
+    {
+        QFETCH(QString, html);
+        QFETCH(bool, expected);
+        QCOMPARE(htmlHasRemoteImages(html), expected);
     }
 
     void testPlainTextEscapesMarkup()

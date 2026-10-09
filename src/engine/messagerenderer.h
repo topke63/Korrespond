@@ -17,14 +17,20 @@ class Message;
 
 // Content-Security-Policy put in front of every rendered message: no scripts, no remote
 // resources of any kind; only inline styles and embedded (data:/cid:) images.
-inline constexpr auto messageContentSecurityPolicy = "default-src 'none'; style-src 'unsafe-inline'; img-src data: cid:";
+// With allowRemoteImages, https: is added to img-src (and nothing else), for one render the user asked for.
+QString messageContentSecurityPolicy(bool allowRemoteImages = false);
+
+// True if the HTML refers to a remote image: <img>/<source>/<input type=image> src or srcset,
+// a background attribute, or CSS url(), pointing at http(s):// or //host. cid: and data: do not count.
+// A simple scan; false positives only show the "load images" bar.
+bool htmlHasRemoteImages(const QString &html);
 
 // Turns a message body into HTML that is safe to show in a web view.
 // Uses the text/html part if the message has one, otherwise the text/plain part, escaped,
 // with http(s) URLs made clickable and shown in the given colors.
 // HTML mail without colours of its own gets the theme colours (and the link colour, made readable
 // on the background); HTML mail that sets its own colours is shown on a white page.
-QString messageBodyHtml(const KMime::Message &msg, const QColor &text, const QColor &background, const QColor &link);
+QString messageBodyHtml(const KMime::Message &msg, const QColor &text, const QColor &background, const QColor &link, bool allowRemoteImages = false);
 
 // True if the HTML sets its own text or background colours: a CSS color / background /
 // background-color property (not border-color etc.), a bgcolor attribute, text/link/vlink/alink/

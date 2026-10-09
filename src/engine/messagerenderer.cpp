@@ -17,9 +17,28 @@
 
 using namespace Qt::StringLiterals;
 
-static QString cspMeta()
+QString messageContentSecurityPolicy(bool allowRemoteImages)
 {
-    return u"<meta http-equiv=\"Content-Security-Policy\" content=\""_s + QLatin1StringView(messageContentSecurityPolicy) + u"\">"_s;
+    QString policy = u"default-src 'none'; style-src 'unsafe-inline'; img-src data: cid:"_s;
+    if (allowRemoteImages) {
+        policy += u" https:"_s;
+    }
+    return policy;
+}
+
+bool htmlHasRemoteImages(const QString &html)
+{
+    static const QRegularExpression re(
+        uR"((?:<(?:img|source|input)\b[^>]*?\s(?:src|srcset)\s*=\s*["']?\s*(?:https?:)?//)"
+        uR"(|\sbackground\s*=\s*["']?\s*https?://)"
+        uR"(|url\(\s*["']?\s*(?:https?:)?//))"_s,
+        QRegularExpression::CaseInsensitiveOption | QRegularExpression::DotMatchesEverythingOption);
+    return re.match(html).hasMatch();
+}
+
+static QString cspMeta(bool allowRemoteImages = false)
+{
+    return u"<meta http-equiv=\"Content-Security-Policy\" content=\""_s + messageContentSecurityPolicy(allowRemoteImages) + u"\">"_s;
 }
 
 // Expects already-escaped text, so a URL ends at whitespace or at an escaped quote or bracket.
@@ -98,7 +117,7 @@ QColor readableLinkColour(const QColor &link, const QColor &background)
     return target;
 }
 
-QString messageBodyHtml(const KMime::Message &msg, const QColor &text, const QColor &background, const QColor &link)
+QString messageBodyHtml(const KMime::Message &msg, const QColor &text, const QColor &background, const QColor &link, bool allowRemoteImages)
 {
     const KMime::Content *html = msg.mainBodyPart("text/html");
     if (html && html->contentType() && html->contentType()->isHTMLText()) {
@@ -117,7 +136,7 @@ QString messageBodyHtml(const KMime::Message &msg, const QColor &text, const QCo
             style = u"<style>html,body{background:"_s + bg + u";color:"_s + fg + u"}a{color:"_s + readableLinkColour(link, background).name(QColor::HexRgb)
                 + u"}blockquote{border-left:2px solid "_s + mix.name(QColor::HexRgb) + u";margin-left:0;padding-left:8px;color:"_s + fg + u"}</style>"_s;
         }
-        return cspMeta() + style + body;
+        return cspMeta(allowRemoteImages) + style + body;
     }
 
     const KMime::Content *plain = msg.mainBodyPart("text/plain");

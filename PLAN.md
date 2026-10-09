@@ -3451,11 +3451,11 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   proxying images through a privacy service.
 
 ### T164 — Engine: detect remote images and allow them in the policy
-- status: todo
+- status: done
 - depends on: T161
 - parallel-safe with: none
-- files: src/engine/messagerenderer.h, src/engine/messagerenderer.cpp, and the file that defines
-  `messageContentSecurityPolicy` (find it with grep), autotests/messagerenderertest.cpp
+- files: src/engine/messagerenderer.h, src/engine/messagerenderer.cpp,
+  autotests/messagerenderertest.cpp (the policy was defined in messagerenderer.h itself)
 - inputs: `messageBodyHtml(...)`, `cspMeta()`, the current policy (no remote loads at all).
 - output: `bool htmlHasRemoteImages(const QString &html)`; `messageBodyHtml` takes a flag
   `allowRemoteImages` (default false) that adds `img-src https:` to the policy for that render
@@ -3465,7 +3465,13 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   `http://`, with CSS `url(https://…)`, with only `cid:` → (http and https true, cid false); the
   policy contains `img-src https:` only when the flag is set and never lists `http:`, scripts or
   frames; `ctest --preset dev` passes.
-- notes:
+- notes: Done 2026-10-09. `messageContentSecurityPolicy(bool allowRemoteImages = false)` is now a
+  function (was an inline constexpr string; only the renderer and its test used it). Off:
+  `default-src 'none'; style-src 'unsafe-inline'; img-src data: cid:` (unchanged); on: `… img-src data:
+  cid: https:`. `messageBodyHtml(…, link, bool allowRemoteImages = false)`; CSP meta still first;
+  plain text ignores the flag. `htmlHasRemoteImages()`: img/source/input src|srcset with
+  http(s):// or //, `background=` http(s), CSS `url(` http(s) or //; cid:/data: don't count (any
+  `<input src>` counts; srcset checked at its first URL). 3 new tests (12 detection rows); ctest 17/17.
 
 ### T165 — Message view: "Load images" bar
 - status: todo

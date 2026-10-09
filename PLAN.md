@@ -2405,7 +2405,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   the launcher, per-folder notification rules, notifications for Gmail threads.
 
 ### T120 — App icon (logo)
-- status: todo
+- status: done
 - depends on: none
 - parallel-safe with: T121, T122
 - files: data/icons/sc-apps-plasma-mail.svg (new)
@@ -2413,7 +2413,12 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - output: a clean SVG logo (envelope on a rounded square, blue, readable at 16 px), checked by
   rendering 16/32/48/128 px PNGs with `rsvg-convert` into a scratch folder and viewing them.
 - verify: the PNGs look right at all four sizes (looked at by me, then the user).
-- notes:
+- notes: Done 2026-10-09 (user review pending). `data/icons/sc-apps-plasma-mail.svg`: white envelope
+  with a blue flap on a rounded blue square (gradient #56b9f0 → #1d8fd8), soft shadow, 128×128
+  viewBox, CC0 header. Rendered at 16/32/48/128 px on a light and a dark background and looked at:
+  the envelope and flap are clear at all sizes. A first version had an orange unread dot; I took
+  it out because a logo that always shows "unread" would mislead — T126 should make a separate
+  `plasma-mail-unread` tray variant with the dot (add to its files).
 
 ### T121 — Install the icon and desktop file
 - status: todo
@@ -2483,7 +2488,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - status: todo
 - depends on: T121, T122, T123
 - parallel-safe with: T125
-- files: src/app/trayicon.h, src/app/trayicon.cpp, src/app/main.cpp (+ CMake line)
+- files: src/app/trayicon.h, src/app/trayicon.cpp, src/app/main.cpp, data/icons/sc-apps-plasma-mail-unread.svg (new, logo + orange dot) (+ CMake line)
 - inputs: `KStatusNotifierItem`, T122 `keepInTray`.
 - output: `TrayIcon` object: icon `plasma-mail`, tooltip "Plasma Mail – N unread", overlay/state
   `NeedsAttention` while unread > 0; left click toggles the main window; menu Show, Check for

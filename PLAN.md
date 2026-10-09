@@ -2066,7 +2066,9 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - inputs: —
 - output: clean build and passing tests.
 - verify: `rm -rf build && cmake --preset dev && cmake --build --preset dev && ctest --preset dev`
-- notes:
+- notes: 2026-10-09: the verify command ran clean: `rm -rf build`, configure, full build (no
+  warnings, no errors), 12/12 test executables pass. **Stays `todo`**: it depends on T80 and T95,
+  the two manual checks that need the Google client (Q4). Run it once more after them.
 
 ---
 

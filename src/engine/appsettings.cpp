@@ -20,12 +20,24 @@ static int clampMinutes(int minutes)
     return std::clamp(minutes, AppSettings::minCheckMinutes, AppSettings::maxCheckMinutes);
 }
 
+static int clampSidebar(int width)
+{
+    return std::clamp(width, AppSettings::minSidebarWidth, AppSettings::maxSidebarWidth);
+}
+
+static int clampList(int width)
+{
+    return std::clamp(width, AppSettings::minListWidth, AppSettings::maxListWidth);
+}
+
 AppSettings AppSettings::load()
 {
     const KConfigGroup group = generalGroup();
     AppSettings settings;
     settings.keepInTray = group.readEntry("KeepInTray", settings.keepInTray);
     settings.checkMinutes = clampMinutes(group.readEntry("CheckMinutes", settings.checkMinutes));
+    settings.sidebarWidth = clampSidebar(group.readEntry("SidebarWidth", settings.sidebarWidth));
+    settings.listWidth = clampList(group.readEntry("ListWidth", settings.listWidth));
     return settings;
 }
 
@@ -34,5 +46,7 @@ void AppSettings::save() const
     KConfigGroup group = generalGroup();
     group.writeEntry("KeepInTray", keepInTray);
     group.writeEntry("CheckMinutes", clampMinutes(checkMinutes));
+    group.writeEntry("SidebarWidth", clampSidebar(sidebarWidth));
+    group.writeEntry("ListWidth", clampList(listWidth));
     group.sync();
 }

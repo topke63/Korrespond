@@ -7,15 +7,25 @@
 struct AppSettings {
     static constexpr int minCheckMinutes = 1;
     static constexpr int maxCheckMinutes = 60;
+    // Panel widths in logical pixels: the folder sidebar and the message list column.
+    static constexpr int defaultSidebarWidth = 224;
+    static constexpr int minSidebarWidth = 160;
+    static constexpr int maxSidebarWidth = 420;
+    static constexpr int defaultListWidth = 448;
+    static constexpr int minListWidth = 280;
+    static constexpr int maxListWidth = 800;
 
     // Closing the window hides it to the tray icon instead of quitting.
     bool keepInTray = false;
     // How often the accounts are checked for new mail in the background.
     int checkMinutes = 5;
+    // The widths the user dragged the panels to.
+    int sidebarWidth = defaultSidebarWidth;
+    int listWidth = defaultListWidth;
 
     // Missing or out-of-range values fall back to the defaults / the nearest allowed value.
     static AppSettings load();
-    // Saves with checkMinutes limited to the allowed range.
+    // Saves with checkMinutes and the widths limited to the allowed ranges.
     void save() const;
 
     bool operator==(const AppSettings &) const = default;

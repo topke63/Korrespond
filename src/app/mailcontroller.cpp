@@ -418,7 +418,7 @@ bool MailController::notificationsConfigurable() const
 
 void MailController::saveAppSettings(bool keepInTray, int checkMinutes)
 {
-    AppSettings settings;
+    AppSettings settings = m_app; // keeps the panel widths
     settings.keepInTray = keepInTray;
     settings.checkMinutes = std::clamp(checkMinutes, AppSettings::minCheckMinutes, AppSettings::maxCheckMinutes);
     if (settings == m_app) {

@@ -40,6 +40,8 @@ private Q_SLOTS:
         const AppSettings settings = AppSettings::load();
         QVERIFY(!settings.keepInTray);
         QCOMPARE(settings.checkMinutes, 5);
+        QCOMPARE(settings.sidebarWidth, 224);
+        QCOMPARE(settings.listWidth, 448);
     }
 
     void testRoundTrip()
@@ -47,6 +49,8 @@ private Q_SLOTS:
         AppSettings settings;
         settings.keepInTray = true;
         settings.checkMinutes = 15;
+        settings.sidebarWidth = 300;
+        settings.listWidth = 600;
         settings.save();
         QCOMPARE(AppSettings::load(), settings);
     }
@@ -82,6 +86,44 @@ private Q_SLOTS:
         g.writeEntry("CheckMinutes", "soon");
         g.sync();
         QCOMPARE(AppSettings::load().checkMinutes, 5);
+    }
+
+    void testPanelWidthsAreClampedWhenLoaded()
+    {
+        KConfigGroup g = group();
+        g.writeEntry("SidebarWidth", 10);
+        g.writeEntry("ListWidth", 5000);
+        g.sync();
+        AppSettings settings = AppSettings::load();
+        QCOMPARE(settings.sidebarWidth, AppSettings::minSidebarWidth);
+        QCOMPARE(settings.listWidth, AppSettings::maxListWidth);
+        g.writeEntry("SidebarWidth", 9999);
+        g.writeEntry("ListWidth", -1);
+        g.sync();
+        settings = AppSettings::load();
+        QCOMPARE(settings.sidebarWidth, AppSettings::maxSidebarWidth);
+        QCOMPARE(settings.listWidth, AppSettings::minListWidth);
+    }
+
+    void testPanelWidthsAreClampedWhenSaved()
+    {
+        AppSettings settings;
+        settings.sidebarWidth = 1;
+        settings.listWidth = 100000;
+        settings.save();
+        QCOMPARE(group().readEntry("SidebarWidth", 0), 160);
+        QCOMPARE(group().readEntry("ListWidth", 0), 800);
+    }
+
+    void testGarbagePanelWidthsFallBackToTheDefaults()
+    {
+        KConfigGroup g = group();
+        g.writeEntry("SidebarWidth", "wide");
+        g.writeEntry("ListWidth", "wider");
+        g.sync();
+        const AppSettings settings = AppSettings::load();
+        QCOMPARE(settings.sidebarWidth, AppSettings::defaultSidebarWidth);
+        QCOMPARE(settings.listWidth, AppSettings::defaultListWidth);
     }
 
     void testSavingKeepsOtherGroups()

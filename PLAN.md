@@ -2637,7 +2637,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   panels.
 
 ### T130 — `AppSettings`: panel widths
-- status: todo
+- status: done
 - depends on: none
 - parallel-safe with: none
 - files: src/engine/appsettings.h, src/engine/appsettings.cpp, autotests/appsettingstest.cpp
@@ -2646,7 +2646,13 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   `SidebarWidth` / `ListWidth`, clamped to 160–420 and 280–800 on load and save; constants for the
   bounds and defaults; tests: defaults, round trip, clamping on load and save, other options kept.
 - verify: `ctest --test-dir build -R appsettingstest --output-on-failure`
-- notes:
+- notes: Done 2026-10-09. `AppSettings::sidebarWidth` (224, 160–420) and `listWidth` (448,
+  280–800), keys `SidebarWidth` / `ListWidth` in `[General]`, clamped on load and on save; the
+  default/min/max values are public constants for QML (T131). 3 new tests (clamp on load, clamp on
+  save, garbage → defaults) and the defaults/round-trip tests now cover the widths. **Watch out
+  (T131):** `MailController::saveAppSettings` builds a fresh `AppSettings` with only the tray and
+  interval set, so it must start from `m_app` or it would reset the widths to the defaults — already
+  fixed here (it now copies `m_app` first).
 
 ### T131 — Controller: panel width properties
 - status: todo

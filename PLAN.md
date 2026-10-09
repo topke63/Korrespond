@@ -2937,7 +2937,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   warnings; 14/14 tests. Not seen with a live connection yet.
 
 ### T141 — Manual check: status bar
-- status: todo
+- status: skipped
 - depends on: T140
 - parallel-safe with: none
 - files: none
@@ -3531,6 +3531,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - verify: manual, with the user.
 - notes:
   Closed 2026-10-09: the user tried Load images and said "it is good now".
+  Skipped 2026-10-09 on the user's decision. Confirmed earlier: the look, colours and sizes of the bar ("looks fine"). Never checked live: the network-off test (red chip, error tooltip, click to reconnect), the live "Syncing …" text, unread count vs tray tooltip.
 
 ## Execution Loop
 

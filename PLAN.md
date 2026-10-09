@@ -2463,14 +2463,17 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   pass.
 
 ### T123 — Link KStatusNotifierItem and KNotifications
-- status: todo
+- status: done
 - depends on: none
 - parallel-safe with: T120–T122
 - files: CMakeLists.txt, src/CMakeLists.txt
 - inputs: `KF6StatusNotifierItem`, `KF6Notifications` are installed.
 - output: both found in the root `find_package(KF6 …)`; `plasma-mail` links them.
 - verify: `cmake --preset dev && cmake --build --preset dev`.
-- notes:
+- notes: Done 2026-10-09. `Notifications` and `StatusNotifierItem` added to the root
+  `find_package(KF6 …)`; `plasma-mail` links `KF6::Notifications` and `KF6::StatusNotifierItem`
+  (the executable now loads libKF6Notifications and libKF6StatusNotifierItem). Both found as 6.30.0.
+  Full build has no warnings; 13/13 tests pass.
 
 ### T124 — `NewMailChecker`: find new messages
 - status: todo

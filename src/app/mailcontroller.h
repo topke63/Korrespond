@@ -6,12 +6,14 @@
 #include "account.h"
 #include "folderutils.h"
 #include "imapclient.h"
+#include "newmailtracker.h"
 #include "storagesettings.h"
 
 #include <QAbstractListModel>
 #include <QDateTime>
 #include <QObject>
 #include <QQmlEngine>
+#include <QTimer>
 #include <QVariantMap>
 
 #include <map>
@@ -90,6 +92,9 @@ class MailController : public QObject
     Q_PROPERTY(bool storageReady READ storageReady NOTIFY accountChanged)
     // The Google OAuth client is set up (read once at startup).
     Q_PROPERTY(bool googleConfigured READ googleConfigured CONSTANT)
+    // Unread messages in all accounts' inboxes (as of the last background check, kept up to date
+    // as messages are read here); 0 until the first check.
+    Q_PROPERTY(int unreadCount READ unreadCount NOTIFY unreadCountChanged)
 
 public:
     explicit MailController(QObject *parent = nullptr);
@@ -135,6 +140,7 @@ public:
     [[nodiscard]] bool syncing() const;
     [[nodiscard]] bool storageReady() const;
     [[nodiscard]] bool googleConfigured() const;
+    [[nodiscard]] int unreadCount() const;
 
     // Checks the credentials by logging in and listing folders; only then stores the password
     // in the keychain and adds the account after the existing ones (an email that is already
@@ -208,6 +214,10 @@ Q_SIGNALS:
     void storageSettingsChanged();
     void storageUsageChanged();
     void syncingChanged();
+    void unreadCountChanged();
+    // New mail found by a background check. With count == 1, sender ("Name <address>") and
+    // subject describe the message; uid is the newest new message of the account's inbox.
+    void newMailArrived(const QString &account, int count, const QString &sender, const QString &subject, qint64 uid);
     void errorOccurred(const QString &message);
 
 private:
@@ -227,6 +237,13 @@ private:
     void onSecretRead(const QString &key, const QString &password, const QString &error);
     void onSessionError(AccountSession *session, const QString &message);
     void onMessageMoved(AccountSession *session, const QString &from, qint64 uid, const QString &to);
+    // Background check of one account's inbox (unread count, new mail); every checkMinutes and
+    // right after an account's folders arrive.
+    void checkInbox(AccountSession *session);
+    void checkForNewMail();
+    void onInboxChecked(AccountSession *session, const QString &folder, int unreadTotal, const QList<MessageSummary> &newestUnread);
+    // Keeps unreadCount in step with what happens here: delta for a message of `folder`.
+    void adjustUnread(const AccountSession *session, const QString &folder, int delta);
     void moveOpenMessage(const QString &target);
     [[nodiscard]] static QString moveKey(const QString &account, const QString &folder, qint64 uid);
     void onSessionFolders(AccountSession *session);
@@ -265,6 +282,10 @@ private:
     // The open shared view: each account's part of the merged list, and the accounts already asked.
     std::map<QString, QList<MessageSummary>> m_sharedParts;
     std::set<AccountSession *> m_sharedRequested;
+    NewMailTracker m_newMail;
+    QTimer *m_checkTimer;
+    std::map<QString, int> m_unreadByAccount; // unread messages per account's inbox
+    std::set<AccountSession *> m_checking; // accounts with a background check in flight
     std::set<QString> m_moving; // moveKey()s of messages the server is moving
     std::set<AccountSession *> m_awaitingFolders; // sessions with a folder-list request in flight (counted as busy)
     AccountListModel *m_accounts;

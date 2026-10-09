@@ -11,6 +11,7 @@
 #include <QObject>
 #include <QPointer>
 
+#include <functional>
 #include <memory>
 
 namespace KIMAP
@@ -64,6 +65,10 @@ public:
     void listFolders();
     // Fetches headers of the newest `limit` messages in `folder` that match `filter`.
     void fetchHeaders(const QString &folder, int limit, HeaderFilter filter = AllMessages);
+    // Background check of `folder` (the inbox): how many messages are unread and the headers of
+    // the newest `limit` unread ones. Emits inboxChecked(), never headersFetched(), so it does
+    // not disturb what the UI shows.
+    void checkInbox(const QString &folder, int limit);
     void fetchMessage(const QString &folder, qint64 uid);
     // Sets or clears \Seen (read / unread). markSeen() is setSeen(…, true).
     void setSeen(const QString &folder, qint64 uid, bool seen);
@@ -86,6 +91,8 @@ public:
 
 Q_SIGNALS:
     void foldersListed(const QList<FolderInfo> &folders);
+    // Answer of checkInbox(): all unread messages of the folder, and the newest ones, newest first.
+    void inboxChecked(const QString &folder, int unreadTotal, const QList<MessageSummary> &newestUnread);
     void messageMoved(const QString &from, qint64 uid, const QString &to);
     // `filter` is the one passed to fetchHeaders(), so results for the same folder can be told apart.
     void headersFetched(const QString &folder, ImapClient::HeaderFilter filter, const QList<MessageSummary> &messages);
@@ -116,7 +123,13 @@ private:
     void queueSelect(const QString &folder, quint64 generation);
     // Fetches headers for `set` (UIDs if uidBased, else sequence numbers) of the selected folder
     // and emits headersFetched() newest first.
-    void fetchSummaries(const KIMAP::ImapSet &set, bool uidBased, const QString &folder, HeaderFilter filter, quint64 generation);
+    // With `done` the result goes there instead of headersFetched().
+    void fetchSummaries(const KIMAP::ImapSet &set,
+                        bool uidBased,
+                        const QString &folder,
+                        HeaderFilter filter,
+                        quint64 generation,
+                        const std::function<void(const QList<MessageSummary> &)> &done = {});
     // false if the job failed or belongs to an outdated session; reports the error if relevant.
     bool checkJob(KJob *job, quint64 generation);
 

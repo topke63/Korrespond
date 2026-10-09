@@ -69,6 +69,7 @@ Q_SIGNALS:
     void headersFetched(const QString &folder, ImapClient::HeaderFilter filter, const QList<MessageSummary> &messages);
     void messageFetched(const QString &folder, qint64 uid, const std::shared_ptr<KMime::Message> &message);
     void messageMoved(const QString &from, qint64 uid, const QString &to);
+    void inboxChecked(const QString &folder, int unreadTotal, const QList<MessageSummary> &newestUnread);
     void errorOccurred(const QString &message);
     void syncingChanged();
     void storageUsageChanged();

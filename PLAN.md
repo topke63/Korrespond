@@ -2498,7 +2498,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   14/14 test executables pass.
 
 ### T125 — Background check every few minutes
-- status: todo
+- status: done
 - depends on: T122, T124, T88
 - parallel-safe with: T126
 - files: src/app/mailcontroller.h, src/app/mailcontroller.cpp
@@ -2509,7 +2509,19 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   property `unreadCount` (unread messages of all inboxes, from the stored/fetched headers) for the
   tray. A reconnect after errors is tried on the next tick.
 - verify: build; manual in T129.
-- notes:
+- notes: Done 2026-10-09. Engine: `ImapClient::checkInbox(folder, limit)` (SEARCH UNSEEN, headers of
+  the newest `limit` unread) → signal `inboxChecked(folder, unreadTotal, newestUnread)`; it never
+  emits `headersFetched`, so the open view is untouched (`fetchSummaries` got an optional `done`
+  callback for this). Controller: a `QTimer` every `AppSettings::checkMinutes` (read at startup;
+  T128 will change it live) plus one check right after an account's folders arrive (that first one
+  records the baseline and counts unread); one check per account at a time; accounts that are not
+  connected are skipped. `NewMailTracker` (uidValidity 0) decides what is new → signal
+  `newMailArrived(account, count, sender, subject, uid)` (sender/subject only when count is 1).
+  Property `unreadCount` = sum over inboxes, from the checks and adjusted locally when a message
+  is read here, marked unread, or an unread message leaves the inbox. A failed background check is
+  only logged (no toast every 5 minutes while offline); removing an account forgets its state.
+  Unread-only fetching means the tracker's "highest uid" is the highest *unread* uid. Build
+  without warnings; 14/14 tests pass; offline start unchanged; not run against a server (T129).
 
 ### T126 — Tray icon
 - status: todo

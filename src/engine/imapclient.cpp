@@ -345,6 +345,34 @@ void ImapClient::listFolders()
     job->start();
 }
 
+void ImapClient::checkInbox(const QString &folder, int limit)
+{
+    session();
+    const quint64 generation = m_generation;
+    queueSelect(folder, generation);
+    auto search = new KIMAP::SearchJob(session());
+    search->setUidBased(true);
+    search->setTerm(KIMAP::Term(KIMAP::Term::Seen).setNegated(true));
+    connect(search, &KJob::result, this, [this, folder, limit, generation](KJob *job) {
+        if (!checkJob(job, generation)) {
+            return;
+        }
+        QList<qint64> uids = static_cast<KIMAP::SearchJob *>(job)->results();
+        const int total = int(uids.size());
+        if (uids.isEmpty() || !m_session) {
+            Q_EMIT inboxChecked(folder, 0, {});
+            return;
+        }
+        std::sort(uids.begin(), uids.end());
+        KIMAP::ImapSet set;
+        set.add(QList<qint64>(uids.cend() - std::min<qsizetype>(limit, uids.size()), uids.cend()));
+        fetchSummaries(set, true, folder, Unread, generation, [this, folder, total](const QList<MessageSummary> &messages) {
+            Q_EMIT inboxChecked(folder, total, messages);
+        });
+    });
+    search->start();
+}
+
 void ImapClient::fetchHeaders(const QString &folder, int limit, HeaderFilter filter)
 {
     if (filter != AllMessages) {
@@ -473,7 +501,12 @@ void ImapClient::fetchRawMessages(const QString &folder, const QList<qint64> &ui
     fetch->start();
 }
 
-void ImapClient::fetchSummaries(const KIMAP::ImapSet &set, bool uidBased, const QString &folder, HeaderFilter filter, quint64 generation)
+void ImapClient::fetchSummaries(const KIMAP::ImapSet &set,
+                                bool uidBased,
+                                const QString &folder,
+                                HeaderFilter filter,
+                                quint64 generation,
+                                const std::function<void(const QList<MessageSummary> &)> &done)
 {
     auto fetch = new KIMAP::FetchJob(m_session);
     fetch->setUidBased(uidBased);
@@ -488,14 +521,18 @@ void ImapClient::fetchSummaries(const KIMAP::ImapSet &set, bool uidBased, const 
             messages->append(summaryOf(msg, email));
         }
     });
-    connect(fetch, &KJob::result, this, [this, folder, filter, messages, generation](KJob *job) {
+    connect(fetch, &KJob::result, this, [this, folder, filter, messages, generation, done](KJob *job) {
         if (!checkJob(job, generation)) {
             return;
         }
         std::sort(messages->begin(), messages->end(), [](const MessageSummary &a, const MessageSummary &b) {
             return a.uid > b.uid; // newest first
         });
-        Q_EMIT headersFetched(folder, filter, *messages);
+        if (done) {
+            done(*messages);
+        } else {
+            Q_EMIT headersFetched(folder, filter, *messages);
+        }
     });
     fetch->start();
 }

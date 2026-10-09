@@ -5,6 +5,7 @@
 
 #include "accountlistmodel.h"
 #include "accountsession.h"
+#include "appsettings.h"
 #include "foldermodel.h"
 #include "folderutils.h"
 #include "imapclient.h"
@@ -29,6 +30,7 @@ using namespace Qt::StringLiterals;
 MailController::MailController(QObject *parent)
     : QObject(parent)
     , m_dataDir(QStandardPaths::writableLocation(QStandardPaths::AppDataLocation))
+    , m_checkTimer(new QTimer(this))
     , m_accounts(new AccountListModel(this))
     , m_noFolders(new FolderModel(this))
     , m_secrets(new SecretStore(QString::fromLatin1(AccountSecrets::service), this))
@@ -36,6 +38,8 @@ MailController::MailController(QObject *parent)
 {
     connect(m_secrets, &SecretStore::passwordRead, this, &MailController::onSecretRead);
     m_googleConfigured = GoogleOAuthSettings::load().isConfigured();
+    connect(m_checkTimer, &QTimer::timeout, this, &MailController::checkForNewMail);
+    m_checkTimer->start(std::chrono::minutes(AppSettings::load().checkMinutes));
 
     m_storage = StorageSettings::load();
     const QList<Account> accounts = Account::loadAll();
@@ -136,6 +140,9 @@ AccountSession *MailController::createSession(const Account &account)
     });
     connect(session, &AccountSession::messageMoved, this, [this, session](const QString &from, qint64 uid, const QString &to) {
         onMessageMoved(session, from, uid, to);
+    });
+    connect(session, &AccountSession::inboxChecked, this, [this, session](const QString &folder, int unreadTotal, const QList<MessageSummary> &newestUnread) {
+        onInboxChecked(session, folder, unreadTotal, newestUnread);
     });
     connect(session, &AccountSession::syncingChanged, this, &MailController::updateSyncing);
     connect(session, &AccountSession::storageUsageChanged, this, &MailController::updateStorageUsage);
@@ -390,6 +397,15 @@ bool MailController::syncing() const
 bool MailController::googleConfigured() const
 {
     return m_googleConfigured;
+}
+
+int MailController::unreadCount() const
+{
+    int total = 0;
+    for (const auto &[account, count] : m_unreadByAccount) {
+        total += count;
+    }
+    return total;
 }
 
 bool MailController::storageReady() const
@@ -673,6 +689,9 @@ void MailController::setUnread(const QString &account, qint64 uid, bool unread)
     if (folder.isEmpty()) {
         return;
     }
+    if (m_messageModel->message(session->account().email, uid).unread != unread) {
+        adjustUnread(session, folder, unread ? 1 : -1);
+    }
     m_messageModel->setUnread(session->account().email, uid, unread);
     if (session->storageActive() && session->store()->contains(folder, uid)) {
         session->store()->setUnread(folder, uid, unread);
@@ -682,6 +701,60 @@ void MailController::setUnread(const QString &account, qint64 uid, bool unread)
         Q_EMIT currentMessageChanged();
     }
     session->client()->setSeen(folder, uid, !unread);
+}
+
+void MailController::checkForNewMail()
+{
+    for (AccountSession *session : std::as_const(m_sessions)) {
+        checkInbox(session);
+    }
+}
+
+void MailController::checkInbox(AccountSession *session)
+{
+    // Folders arrive from the server only once the account is connected; one check at a time.
+    if (session->folders().isEmpty() || m_checking.contains(session)) {
+        return;
+    }
+    const QString inbox = folderForRole(session->folders(), u"inbox"_s);
+    if (inbox.isEmpty()) {
+        return;
+    }
+    m_checking.insert(session);
+    session->client()->checkInbox(inbox, 20);
+}
+
+void MailController::onInboxChecked(AccountSession *session, const QString &folder, int unreadTotal, const QList<MessageSummary> &newestUnread)
+{
+    m_checking.erase(session);
+    if (!isKnown(session)) {
+        return;
+    }
+    const QString email = session->account().email;
+    const int before = unreadCount();
+    m_unreadByAccount[email] = unreadTotal;
+    if (unreadCount() != before) {
+        Q_EMIT unreadCountChanged();
+    }
+    // UIDVALIDITY is not known here (0); a rebuilt inbox is picked up once its uids pass the old ones.
+    const QList<MessageSummary> fresh = m_newMail.newMessages(email, folder, 0, newestUnread, QDateTime::currentDateTimeUtc());
+    if (fresh.isEmpty()) {
+        return;
+    }
+    const MessageSummary &newest = fresh.constFirst();
+    Q_EMIT newMailArrived(email, int(fresh.size()), fresh.size() == 1 ? newest.from : QString(), fresh.size() == 1 ? newest.subject : QString(), newest.uid);
+}
+
+void MailController::adjustUnread(const AccountSession *session, const QString &folder, int delta)
+{
+    if (folder != folderForRole(session->folders(), u"inbox"_s)) {
+        return;
+    }
+    int &count = m_unreadByAccount[session->account().email];
+    if (count + delta >= 0) {
+        count += delta;
+        Q_EMIT unreadCountChanged();
+    }
 }
 
 QString MailController::moveKey(const QString &account, const QString &folder, qint64 uid)
@@ -749,6 +822,9 @@ void MailController::onMessageMoved(AccountSession *session, const QString &from
             return message.uid == uid;
         });
     }
+    if (m_messageModel->message(email, uid).unread) {
+        adjustUnread(session, from, -1); // an unread message leaving the inbox
+    }
     const bool wasOpen = uid == m_currentUid && email == m_messageAccount && from == m_messageFolder;
     const int row = m_messageModel->removeMessage(email, uid);
     if (!wasOpen) {
@@ -790,6 +866,7 @@ void MailController::showMessage(AccountSession *session, const QString &folder,
     const QString email = session->account().email;
     if (folder == imapFolderFor(session, m_currentFolder) && m_messageModel->message(email, uid).unread) {
         session->client()->markSeen(folder, uid);
+        adjustUnread(session, folder, -1);
         m_messageModel->setUnread(email, uid, false);
         if (m_messageUnread) {
             m_messageUnread = false;
@@ -917,6 +994,11 @@ void MailController::removeAccount(const QString &account)
     }
     const QString email = session->account().email;
     m_sessions.removeOne(session);
+    m_checking.erase(session);
+    m_newMail.forget(email);
+    if (m_unreadByAccount.erase(email) > 0) {
+        Q_EMIT unreadCountChanged();
+    }
     connect(
         m_secrets,
         &SecretStore::passwordDeleted,
@@ -1008,6 +1090,11 @@ void MailController::onSessionError(AccountSession *session, const QString &mess
     if (!isKnown(session)) {
         return;
     }
+    // A failed background check is only logged: offline, it would complain every few minutes.
+    const bool quiet = m_checking.erase(session) > 0;
+    if (quiet) {
+        qWarning("Checking the inbox of %s failed: %s", qPrintable(session->account().email), qPrintable(message));
+    }
     // A failed connection fails what was queued, including moves that were on their way.
     const QString movePrefix = session->account().email + u'\n';
     const size_t movesBefore = m_moving.size();
@@ -1034,10 +1121,14 @@ void MailController::onSessionError(AccountSession *session, const QString &mess
     if (session == uiSession()) {
         // A failed connection or login fails every queued job, so nothing is in flight any more.
         resetRequests();
-        Q_EMIT errorOccurred(message);
+        if (!quiet) {
+            Q_EMIT errorOccurred(message);
+        }
         return;
     }
-    Q_EMIT errorOccurred(u"%1: %2"_s.arg(session->account().email, message));
+    if (!quiet) {
+        Q_EMIT errorOccurred(u"%1: %2"_s.arg(session->account().email, message));
+    }
 }
 
 void MailController::onSessionFolders(AccountSession *session)
@@ -1055,6 +1146,7 @@ void MailController::onSessionFolders(AccountSession *session)
         if (isSharedView(m_currentFolder)) {
             fetchSharedPart(session); // its inbox is known now (a no-op if already asked)
         }
+        checkInbox(session); // the first one records what is there and counts the unread
         return;
     }
 

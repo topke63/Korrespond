@@ -2167,14 +2167,17 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   neither/empty).
 
 ### T103 — `MessageStore`: remove one message
-- status: todo
+- status: done
 - depends on: none
 - parallel-safe with: T99–T102
 - files: src/engine/messagestore.h, src/engine/messagestore.cpp, autotests/messagestoretest.cpp
 - inputs: existing remove functions.
 - output: `bool removeMessage(const QString &folder, qint64 uid)` (row and .eml); tests.
 - verify: `ctest --test-dir build -R messagestoretest --output-on-failure`
-- notes:
+- notes: Done 2026-10-09. `removeMessage(folder, uid)`: true when the message is gone afterwards
+  (also when it was never stored), false on error / closed store; uses `removeStored`, so row and
+  file go together. 3 new tests: row and file removed while the same uid in another folder and
+  other messages stay; unknown message/folder is fine; closed store → false with an error text.
 
 ### T104 — Controller: Archive, Delete, Move
 - status: todo

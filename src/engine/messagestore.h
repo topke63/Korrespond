@@ -54,6 +54,9 @@ public:
     // Removes the oldest messages until totalSize() <= maxBytes. Undated ones go last: they are
     // usually sent mail without a Date header (see messageDate()), not old mail.
     int removeOldestUntil(qint64 maxBytes);
+    // Removes one message (index row and .eml file), e.g. after it was moved or deleted on the
+    // server. True when it is gone afterwards, also when it was never stored; false on error.
+    bool removeMessage(const QString &folder, qint64 uid);
     // Removes every message of folder, e.g. after the server changed its UIDVALIDITY.
     int removeFolder(const QString &folder);
     // The UIDVALIDITY folder's messages were stored under; 0 when none are stored (servers

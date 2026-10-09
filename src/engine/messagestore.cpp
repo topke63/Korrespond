@@ -374,6 +374,26 @@ int MessageStore::removeOldestUntil(qint64 maxBytes)
     return removeStored(files);
 }
 
+bool MessageStore::removeMessage(const QString &folder, qint64 uid)
+{
+    if (!isOpen()) {
+        m_lastError = u"Message store is not open"_s;
+        return false;
+    }
+    QSqlQuery query(QSqlDatabase::database(m_connectionName, false));
+    query.prepare(u"SELECT path FROM messages WHERE folder = ? AND uid = ?"_s);
+    query.addBindValue(folder);
+    query.addBindValue(uid);
+    if (!query.exec()) {
+        m_lastError = query.lastError().text();
+        return false;
+    }
+    if (!query.next()) {
+        return true; // not stored
+    }
+    return removeStored({{folder, uid, query.value(0).toString()}}) >= 0;
+}
+
 int MessageStore::removeFolder(const QString &folder)
 {
     if (!isOpen()) {

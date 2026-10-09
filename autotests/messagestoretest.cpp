@@ -613,6 +613,46 @@ private Q_SLOTS:
         QVERIFY(existing.contains(u"INBOX"_s, 9));
         QVERIFY(!existing.contains(u"INBOX"_s, 5));
     }
+    void testRemoveMessageRemovesRowAndFile()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        MessageStore store(dir.path());
+        QVERIFY(store.open());
+        QVERIFY(store.addMessage(u"INBOX"_s, 1, summary(1, u"Keep"_s), rawMessage("keep")));
+        QVERIFY(store.addMessage(u"INBOX"_s, 1, summary(2, u"Move"_s), rawMessage("move")));
+        QVERIFY(store.addMessage(u"Archive"_s, 1, summary(2, u"Same uid elsewhere"_s), rawMessage("other")));
+        QCOMPARE(emlFiles(dir.path()).size(), 3);
+
+        QVERIFY(store.removeMessage(u"INBOX"_s, 2));
+        QVERIFY(!store.contains(u"INBOX"_s, 2));
+        QVERIFY(store.contains(u"INBOX"_s, 1));
+        QVERIFY(store.contains(u"Archive"_s, 2)); // same uid, other folder: untouched
+        QCOMPARE(emlFiles(dir.path()).size(), 2);
+        QCOMPARE(rowCount(dir.path(), u"INBOX"_s, 2), 0);
+        QVERIFY(store.rawMessage(u"INBOX"_s, 2).isEmpty());
+    }
+
+    void testRemoveMessageThatIsNotStored()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        MessageStore store(dir.path());
+        QVERIFY(store.open());
+        QVERIFY(store.addMessage(u"INBOX"_s, 1, summary(1), rawMessage("a")));
+        QVERIFY(store.removeMessage(u"INBOX"_s, 99)); // nothing to do is fine
+        QVERIFY(store.removeMessage(u"Nowhere"_s, 1));
+        QVERIFY(store.contains(u"INBOX"_s, 1));
+    }
+
+    void testRemoveMessageOnClosedStore()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        MessageStore store(dir.path()); // never opened
+        QVERIFY(!store.removeMessage(u"INBOX"_s, 1));
+        QVERIFY(!store.lastError().isEmpty());
+    }
 };
 
 QTEST_GUILESS_MAIN(MessageStoreTest)

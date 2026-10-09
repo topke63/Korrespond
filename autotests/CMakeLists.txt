@@ -87,6 +87,13 @@ ecm_add_test(
     LINK_LIBRARIES plasmamail_engine Qt6::Test
 )
 
+# Test for MessageComposer
+ecm_add_test(
+    messagecomposertest.cpp
+    TEST_NAME messagecomposertest
+    LINK_LIBRARIES plasmamail_engine Qt6::Test
+)
+
 # Test for OutgoingMessage
 ecm_add_test(
     outgoingmessagetest.cpp

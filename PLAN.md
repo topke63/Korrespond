@@ -2282,7 +2282,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   warnings; 15/15 tests.
 
 ### T110 — Message builder and reply/forward text
-- status: todo
+- status: done
 - depends on: none
 - parallel-safe with: T99–T109
 - files: src/engine/messagecomposer.h, src/engine/messagecomposer.cpp, autotests/messagecomposertest.cpp
@@ -2291,7 +2291,16 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   message, ownAddress, replyAll)`, `references(message)`; tests for "Re: Re:", reply-all without
   the own address, Reply-To, References chain.
 - verify: `ctest --test-dir build -R messagecomposertest --output-on-failure`
-- notes:
+- notes: Done 2026-10-09. `MessageComposer` namespace (src/engine/messagecomposer.*): `replySubject`
+  / `forwardSubject` (keeps Re:/RE:/Re[2]: and Fwd:/Fw:; "Reservation" still gets "Re: "),
+  `replyRecipients(original, ownAddresses, replyAll)` (Reply-To else From; a reply to one's own
+  message goes to its To; reply all adds To and Cc without own addresses, nobody twice, compared
+  case-insensitively), `plainBody` (text/plain, else the HTML as text), `quotedReply` ("On <date>,
+  <name> wrote:" + "> "-quoted lines), `forwardedBody` (the "---------- Forwarded message ----------"
+  block with From/Date/Subject/To), `threadIds` (In-Reply-To = the original's Message-ID, References
+  = its References + the Message-ID, no repeats, without <>). 14 tests / 24 checks
+  (messagecomposertest). KMime drops the body's final newline, so a forwarded body ends without
+  one. 16/16 test executables pass.
 
 ### T111 — Controller: prepare Reply, Reply All, Forward
 - status: todo

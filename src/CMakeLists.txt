@@ -7,6 +7,7 @@ add_library(plasmamail_engine STATIC
     engine/appsettings.cpp
     engine/folderutils.cpp
     engine/imapclient.cpp
+    engine/messagecomposer.cpp
     engine/messagerenderer.cpp
     engine/messagestore.cpp
     engine/newmailtracker.cpp

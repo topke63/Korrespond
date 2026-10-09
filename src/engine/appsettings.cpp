@@ -36,6 +36,7 @@ AppSettings AppSettings::load()
     AppSettings settings;
     settings.keepInTray = group.readEntry("KeepInTray", settings.keepInTray);
     settings.checkMinutes = clampMinutes(group.readEntry("CheckMinutes", settings.checkMinutes));
+    settings.pushEnabled = group.readEntry("PushEnabled", settings.pushEnabled);
     settings.sidebarWidth = clampSidebar(group.readEntry("SidebarWidth", settings.sidebarWidth));
     settings.listWidth = clampList(group.readEntry("ListWidth", settings.listWidth));
     return settings;
@@ -46,6 +47,7 @@ void AppSettings::save() const
     KConfigGroup group = generalGroup();
     group.writeEntry("KeepInTray", keepInTray);
     group.writeEntry("CheckMinutes", clampMinutes(checkMinutes));
+    group.writeEntry("PushEnabled", pushEnabled);
     group.writeEntry("SidebarWidth", clampSidebar(sidebarWidth));
     group.writeEntry("ListWidth", clampList(listWidth));
     group.sync();

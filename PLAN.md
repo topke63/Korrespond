@@ -3725,10 +3725,11 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   OAuth token in the watcher login → T173. Follow-ups → T174.
 
 ### T172 — Setting and status: push on/off, push state in the chip tooltip
-- status: todo
+- status: done
 - depends on: T171
 - parallel-safe with: none
-- files: the app settings class (find it with grep; it holds `keepInTray` and `checkMinutes`),
+- files: src/engine/appsettings.{h,cpp} + autotests/appsettingstest.cpp (the settings class),
+  src/models/accountlistmodel.{h,cpp} + autotests/accountlistmodeltest.cpp (live role),
   src/app/mailcontroller.h, src/app/mailcontroller.cpp, src/qml/NotificationSettingsPage.qml,
   src/qml/StatusBar.qml
 - inputs: T171; `AppSettings` with `saveAppSettings(bool keepInTray, int checkMinutes)`.
@@ -3738,10 +3739,17 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   bar gets one more line: "Push: active / connecting / not supported by the server / off".
 - verify: build succeeds; real lint stays at the baseline (2); `ctest --preset dev` passes;
   offscreen start with a throw-away profile shows no new warnings.
-- notes:
+- notes: Done 2026-10-09. `[General] PushEnabled` (default true, appsettingstest round-trip).
+  MailController: `pushEnabled` property (NOTIFY appSettingsChanged) + `setPushEnabled(bool)` (saves;
+  off stops all watchers so polling falls back to CheckMinutes; on starts them for connected sessions
+  with folders; no second watcher). AccountListModel role `pushText` ("Push: active / connecting / not
+  supported by the server / off"), dataChanged per row on pushStateChanged and for all rows on
+  setPushEnabled (testPushText). Settings → Notifications switch "Use push (IDLE) when the server
+  supports it" (screenshots on/off, throw-away profile); StatusBar chip tooltip gets the push line
+  (not hoverable offscreen; binding read). ctest 19/19, lint 2. Non-"off" texts need a server (T173).
 
 ### T173 — Manual check: push mail
-- status: todo
+- status: waiting (manual check with the user)
 - depends on: T172
 - parallel-safe with: none
 - files: none

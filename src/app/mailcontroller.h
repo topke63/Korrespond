@@ -127,6 +127,7 @@ class MailController : public QObject
     // background check interval in minutes.
     Q_PROPERTY(bool keepInTray READ keepInTray NOTIFY appSettingsChanged)
     Q_PROPERTY(int checkMinutes READ checkMinutes NOTIFY appSettingsChanged)
+    Q_PROPERTY(bool pushEnabled READ pushEnabled NOTIFY appSettingsChanged)
     // Widths of the folder sidebar and the message list column (logical pixels), and their limits.
     Q_PROPERTY(int sidebarWidth READ sidebarWidth NOTIFY panelWidthsChanged)
     Q_PROPERTY(int listWidth READ listWidth NOTIFY panelWidthsChanged)
@@ -204,6 +205,7 @@ public:
     [[nodiscard]] QDateTime lastCheckedAt() const;
     [[nodiscard]] bool keepInTray() const;
     [[nodiscard]] int checkMinutes() const;
+    [[nodiscard]] bool pushEnabled() const;
     [[nodiscard]] int sidebarWidth() const;
     [[nodiscard]] int listWidth() const;
     [[nodiscard]] int sidebarMinWidth() const;
@@ -280,6 +282,8 @@ public:
     // Saves the options at once: the check timer restarts with the new interval (1–60) and
     // appSettingsChanged is emitted (the tray follows keepInTray).
     Q_INVOKABLE void saveAppSettings(bool keepInTray, int checkMinutes);
+    // Push (IDLE) on or off; off stops every watcher, on starts them for the connected accounts.
+    Q_INVOKABLE void setPushEnabled(bool enabled);
     // Remembers the widths the user dragged the panels to (clamped to the limits); call it when
     // a drag ends. Emits panelWidthsChanged when something changed.
     Q_INVOKABLE void savePanelWidths(int sidebar, int list);
@@ -440,7 +444,6 @@ private:
     std::set<AccountSession *> m_checkQueued; // a push change arrived during a check: one more after it
     std::map<AccountSession *, QTimer *> m_pushDebounce; // single-shot, children of their session
     std::map<AccountSession *, std::chrono::steady_clock::time_point> m_lastCheck;
-    bool m_pushEnabled = true; // gates starting watchers
     std::set<QString> m_moving; // moveKey()s of messages the server is moving
     std::set<AccountSession *> m_awaitingFolders; // sessions with a folder-list request in flight (counted as busy)
     AccountListModel *m_accounts;

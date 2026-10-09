@@ -19,6 +19,8 @@ struct AppSettings {
     bool keepInTray = false;
     // How often the accounts are checked for new mail in the background.
     int checkMinutes = 5;
+    // Use IMAP IDLE (push) where the server supports it; off = poll everyone every checkMinutes.
+    bool pushEnabled = true;
     // The widths the user dragged the panels to.
     int sidebarWidth = defaultSidebarWidth;
     int listWidth = defaultListWidth;

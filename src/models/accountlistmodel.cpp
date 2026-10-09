@@ -12,6 +12,25 @@
 
 using namespace Qt::StringLiterals;
 
+static QString pushText(const AccountSession *session, bool enabled)
+{
+    if (!enabled) {
+        return i18nc("@info:tooltip", "Push: off");
+    }
+    switch (session->pushState()) {
+    case ImapIdleWatcher::Idling:
+        return i18nc("@info:tooltip", "Push: active");
+    case ImapIdleWatcher::Connecting:
+    case ImapIdleWatcher::Failed:
+        return i18nc("@info:tooltip", "Push: connecting");
+    case ImapIdleWatcher::Unavailable:
+        return i18nc("@info:tooltip", "Push: not supported by the server");
+    case ImapIdleWatcher::Stopped:
+        break;
+    }
+    return i18nc("@info:tooltip", "Push: off");
+}
+
 AccountListModel::AccountListModel(QObject *parent)
     : QAbstractListModel(parent)
 {
@@ -49,6 +68,8 @@ QVariant AccountListModel::data(const QModelIndex &index, int role) const
         return session->lastError();
     case SyncTextRole:
         return session->syncText();
+    case PushTextRole:
+        return pushText(session, m_pushEnabled);
     case FolderModelRole:
         return QVariant::fromValue<QObject *>(session->folderModel());
     }
@@ -66,6 +87,7 @@ QHash<int, QByteArray> AccountListModel::roleNames() const
         {ConnectionStateRole, "connectionState"},
         {StatusTextRole, "statusText"},
         {SyncTextRole, "syncText"},
+        {PushTextRole, "pushText"},
         {FolderModelRole, "folderModel"},
     };
 }
@@ -92,6 +114,9 @@ void AccountListModel::setSessions(const QList<AccountSession *> &sessions)
         connect(session, &AccountSession::connectionStateChanged, this, [changed] {
             changed({ConnectionStateRole, StatusTextRole});
         });
+        connect(session, &AccountSession::pushStateChanged, this, [changed] {
+            changed({PushTextRole});
+        });
         connect(session, &AccountSession::syncTextChanged, this, [changed] {
             changed({SyncTextRole});
         });
@@ -107,6 +132,16 @@ void AccountListModel::setSessions(const QList<AccountSession *> &sessions)
         });
     }
     endResetModel();
+}
+
+void AccountListModel::setPushEnabled(bool enabled)
+{
+    if (enabled != m_pushEnabled) {
+        m_pushEnabled = enabled;
+        if (!m_sessions.isEmpty()) {
+            Q_EMIT dataChanged(index(0), index(int(m_sessions.size()) - 1), {PushTextRole});
+        }
+    }
 }
 
 AccountSession *AccountListModel::session(int row) const

@@ -86,6 +86,7 @@ MailController::MailController(QObject *parent)
         });
     }
     m_app = AppSettings::load();
+    m_accounts->setPushEnabled(m_app.pushEnabled);
     // Ticks often; checkForNewMail() decides per account whether its interval has passed.
     m_checkTimer->start(std::chrono::seconds(30));
 
@@ -638,6 +639,11 @@ int MailController::checkMinutes() const
     return m_app.checkMinutes;
 }
 
+bool MailController::pushEnabled() const
+{
+    return m_app.pushEnabled;
+}
+
 int MailController::sidebarWidth() const
 {
     return m_app.sidebarWidth;
@@ -706,6 +712,24 @@ void MailController::saveAppSettings(bool keepInTray, int checkMinutes)
     }
     settings.save();
     m_app = settings;
+    Q_EMIT appSettingsChanged();
+}
+
+void MailController::setPushEnabled(bool enabled)
+{
+    if (enabled == m_app.pushEnabled) {
+        return;
+    }
+    m_app.pushEnabled = enabled;
+    m_app.save();
+    m_accounts->setPushEnabled(enabled);
+    for (AccountSession *session : std::as_const(m_sessions)) {
+        if (!enabled) {
+            session->stopWatcher();
+        } else if (session->connectionState() == AccountSession::Connected && session != m_pending && !session->folders().isEmpty()) {
+            startPush(session);
+        }
+    }
     Q_EMIT appSettingsChanged();
 }
 
@@ -1216,7 +1240,7 @@ void MailController::checkForNewMail()
 
 void MailController::startPush(AccountSession *session)
 {
-    if (m_pushEnabled) {
+    if (m_app.pushEnabled) {
         session->startWatcher();
     }
 }

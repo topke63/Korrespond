@@ -26,6 +26,7 @@ public:
         ConnectionStateRole, // "idle", "connecting", "connected" or "failed"
         StatusTextRole, // the last error while failed, else empty
         SyncTextRole, // e.g. "Syncing Inbox 120 / 340", empty when no sync runs
+        PushTextRole, // "Push: active", "Push: connecting", ...
         FolderModelRole, // the account's FolderModel, as QObject*
     };
 
@@ -38,6 +39,8 @@ public:
     // The sessions stay owned by the caller.
     void setSessions(const QList<AccountSession *> &sessions);
     [[nodiscard]] AccountSession *session(int row) const;
+    // The push setting; the push text of every row depends on it.
+    void setPushEnabled(bool enabled);
     // Moves the row `from` to the place `to` (the row ends up at index `to`) without a reset.
     // False if either index is out of range or the move is refused.
     bool moveRow(int from, int to);
@@ -47,4 +50,5 @@ public:
 
 private:
     QList<QPointer<AccountSession>> m_sessions;
+    bool m_pushEnabled = true;
 };

@@ -38,6 +38,15 @@ FormCard.FormCardPage {
         FormCard.FormDelegateSeparator {}
 
         FormCard.FormSwitchDelegate {
+            text: KI18n.i18nc("@option:check", "Use push (IDLE) when the server supports it")
+            description: KI18n.i18nc("@info", "New mail shows up at once instead of at the next check. Accounts without push still use the interval above.")
+            checked: MailController.pushEnabled
+            onToggled: MailController.setPushEnabled(checked)
+        }
+
+        FormCard.FormDelegateSeparator {}
+
+        FormCard.FormSwitchDelegate {
             text: KI18n.i18nc("@option:check", "Keep running in the tray when the window is closed")
             description: KI18n.i18nc("@info", "Closing the window hides it; use the tray icon to bring it back or to quit. New-mail notifications keep working.")
             checked: MailController.keepInTray

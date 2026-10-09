@@ -40,6 +40,7 @@ private Q_SLOTS:
         const AppSettings settings = AppSettings::load();
         QVERIFY(!settings.keepInTray);
         QCOMPARE(settings.checkMinutes, 5);
+        QVERIFY(settings.pushEnabled);
         QCOMPARE(settings.sidebarWidth, 252);
         QCOMPARE(settings.listWidth, 360);
     }
@@ -49,6 +50,7 @@ private Q_SLOTS:
         AppSettings settings;
         settings.keepInTray = true;
         settings.checkMinutes = 15;
+        settings.pushEnabled = false;
         settings.sidebarWidth = 300;
         settings.listWidth = 600;
         settings.save();

@@ -77,6 +77,7 @@ QQC2.Pane {
                 required property string server
                 required property string connectionState
                 required property string statusText
+                required property string pushText
 
                 // Only a failed account can be reconnected.
                 enabled: connectionState === "failed"
@@ -87,7 +88,7 @@ QQC2.Pane {
                 QQC2.ToolTip.visible: hovered
                 QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
                 QQC2.ToolTip.text: {
-                    let text = chip.email + "\n" + chip.server + "\n" + bar.stateText(chip.connectionState);
+                    let text = chip.email + "\n" + chip.server + "\n" + bar.stateText(chip.connectionState) + "\n" + chip.pushText;
                     if (chip.statusText.length > 0) {
                         text += "\n" + chip.statusText;
                     }

@@ -70,6 +70,57 @@ private Q_SLOTS:
         QCOMPARE(model.session(2)->account().email, u"a@example.com"_s);
         qDeleteAll(sessions);
     }
+
+    void testPushText()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        QList<AccountSession *> sessions;
+        for (const QString &name : {u"a"_s, u"b"_s, u"c"_s}) {
+            Account account;
+            account.email = name + u"@example.com"_s;
+            sessions.append(new AccountSession(account, dir.filePath(name), StorageSettings(), this));
+        }
+        AccountListModel model;
+        QAbstractItemModelTester tester(&model, QAbstractItemModelTester::FailureReportingMode::QtTest);
+        model.setSessions(sessions);
+        const QString off = u"Push: off"_s;
+
+        // A fresh session has no watcher: Stopped reads as off, with push enabled by default.
+        QCOMPARE(model.roleNames().value(AccountListModel::PushTextRole), QByteArray("pushText"));
+        for (int row = 0; row < model.rowCount(); ++row) {
+            QCOMPARE(model.data(model.index(row), AccountListModel::PushTextRole).toString(), off);
+        }
+
+        QSignalSpy changed(&model, &QAbstractItemModel::dataChanged);
+
+        // Turning push off changes the text of every row, with the push role only.
+        model.setPushEnabled(false);
+        QCOMPARE(changed.count(), 1);
+        QCOMPARE(changed.at(0).at(0).value<QModelIndex>().row(), 0);
+        QCOMPARE(changed.at(0).at(1).value<QModelIndex>().row(), 2);
+        QCOMPARE(changed.at(0).at(2).value<QList<int>>(), (QList<int>{AccountListModel::PushTextRole}));
+        for (int row = 0; row < model.rowCount(); ++row) {
+            QCOMPARE(model.data(model.index(row), AccountListModel::PushTextRole).toString(), off);
+        }
+
+        // The same value again changes nothing.
+        model.setPushEnabled(false);
+        QCOMPARE(changed.count(), 1);
+
+        // Turning it on signals every row again; a fresh session still reads as off.
+        model.setPushEnabled(true);
+        QCOMPARE(changed.count(), 2);
+        QCOMPARE(changed.at(1).at(0).value<QModelIndex>().row(), 0);
+        QCOMPARE(changed.at(1).at(1).value<QModelIndex>().row(), 2);
+        QCOMPARE(changed.at(1).at(2).value<QList<int>>(), (QList<int>{AccountListModel::PushTextRole}));
+        QCOMPARE(model.data(model.index(0), AccountListModel::PushTextRole).toString(), off);
+        model.setPushEnabled(true);
+        QCOMPARE(changed.count(), 2);
+
+        // The sessions' state texts (Connecting, Idling, ...) need a server: not covered here.
+        qDeleteAll(sessions);
+    }
 };
 
 QTEST_GUILESS_MAIN(AccountListModelTest)

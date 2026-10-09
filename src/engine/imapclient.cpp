@@ -3,6 +3,7 @@
 
 #include "imapclient.h"
 
+#include <KIMAP/AppendJob>
 #include <KIMAP/CapabilitiesJob>
 #include <KIMAP/CopyJob>
 #include <KIMAP/ExpungeJob>
@@ -179,6 +180,23 @@ KIMAP::Session *ImapClient::session()
     login->start();
 
     return m_session;
+}
+
+void ImapClient::appendMessage(const QString &folder, const QByteArray &message, const QList<QByteArray> &flags)
+{
+    session();
+    const quint64 generation = m_generation;
+    auto append = new KIMAP::AppendJob(session());
+    append->setMailBox(folder);
+    append->setContent(message);
+    append->setFlags(flags);
+    append->setInternalDate(QDateTime::currentDateTime());
+    connect(append, &KJob::result, this, [this, folder, generation](KJob *job) {
+        if (checkJob(job, generation)) {
+            Q_EMIT messageAppended(folder);
+        }
+    });
+    append->start();
 }
 
 void ImapClient::moveMessage(const QString &from, qint64 uid, const QString &to)

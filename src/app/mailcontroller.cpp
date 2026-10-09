@@ -356,6 +356,21 @@ bool MailController::sending() const
     return m_smtp != nullptr;
 }
 
+// Gmail files what was sent through its own server by itself; other servers need the copy.
+void MailController::saveSentCopy(const QString &account, const QString &provider, const QByteArray &data)
+{
+    const AccountSession *session = sessionFor(account);
+    if (!session || provider == "gmail"_L1) {
+        return;
+    }
+    const QString sent = folderForRole(session->folders(), u"sent"_s);
+    if (sent.isEmpty()) {
+        qWarning("No Sent folder to keep a copy of the message for %s", qPrintable(account));
+        return;
+    }
+    session->client()->appendMessage(sent, data, {"\\Seen"});
+}
+
 void MailController::sendMessage(const QVariantMap &message)
 {
     if (m_smtp) {
@@ -394,9 +409,10 @@ void MailController::sendMessage(const QVariantMap &message)
     }
 
     m_smtp = new SmtpClient(this);
-    connect(m_smtp, &SmtpClient::sent, this, [this] {
+    connect(m_smtp, &SmtpClient::sent, this, [this, email = account.email, provider = account.provider](const QByteArray &data) {
         std::exchange(m_smtp, nullptr)->deleteLater();
         Q_EMIT sendingChanged();
+        saveSentCopy(email, provider, data);
         Q_EMIT messageSent();
     });
     connect(m_smtp, &SmtpClient::failed, this, [this](const QString &error) {

@@ -2344,14 +2344,19 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   build without warnings; 16/16 tests.
 
 ### T113 — Copy of sent mail into the Sent folder
-- status: todo
+- status: done
 - depends on: T112
 - parallel-safe with: none
 - files: src/engine/imapclient.h, src/engine/imapclient.cpp, src/app/mailcontroller.cpp
 - inputs: `KIMAP::AppendJob`; the account's `sent` folder; Gmail saves its own copy.
 - output: after a send, non-Gmail accounts append the sent message to Sent with `\Seen`.
 - verify: build. Live check in T115.
-- notes:
+- notes: Done 2026-10-09 (live check T115). `ImapClient::appendMessage(folder, bytes, flags)` (KIMAP
+  `AppendJob`, internal date = now) → `messageAppended(folder)`. `SmtpClient::sent` now carries the
+  message bytes as sent (no Bcc header); `MailController::saveSentCopy` appends them to the account's
+  "sent" folder with `\Seen` after every successful send, except for Gmail accounts (Gmail files the
+  copy itself); no Sent folder → a log line only. A failed append shows the usual error toast
+  (the mail itself went out). Build without warnings; 16/16 tests.
 
 ### T114 — Toolbar: Reply, Reply All, Forward
 - status: todo

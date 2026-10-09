@@ -308,6 +308,8 @@ private:
     void onSecretRead(const QString &key, const QString &password, const QString &error);
     void onSessionError(AccountSession *session, const QString &message);
     void onMessageMoved(AccountSession *session, const QString &from, qint64 uid, const QString &to);
+    // Appends the sent message to the account's Sent folder (not for Gmail, which does it itself).
+    void saveSentCopy(const QString &account, const QString &provider, const QByteArray &data);
     // Background check of one account's inbox (unread count, new mail); every checkMinutes and
     // right after an account's folders arrive.
     void checkInbox(AccountSession *session);

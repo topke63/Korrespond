@@ -31,7 +31,8 @@ public:
     [[nodiscard]] bool isSending() const;
 
 Q_SIGNALS:
-    void sent();
+    // `data` is the message as it went out (for a copy in the Sent folder).
+    void sent(const QByteArray &data);
     // A readable text, never containing the password or a token.
     void failed(const QString &message);
 

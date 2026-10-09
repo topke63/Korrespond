@@ -85,6 +85,9 @@ public:
     // EXPUNGE KIMAP offers would remove the others too); if not, the copy stays, the flag is
     // taken back and errorOccurred() says so. Emits messageMoved() or errorOccurred().
     void moveMessage(const QString &from, qint64 uid, const QString &to);
+    // Stores a copy of a whole message (RFC 5322 bytes, CRLF) in `folder` with the given flags
+    // (e.g. "\\Seen"). Emits messageAppended() or errorOccurred().
+    void appendMessage(const QString &folder, const QByteArray &message, const QList<QByteArray> &flags);
     // UIDs of the messages in folder that arrived on or after since (the server's arrival date,
     // not the Date header); a null date means all messages. Emits searchFinished().
     void searchSince(const QString &folder, const QDate &since);
@@ -98,6 +101,7 @@ Q_SIGNALS:
     // Answer of checkInbox(): all unread messages of the folder, and the newest ones, newest first.
     void inboxChecked(const QString &folder, int unreadTotal, const QList<MessageSummary> &newestUnread);
     void messageMoved(const QString &from, qint64 uid, const QString &to);
+    void messageAppended(const QString &folder);
     // `filter` is the one passed to fetchHeaders(), so results for the same folder can be told apart.
     void headersFetched(const QString &folder, ImapClient::HeaderFilter filter, const QList<MessageSummary> &messages);
     // uids are in ascending order. uidValidity is the folder's current UIDVALIDITY: when it

@@ -120,6 +120,7 @@ void SmtpClient::finish(const QString &error)
     m_sending = false;
     m_timeout->stop();
     m_secret.clear();
+    const QByteArray data = std::exchange(m_built.data, QByteArray());
     m_built = {};
     if (m_session) {
         m_session->quit();
@@ -127,7 +128,7 @@ void SmtpClient::finish(const QString &error)
         m_session.clear();
     }
     if (error.isEmpty()) {
-        Q_EMIT sent();
+        Q_EMIT sent(data);
     } else {
         Q_EMIT failed(error);
     }

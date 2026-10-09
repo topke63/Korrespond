@@ -2439,7 +2439,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   Skipped 2026-10-09 on the user's decision (Q5 answered: Label does nothing for Yahoo, so there is nothing to build until a Gmail account needs it; Gmail labels via X-GM-LABELS can be planned then).
 
 ### T119 — Global verify (Milestone 3)
-- status: todo
+- status: done
 - depends on: T99–T118
 - parallel-safe with: none
 - files: none
@@ -2447,6 +2447,8 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - output: clean build, all tests pass, no new QML warnings.
 - verify: `rm -rf build && cmake --preset dev && cmake --build --preset dev && ctest --preset dev`
 - notes: T118 is skipped (user decision), so it does not block this task.
+  2026-10-09, run after T160 with the app closed: `rm -rf build`, configure, full build with no compiler warnings, 17/17 tests pass; real lint (`all_qmllint`) 2 warnings (the documented baseline); offscreen start with a throw-away profile prints only the known `AccountSetupPage ... not placed in the graphics scene` line. The `error: No such remote 'origin'` line in the log is harmless (this repo has no remote). T118 was skipped and T129/T141 were skipped by the user, so the plan is complete.
+
 
 # Milestone 3b — App icon, tray icon, new-mail notifications (user request 2026-10-09)
 

@@ -2841,7 +2841,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   14/14 tests; shown in T140.
 
 ### T140 — `StatusBar.qml` in the main window
-- status: todo
+- status: done
 - depends on: T138, T139
 - parallel-safe with: none
 - files: src/qml/StatusBar.qml (new), src/qml/Main.qml, src/CMakeLists.txt
@@ -2850,7 +2850,17 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   mail view; a thin top separator; chips with tooltips; clicking a failed chip calls
   `MailController.reconnect(email)`.
 - verify: offscreen start prints no new QML warnings; screenshots offline (red chip) and normal.
-- notes:
+- notes: Done 2026-10-09 (user review pending, T141). `src/qml/StatusBar.qml` (a `QQC2.Pane`, 1.8
+  grid units high, small font, thin top separator) is the window `footer` while there is an account
+  (`footer: hasAccount ? statusBar : null`). Left: a chip per account — a dot (green / amber / red /
+  grey) and the email; tooltip with server, state and the last error; a failed chip is clickable
+  (`reconnect`). Middle: `activityText`, else "Up to date · checked HH:MM" (or just "Up to date"
+  before the first check). Right: "N unread" and, with storage on and ready, "X stored".
+  **Side effect fixed:** a docked Kirigami drawer subtracts the window footer from its height a
+  second time, leaving a gap under the sidebar, so `FolderSidebar` now binds its height to its
+  parent's when docked. Checked offscreen/offline on a copy of the user's data: red chip (no
+  network), "Up to date", "0 unread", "130,3 KiB stored", sidebar reaching the bar; no new QML
+  warnings; 14/14 tests. Not seen with a live connection yet.
 
 ### T141 — Manual check: status bar
 - status: todo

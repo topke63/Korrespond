@@ -34,6 +34,9 @@ Kirigami.ApplicationWindow {
         settings.open(moduleId);
     }
 
+    // The connection and activity bar; only with an account (not on the first-run setup page).
+    footer: MailController.hasAccount ? statusBar : null
+
     title: KI18n.i18nc("@title:window", "Plasma Mail")
     width: Kirigami.Units.gridUnit * 75
     height: Kirigami.Units.gridUnit * 45
@@ -131,6 +134,12 @@ Kirigami.ApplicationWindow {
         id: setupPage
 
         AccountSetupPage {}
+    }
+
+    StatusBar {
+        id: statusBar
+
+        visible: MailController.hasAccount
     }
 
     Component {

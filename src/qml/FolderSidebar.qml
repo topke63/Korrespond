@@ -41,6 +41,14 @@ Kirigami.OverlayDrawer {
     edge: Qt.application.layoutDirection === Qt.RightToLeft ? Qt.RightEdge : Qt.LeftEdge
     // Docked: the width the user chose (live while dragging). Sliding over a narrow window: fixed.
     width: modal ? Kirigami.Units.gridUnit * 14 : Math.min(maxDockedWidth, resizer.dragging ? resizer.liveWidth : MailController.sidebarWidth)
+    // Docked beside the pages the sidebar fills the page row. The drawer's own height subtracts the
+    // window's footer (the status bar), which the page row has already left out.
+    Binding {
+        target: sidebar
+        property: "height"
+        value: sidebar.parent ? sidebar.parent.height : sidebar.implicitHeight
+        when: !sidebar.modal
+    }
     // The most it may take: the list keeps its minimum and the message column 30 grid units.
     readonly property int maxDockedWidth: Math.max(MailController.sidebarMinWidth,
                                                    Math.min(MailController.sidebarMaxWidth,

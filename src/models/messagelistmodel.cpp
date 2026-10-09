@@ -118,6 +118,24 @@ void MessageListModel::setFlagged(const QString &account, qint64 uid, bool flagg
     }
 }
 
+int MessageListModel::removeMessage(const QString &account, qint64 uid)
+{
+    for (qsizetype row = 0; row < m_messages.size(); ++row) {
+        if (m_messages[row].uid == uid && m_messages[row].account == account) {
+            beginRemoveRows({}, int(row), int(row));
+            m_messages.removeAt(row);
+            endRemoveRows();
+            return int(row);
+        }
+    }
+    return -1;
+}
+
+MessageSummary MessageListModel::messageAt(int row) const
+{
+    return row >= 0 && row < m_messages.size() ? m_messages.at(row) : MessageSummary();
+}
+
 MessageSummary MessageListModel::message(const QString &account, qint64 uid) const
 {
     for (const MessageSummary &msg : m_messages) {

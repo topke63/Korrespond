@@ -25,6 +25,7 @@ AccountSession::AccountSession(const Account &account, const QString &storeDir, 
     connect(m_client, &ImapClient::foldersListed, this, &AccountSession::onFoldersListed);
     connect(m_client, &ImapClient::headersFetched, this, &AccountSession::headersFetched);
     connect(m_client, &ImapClient::messageFetched, this, &AccountSession::messageFetched);
+    connect(m_client, &ImapClient::messageMoved, this, &AccountSession::messageMoved);
     connect(m_client, &ImapClient::errorOccurred, this, &AccountSession::errorOccurred);
 
     // Store errors are logged, not shown: the mail itself still works from the server.

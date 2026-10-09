@@ -65,6 +65,10 @@ class MailController : public QObject
     Q_PROPERTY(QStringList messageAttachments READ messageAttachments NOTIFY currentMessageChanged)
     Q_PROPERTY(bool messageFlagged READ messageFlagged NOTIFY currentMessageChanged)
     Q_PROPERTY(bool messageUnread READ messageUnread NOTIFY currentMessageChanged)
+    // Whether Archive / Delete can act on the open message: the account has an archive (or Gmail
+    // All Mail) / Trash folder, the message is not in it already, and it is not being moved.
+    Q_PROPERTY(bool canArchive READ canArchive NOTIFY currentMessageChanged)
+    Q_PROPERTY(bool canDelete READ canDelete NOTIFY currentMessageChanged)
     // Local storage settings. importSince is an ISO date ("yyyy-MM-dd"), empty = all mail; the
     // units are StorageSettings::KeepUnit / SizeUnit as ints.
     Q_PROPERTY(bool storageEnabled READ storageEnabled NOTIFY storageSettingsChanged)
@@ -109,6 +113,8 @@ public:
     [[nodiscard]] QStringList messageAttachments() const;
     [[nodiscard]] bool messageFlagged() const;
     [[nodiscard]] bool messageUnread() const;
+    [[nodiscard]] bool canArchive() const;
+    [[nodiscard]] bool canDelete() const;
     [[nodiscard]] bool storageEnabled() const;
     [[nodiscard]] QString importSince() const;
     [[nodiscard]] int keepValue() const;
@@ -161,6 +167,13 @@ public:
     // open message at once, then stores the \Seen flag on the server. An unread message stays
     // unread while it is open.
     Q_INVOKABLE void setUnread(const QString &account, qint64 uid, bool unread);
+    // Move the open message to the account's archive / Trash folder, or to any folder of its
+    // account (`folderPath`). The server moves it first; only then it leaves the list and the
+    // local copies, and the next message opens (or none, after the last one). On failure
+    // nothing changes and errorOccurred is emitted. Mail is never deleted for good.
+    Q_INVOKABLE void archiveMessage();
+    Q_INVOKABLE void deleteMessage();
+    Q_INVOKABLE void moveMessage(const QString &folderPath);
     // Saves the local storage settings (arguments as the properties), applies them to the local
     // copies at once (turning storage off deletes them) and starts a sync when storage is on.
     Q_INVOKABLE void saveStorageSettings(bool enabled, const QString &importSince, int keepValue, int keepUnit, int sizeValue, int sizeUnit);
@@ -203,6 +216,9 @@ private:
     void connectSavedAccounts();
     void onSecretRead(const QString &key, const QString &password, const QString &error);
     void onSessionError(AccountSession *session, const QString &message);
+    void onMessageMoved(AccountSession *session, const QString &from, qint64 uid, const QString &to);
+    void moveOpenMessage(const QString &target);
+    [[nodiscard]] static QString moveKey(const QString &account, const QString &folder, qint64 uid);
     void onSessionFolders(AccountSession *session);
     void beginRequest();
     void endRequest();
@@ -239,6 +255,7 @@ private:
     // The open shared view: each account's part of the merged list, and the accounts already asked.
     std::map<QString, QList<MessageSummary>> m_sharedParts;
     std::set<AccountSession *> m_sharedRequested;
+    std::set<QString> m_moving; // moveKey()s of messages the server is moving
     std::set<AccountSession *> m_awaitingFolders; // sessions with a folder-list request in flight (counted as busy)
     AccountListModel *m_accounts;
     FolderModel *m_noFolders; // shown when there is no session

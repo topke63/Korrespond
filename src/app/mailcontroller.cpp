@@ -6,6 +6,7 @@
 #include "accountlistmodel.h"
 #include "accountsession.h"
 #include "foldermodel.h"
+#include "folderutils.h"
 #include "imapclient.h"
 #include "messagelistmodel.h"
 #include "messagerenderer.h"
@@ -132,6 +133,9 @@ AccountSession *MailController::createSession(const Account &account)
     });
     connect(session, &AccountSession::errorOccurred, this, [this, session](const QString &message) {
         onSessionError(session, message);
+    });
+    connect(session, &AccountSession::messageMoved, this, [this, session](const QString &from, qint64 uid, const QString &to) {
+        onMessageMoved(session, from, uid, to);
     });
     connect(session, &AccountSession::syncingChanged, this, &MailController::updateSyncing);
     connect(session, &AccountSession::storageUsageChanged, this, &MailController::updateStorageUsage);
@@ -283,6 +287,27 @@ bool MailController::messageFlagged() const
 bool MailController::messageUnread() const
 {
     return m_messageUnread;
+}
+
+bool MailController::canArchive() const
+{
+    const AccountSession *session = sessionFor(m_messageAccount);
+    if (!session || m_currentUid <= 0 || m_moving.contains(moveKey(m_messageAccount, m_messageFolder, m_currentUid))) {
+        return false;
+    }
+    const QString target = archiveTarget(session->folders());
+    return !target.isEmpty() && target != m_messageFolder;
+}
+
+bool MailController::canDelete() const
+{
+    const AccountSession *session = sessionFor(m_messageAccount);
+    if (!session || m_currentUid <= 0 || m_moving.contains(moveKey(m_messageAccount, m_messageFolder, m_currentUid))) {
+        return false;
+    }
+    // Deleting from Trash would be for good, which this app doesn't do.
+    const QString trash = folderForRole(session->folders(), u"trash"_s);
+    return !trash.isEmpty() && trash != m_messageFolder;
 }
 
 bool MailController::storageEnabled() const
@@ -642,6 +667,88 @@ void MailController::setUnread(const QString &account, qint64 uid, bool unread)
     session->client()->setSeen(folder, uid, !unread);
 }
 
+QString MailController::moveKey(const QString &account, const QString &folder, qint64 uid)
+{
+    return u"%1\n%2\n%3"_s.arg(account, folder).arg(uid);
+}
+
+void MailController::archiveMessage()
+{
+    if (const AccountSession *session = sessionFor(m_messageAccount); session && canArchive()) {
+        moveOpenMessage(archiveTarget(session->folders()));
+    }
+}
+
+void MailController::deleteMessage()
+{
+    if (const AccountSession *session = sessionFor(m_messageAccount); session && canDelete()) {
+        moveOpenMessage(folderForRole(session->folders(), u"trash"_s));
+    }
+}
+
+void MailController::moveMessage(const QString &folderPath)
+{
+    const AccountSession *session = sessionFor(m_messageAccount);
+    if (!session) {
+        return;
+    }
+    const QList<FolderInfo> folders = session->folders();
+    if (std::none_of(folders.cbegin(), folders.cend(), [&folderPath](const FolderInfo &folder) {
+            return folder.path == folderPath;
+        })) {
+        return; // not a folder of this account
+    }
+    moveOpenMessage(folderPath);
+}
+
+void MailController::moveOpenMessage(const QString &target)
+{
+    AccountSession *session = sessionFor(m_messageAccount);
+    if (!session || m_currentUid <= 0 || target.isEmpty() || target == m_messageFolder) {
+        return;
+    }
+    if (!m_moving.insert(moveKey(m_messageAccount, m_messageFolder, m_currentUid)).second) {
+        return; // already on its way
+    }
+    beginRequest();
+    session->client()->moveMessage(m_messageFolder, m_currentUid, target);
+    Q_EMIT currentMessageChanged(); // canArchive / canDelete are false while it moves
+}
+
+void MailController::onMessageMoved(AccountSession *session, const QString &from, qint64 uid, const QString &to)
+{
+    Q_UNUSED(to)
+    const QString email = session->account().email;
+    if (m_moving.erase(moveKey(email, from, uid)) == 0 || !isKnown(session)) {
+        return;
+    }
+    endRequest();
+    // The server has it now; the copy in the target folder arrives with the next sync.
+    if (session->storageActive() && !session->store()->removeMessage(from, uid)) {
+        qWarning("Cannot remove the local copy of a moved message: %s", qPrintable(session->store()->lastError()));
+    }
+    if (const auto part = m_sharedParts.find(email); part != m_sharedParts.end()) {
+        part->second.removeIf([uid](const MessageSummary &message) {
+            return message.uid == uid;
+        });
+    }
+    const bool wasOpen = uid == m_currentUid && email == m_messageAccount && from == m_messageFolder;
+    const int row = m_messageModel->removeMessage(email, uid);
+    if (!wasOpen) {
+        return;
+    }
+    // The next message in the list takes its place, else the one before it.
+    MessageSummary next = row >= 0 ? m_messageModel->messageAt(row) : MessageSummary();
+    if (next.uid == 0 && row > 0) {
+        next = m_messageModel->messageAt(row - 1);
+    }
+    if (next.uid > 0) {
+        openMessage(next.account, next.uid);
+    } else {
+        clearMessage(true);
+    }
+}
+
 void MailController::onMessageFetched(AccountSession *session, const QString &folder, qint64 uid, const std::shared_ptr<KMime::Message> &message)
 {
     endRequest();
@@ -883,6 +990,20 @@ void MailController::onSessionError(AccountSession *session, const QString &mess
 {
     if (!isKnown(session)) {
         return;
+    }
+    // A failed connection fails what was queued, including moves that were on their way.
+    const QString movePrefix = session->account().email + u'\n';
+    const size_t movesBefore = m_moving.size();
+    for (auto it = m_moving.begin(); it != m_moving.end();) {
+        if (it->startsWith(movePrefix)) {
+            it = m_moving.erase(it);
+            endRequest();
+        } else {
+            ++it;
+        }
+    }
+    if (const bool anyDropped = m_moving.size() != movesBefore; anyDropped) {
+        Q_EMIT currentMessageChanged(); // canArchive / canDelete come back
     }
     if (session == m_pending) {
         // Verification of a new account failed: forget it, keep whatever was there before.

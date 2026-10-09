@@ -37,6 +37,10 @@ public:
     // Updates one message's unread state; emits dataChanged for that row only.
     void setUnread(const QString &account, qint64 uid, bool unread);
     void setFlagged(const QString &account, qint64 uid, bool flagged);
+    // Removes one message from the list. Returns the row it had, or -1 if it was not there.
+    int removeMessage(const QString &account, qint64 uid);
+    // The message in `row`; a default MessageSummary (uid 0) for a row that doesn't exist.
+    [[nodiscard]] MessageSummary messageAt(int row) const;
     // Returns a default MessageSummary (uid 0) if the message is not in the list.
     [[nodiscard]] MessageSummary message(const QString &account, qint64 uid) const;
 

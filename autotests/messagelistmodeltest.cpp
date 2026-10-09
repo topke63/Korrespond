@@ -184,6 +184,28 @@ private Q_SLOTS:
         QCOMPARE(spy.count(), 0);
     }
 
+    void testRemoveMessage()
+    {
+        MessageSummary gmail = summary(2, u"Gmail two"_s);
+        gmail.account = u"me@gmail.com"_s;
+        MessageListModel model;
+        QAbstractItemModelTester tester(&model, QAbstractItemModelTester::FailureReportingMode::QtTest);
+        model.setMessages({summary(1, u"a"_s), summary(2, u"b"_s), gmail, summary(3, u"c"_s)});
+        QSignalSpy removed(&model, &QAbstractItemModel::rowsRemoved);
+
+        // The same uid in another account is another message.
+        QCOMPARE(model.removeMessage(u"me@example.org"_s, 2), 1);
+        QCOMPARE(removed.count(), 1);
+        QCOMPARE(model.rowCount(), 3);
+        QCOMPARE(model.messageAt(1).account, u"me@gmail.com"_s);
+        QCOMPARE(model.messageAt(2).uid, qint64(3));
+
+        QCOMPARE(model.removeMessage(u"me@example.org"_s, 2), -1); // already gone
+        QCOMPARE(removed.count(), 1);
+        QCOMPARE(model.messageAt(99).uid, qint64(0));
+        QCOMPARE(model.messageAt(-1).uid, qint64(0));
+    }
+
     void testClear()
     {
         MessageListModel model;

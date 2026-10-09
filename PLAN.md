@@ -2180,7 +2180,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   other messages stay; unknown message/folder is fine; closed store → false with an error text.
 
 ### T104 — Controller: Archive, Delete, Move
-- status: todo
+- status: done
 - depends on: T101, T102, T103, T88
 - parallel-safe with: none
 - files: src/app/mailcontroller.h, src/app/mailcontroller.cpp
@@ -2189,7 +2189,15 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   properties `canArchive`, `canDelete`; on `messageMoved` the row and store copy go and the next
   message opens; on error the list stays and `errorOccurred` fires.
 - verify: build; all tests pass.
-- notes:
+- notes: Done 2026-10-09. `archiveMessage()`, `deleteMessage()`, `moveMessage(folderPath)` act on the
+  open message of its own account; properties `canArchive` / `canDelete` (folder exists, message
+  not in it already, not already moving). The move goes to the server first (`m_moving` keys);
+  on `messageMoved` the row, its stored copy and its part of a shared view go, and the next row
+  (else the previous, else nothing) opens. A session error drops that account's pending moves and
+  frees `busy`. Extras beyond the plan's files: `MessageListModel::removeMessage()` /
+  `messageAt()` (+1 test in messagelistmodeltest) and `AccountSession::messageMoved` forwarding.
+  Not run against a server (T107); storage usage in Settings refreshes with the next sync, not
+  right after a move. Build and 12/12 tests pass.
 
 ### T105 — Toolbar: Archive, Delete, Move to Folder
 - status: todo

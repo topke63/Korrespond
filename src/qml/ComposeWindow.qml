@@ -314,6 +314,76 @@ Kirigami.ApplicationWindow {
                 }
             }
         }
+
+        // Files dropped anywhere on the window are attached; other drags (text) fall through to the fields.
+        DropArea {
+            id: dropArea
+
+            function acceptsFiles(urls: var, hasUrls: bool): bool {
+                if (!hasUrls || composer.waiting || MailController.sending || !urls || urls.length === 0) {
+                    return false;
+                }
+                for (const url of urls) {
+                    if (!String(url).startsWith("file:")) {
+                        return false;
+                    }
+                }
+                return true;
+            }
+
+            anchors.fill: parent
+            z: 100
+            onEntered: drag => {
+                if (acceptsFiles(drag.urls, drag.hasUrls)) {
+                    drag.accept(Qt.CopyAction);
+                } else {
+                    drag.accepted = false;
+                }
+            }
+            onDropped: drop => {
+                if (acceptsFiles(drop.urls, drop.hasUrls)) {
+                    composer.addAttachments(drop.urls);
+                    drop.accept(Qt.CopyAction);
+                }
+            }
+
+            Rectangle {
+                anchors.fill: parent
+                visible: dropArea.containsDrag
+                color: Qt.alpha(Kirigami.Theme.backgroundColor, 0.85)
+                Accessible.role: Accessible.StaticText
+                Accessible.name: dropLabel.text
+
+                Rectangle {
+                    anchors.fill: parent
+                    anchors.margins: Kirigami.Units.largeSpacing
+                    radius: Kirigami.Units.cornerRadius
+                    color: "transparent"
+                    border.width: 2
+                    border.color: Kirigami.Theme.highlightColor
+                }
+
+                ColumnLayout {
+                    anchors.centerIn: parent
+                    spacing: Kirigami.Units.largeSpacing
+
+                    Kirigami.Icon {
+                        Layout.alignment: Qt.AlignHCenter
+                        implicitWidth: Kirigami.Units.iconSizes.huge
+                        implicitHeight: Kirigami.Units.iconSizes.huge
+                        source: "mail-attachment"
+                    }
+
+                    Kirigami.Heading {
+                        id: dropLabel
+
+                        Layout.alignment: Qt.AlignHCenter
+                        level: 2
+                        text: KI18n.i18nc("@info", "Drop files to attach")
+                    }
+                }
+            }
+        }
     }
 
     FileDialog {

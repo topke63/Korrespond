@@ -3564,7 +3564,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   inline images into the body, dropping onto the main window to start a new message.
 
 ### T167 — Compose window: drop files to attach
-- status: todo
+- status: done
 - depends on: T156
 - parallel-safe with: none
 - files: src/qml/ComposeWindow.qml
@@ -3581,10 +3581,20 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   events or `Drag` simulation, whichever works offscreen) with two files and checks two chips;
   with a text-only drop checks no chip; if a synthetic drop is not possible offscreen, say so in
   the notes and rely on the user's check.
-- notes:
+- notes: Done 2026-10-09. DropArea (z 100, fills the Page content incl. attachment row and footer) with
+  `acceptsFiles(urls, hasUrls)`: only file: URLs, not while waiting/sending; `accept(Qt.CopyAction)`
+  (`dropAction` is flagged by qmllint); onDropped → addAttachments. Overlay: Qt.alpha(background, .85),
+  highlight border, mail-attachment icon, "Drop files to attach", Accessible StaticText. Synthetic drop
+  works offscreen: scratch C++ harness sending QDragEnter/Move/Drop/Leave events to the real
+  ComposeWindow with a stub controller, 33/33: two files → 2 chips; text, mixed file+https, while
+  waiting/sending, under the modal discard dialog → rejected; folder → no chip (silently); overlay
+  shows/hides; input not blocked. Not verifiable offscreen: text dropped into the body (offscreen
+  TextEdit takes no drops on HEAD either) → T168. Lint 2, ctest 17/17. Probe note: since
+  qt6-declarative 6.12 + ki18n 6.30, QML probes that stub org.kde.ki18n must list the stub import
+  paths last (`-import /usr/lib/qt6/qml -import <ki18nstub> -import <stubs>`).
 
 ### T168 — Manual check: drag and drop attachments
-- status: todo
+- status: waiting (manual check with the user)
 - depends on: T167
 - parallel-safe with: none
 - files: none

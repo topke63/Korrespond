@@ -3594,7 +3594,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   paths last (`-import /usr/lib/qt6/qml -import <ki18nstub> -import <stubs>`).
 
 ### T168 — Manual check: drag and drop attachments
-- status: waiting (manual check with the user)
+- status: done
 - depends on: T167
 - parallel-safe with: none
 - files: none
@@ -3605,6 +3605,8 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   the body.
 - verify: manual, with the user.
 - notes:
+  Closed 2026-10-09: the user tried dragging files from Dolphin onto the compose window and said "works" (a general confirmation; the text-drop and over-25-MB cases were not reported separately).
+
 
 ## Execution Loop
 

@@ -132,6 +132,24 @@ QQC2.Pane {
         }
 
         QQC2.Label {
+            id: lastActionLabel
+
+            visible: text.length > 0
+            text: MailController.lastActionText
+            font: Kirigami.Theme.smallFont
+            color: Kirigami.Theme.disabledTextColor
+            elide: Text.ElideRight
+            Layout.maximumWidth: Kirigami.Units.gridUnit * 16
+
+            HoverHandler {
+                id: lastActionHover
+            }
+            QQC2.ToolTip.visible: lastActionHover.hovered && lastActionLabel.truncated
+            QQC2.ToolTip.text: lastActionLabel.text
+            QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
+        }
+
+        QQC2.Label {
             text: KI18n.i18np("%1 unread", "%1 unread", MailController.unreadCount)
             font: Kirigami.Theme.smallFont
             color: MailController.unreadCount > 0 ? Kirigami.Theme.textColor : Kirigami.Theme.disabledTextColor

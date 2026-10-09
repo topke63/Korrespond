@@ -2977,7 +2977,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   m_moving/m_moveTexts and releases the requests. Build ok, ctest 16/16, offscreen clean.
 
 ### T143 — Status bar: show the last action
-- status: todo
+- status: done
 - depends on: T142
 - parallel-safe with: none
 - files: src/qml/StatusBar.qml
@@ -2987,10 +2987,14 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   tooltip with the full text.
 - verify: `qmllint` clean on the file; offscreen start prints no new QML warnings; screenshot hook
   shows the bar still fits at the default window width.
-- notes:
+- notes: Done 2026-10-09. Label `lastActionLabel` between the activity text and the counters:
+  smallFont, disabledTextColor, ElideRight, max width 16 gridUnits (no fillWidth, so the activity
+  text shrinks first); tooltip with the full text only when truncated. qmllint clean, offscreen start
+  clean. The screenshot check could not show the bar (a throw-away profile has no account, only the
+  setup page; no fake account added), so "fits at default width" moves to T144.
 
 ### T144 — Manual check: last action in the status bar
-- status: todo
+- status: waiting (manual check with the user)
 - depends on: T143
 - parallel-safe with: none
 - files: none
@@ -2999,7 +3003,8 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   background check says so; archiving or moving a test message shows it; nothing from the message
   (sender, subject) appears.
 - verify: manual, with the user.
-- notes:
+- notes: Also check the bar still fits at the default window width with the label shown (from
+  T143). Needs a rebuild/reinstall of the running app first.
 
 ### T145 — Moves dropped on reconnect / over-broad move failures (found in T142)
 - status: todo

@@ -2671,7 +2671,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   warnings, 14/14 tests; nothing in QML uses them yet (T133/T134).
 
 ### T132 — `PanelResizer.qml`: the drag handle
-- status: todo
+- status: done
 - depends on: none
 - parallel-safe with: T130, T131
 - files: src/qml/PanelResizer.qml (new), src/CMakeLists.txt
@@ -2680,7 +2680,15 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   `minimum`, `maximum`, `defaultWidth`, `panelWidth`; while dragging it updates a `liveWidth`
   (clamped); signals `resized(int width)` on release and `resetRequested()` on double-click.
 - verify: offscreen start prints no new QML warnings; screenshot of the handle placed on a panel.
-- notes:
+- notes: Done 2026-10-09. `src/qml/PanelResizer.qml`: a 12 px wide transparent strip (z 100) with
+  a line that is invisible at rest and shows 3 px in the highlight colour on hover/drag; required
+  `panelWidth`, `minimum`, `maximum`; read-only `dragging` and `liveWidth` (start width + the
+  pointer's movement on screen, clamped — measured from scene positions because the divider
+  itself moves with the panel); signals `resized(int width)` when the drag ends and
+  `resetRequested()` on a double tap; `Qt.SplitHCursor` on hover/drag. Registered in CMake. Checked:
+  it loads with no QML warnings, and a temporary copy placed over the list's right edge (with the
+  line forced visible, then reverted) rendered correctly. Dragging itself is first exercised in
+  T133/T134 (and by hand in T135).
 
 ### T133 — Sidebar: resizable
 - status: todo

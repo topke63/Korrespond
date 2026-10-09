@@ -3,10 +3,14 @@
 
 #include "imapclient.h"
 
+#include <KIMAP/CapabilitiesJob>
+#include <KIMAP/CopyJob>
+#include <KIMAP/ExpungeJob>
 #include <KIMAP/FetchJob>
 #include <KIMAP/ListJob>
 #include <KIMAP/LoginJob>
 #include <KIMAP/LogoutJob>
+#include <KIMAP/MoveJob>
 #include <KIMAP/SearchJob>
 #include <KIMAP/SelectJob>
 #include <KIMAP/Session>
@@ -15,6 +19,7 @@
 #include <KMime/Message>
 
 #include <algorithm>
+#include <functional>
 
 using namespace Qt::StringLiterals;
 
@@ -95,6 +100,7 @@ void ImapClient::dropSession()
     }
     m_session = nullptr;
     m_selectedFolder.clear();
+    m_capabilities.clear();
 }
 
 bool ImapClient::isCurrent(quint64 generation) const
@@ -163,6 +169,103 @@ KIMAP::Session *ImapClient::session()
     login->start();
 
     return m_session;
+}
+
+void ImapClient::moveMessage(const QString &from, qint64 uid, const QString &to)
+{
+    session();
+    const quint64 generation = m_generation;
+    queueSelect(from, generation);
+
+    const auto proceed = [this, from, uid, to, generation] {
+        if (!isCurrent(generation)) {
+            return;
+        }
+        if (!m_capabilities.contains(u"MOVE"_s)) {
+            moveByCopy(from, uid, to, generation);
+            return;
+        }
+        auto move = new KIMAP::MoveJob(session());
+        move->setUidBased(true);
+        move->setSequenceSet(KIMAP::ImapSet(uid));
+        move->setMailBox(to);
+        connect(move, &KJob::result, this, [this, from, uid, to, generation](KJob *job) {
+            if (checkJob(job, generation)) {
+                Q_EMIT messageMoved(from, uid, to);
+            }
+        });
+        move->start();
+    };
+    if (!m_capabilities.isEmpty()) {
+        proceed();
+        return;
+    }
+    // Asked once per session, after the login that is already queued.
+    auto capabilities = new KIMAP::CapabilitiesJob(session());
+    connect(capabilities, &KJob::result, this, [this, generation, proceed](KJob *job) {
+        if (!checkJob(job, generation)) {
+            return;
+        }
+        m_capabilities = static_cast<KIMAP::CapabilitiesJob *>(job)->capabilities();
+        proceed();
+    });
+    capabilities->start();
+}
+
+// For servers without MOVE: COPY, flag the original \Deleted, and expunge only when that is
+// safe. The original folder is still the selected one.
+void ImapClient::moveByCopy(const QString &from, qint64 uid, const QString &to, quint64 generation)
+{
+    auto copy = new KIMAP::CopyJob(session());
+    copy->setUidBased(true);
+    copy->setSequenceSet(KIMAP::ImapSet(uid));
+    copy->setMailBox(to);
+    connect(copy, &KJob::result, this, [this, from, uid, to, generation](KJob *copyJob) {
+        if (!checkJob(copyJob, generation)) {
+            return;
+        }
+        const auto setDeleted = [this, uid, generation](bool deleted, const std::function<void()> &then) {
+            auto store = new KIMAP::StoreJob(session());
+            store->setUidBased(true);
+            store->setSequenceSet(KIMAP::ImapSet(uid));
+            store->setFlags({"\\Deleted"});
+            store->setMode(deleted ? KIMAP::StoreJob::AppendFlags : KIMAP::StoreJob::RemoveFlags);
+            connect(store, &KJob::result, this, [this, generation, then](KJob *job) {
+                if (checkJob(job, generation) && then) {
+                    then();
+                }
+            });
+            store->start();
+        };
+        setDeleted(true, [this, from, uid, to, generation, setDeleted] {
+            // Who else is flagged \Deleted in this folder? EXPUNGE would remove them as well.
+            auto search = new KIMAP::SearchJob(session());
+            search->setUidBased(true);
+            search->setTerm(KIMAP::Term(KIMAP::Term::Deleted));
+            connect(search, &KJob::result, this, [this, from, uid, to, generation, setDeleted](KJob *job) {
+                if (!checkJob(job, generation)) {
+                    return;
+                }
+                const QList<qint64> deleted = static_cast<KIMAP::SearchJob *>(job)->results();
+                if (deleted.size() != 1 || deleted.constFirst() != uid) {
+                    // Leave the original as it was; the copy stays in `to`.
+                    setDeleted(false, {});
+                    Q_EMIT errorOccurred(i18n(
+                        "The message was copied, but the original could not be removed safely because other messages in this folder are marked as deleted."));
+                    return;
+                }
+                auto expunge = new KIMAP::ExpungeJob(session());
+                connect(expunge, &KJob::result, this, [this, from, uid, to, generation](KJob *expungeJob) {
+                    if (checkJob(expungeJob, generation)) {
+                        Q_EMIT messageMoved(from, uid, to);
+                    }
+                });
+                expunge->start();
+            });
+            search->start();
+        });
+    });
+    copy->start();
 }
 
 bool ImapClient::checkJob(KJob *job, quint64 generation)

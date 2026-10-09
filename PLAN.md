@@ -2136,7 +2136,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   the server round trip is T107. Build and 12/12 tests pass.
 
 ### T101 — `ImapClient`: move a message
-- status: todo
+- status: done
 - depends on: none
 - parallel-safe with: T99, T100, T102
 - files: src/engine/imapclient.h, src/engine/imapclient.cpp
@@ -2144,7 +2144,13 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - output: `void moveMessage(const QString &from, qint64 uid, const QString &to)`; signal
   `messageMoved(from, uid, to)` or `errorOccurred`; the fallback from the design decisions.
 - verify: build. Live check in T107.
-- notes:
+- notes: Done 2026-10-09. `moveMessage(from, uid, to)` + signal `messageMoved(from, uid, to)`.
+  The server's capabilities are read once per session (`m_capabilities`, cleared when the session
+  drops). With MOVE: `MoveJob`. Without: COPY, flag the original `\Deleted`, SEARCH DELETED, and
+  EXPUNGE **only if our uid is the only deleted one** — KIMAP's `ExpungeJob` is a plain EXPUNGE
+  (no UID EXPUNGE), so the plan's "UID EXPUNGE" wasn't possible; in the unsafe case the flag is
+  taken back, the copy stays, and `errorOccurred` explains. Builds without warnings, 12/12 tests
+  pass; nothing calls it yet and nothing was run against a server (T107).
 
 ### T102 — Folder lookup for Archive and Delete
 - status: todo

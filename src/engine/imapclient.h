@@ -70,6 +70,12 @@ public:
     void markSeen(const QString &folder, qint64 uid);
     // Sets or clears \Flagged (shown as a star or flag by mail clients).
     void setFlagged(const QString &folder, qint64 uid, bool flagged);
+    // Moves one message to another folder of the account; never deletes it for good. Uses
+    // UID MOVE when the server has MOVE. Otherwise it copies the message, flags the original
+    // \Deleted and expunges it only if it is the only \Deleted message of the folder (the plain
+    // EXPUNGE KIMAP offers would remove the others too); if not, the copy stays, the flag is
+    // taken back and errorOccurred() says so. Emits messageMoved() or errorOccurred().
+    void moveMessage(const QString &from, qint64 uid, const QString &to);
     // UIDs of the messages in folder that arrived on or after since (the server's arrival date,
     // not the Date header); a null date means all messages. Emits searchFinished().
     void searchSince(const QString &folder, const QDate &since);
@@ -80,6 +86,7 @@ public:
 
 Q_SIGNALS:
     void foldersListed(const QList<FolderInfo> &folders);
+    void messageMoved(const QString &from, qint64 uid, const QString &to);
     // `filter` is the one passed to fetchHeaders(), so results for the same folder can be told apart.
     void headersFetched(const QString &folder, ImapClient::HeaderFilter filter, const QList<MessageSummary> &messages);
     // uids are in ascending order. uidValidity is the folder's current UIDVALIDITY: when it
@@ -105,6 +112,7 @@ private:
     // same (or an older) session are ignored. The next request opens a new session.
     void fail(quint64 generation, const QString &message);
     void dropSession();
+    void moveByCopy(const QString &from, qint64 uid, const QString &to, quint64 generation);
     void queueSelect(const QString &folder, quint64 generation);
     // Fetches headers for `set` (UIDs if uidBased, else sequence numbers) of the selected folder
     // and emits headersFetched() newest first.
@@ -116,6 +124,7 @@ private:
     QString m_password;
     QPointer<KIMAP::Session> m_session;
     QString m_selectedFolder; // folder of the last queued SELECT
+    QStringList m_capabilities; // the server's, read after login; empty until asked
     quint64 m_generation = 0; // number of the current (or last) session
     quint64 m_failedGeneration = 0; // session whose failure was already reported
 };

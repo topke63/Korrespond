@@ -3067,6 +3067,59 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   deleteLater cycles both listen; callback() is http://127.0.0.1:<port>/. `m_replyHandler` is a
   QPointer, so a second sign-in is safe. Build ok, ctest 16/16. Live sign-in: T80/T95 (user).
 
+# Milestone 5a — Reorder accounts (user request 2026-10-08, repeated 2026-10-09 after adding Gmail)
+
+- **Goal**: the user can change the order of the accounts (Yahoo, Gmail, …); the order is saved and
+  the sidebar sections and Settings → Accounts follow it.
+- **Decisions** (made while planning; change only with the user):
+  - First version: **Move up / Move down** buttons on each row of Settings → Accounts (keyboard
+    friendly, no drag code). Dragging can come later.
+  - The order is the order of `m_sessions` and of `[Accounts] Order` in `plasmamailrc` (T68), so
+    saving already keeps it; the work is to move a session, save, and tell the models.
+  - Which account is "first" matters nowhere else (shared views merge every account), so moving
+    must not reconnect, resync or change the open folder.
+- **Out of scope**: drag and drop, custom sorting rules.
+
+### T148 — Controller and model: move an account
+- status: todo
+- depends on: T147
+- parallel-safe with: none
+- files: src/app/mailcontroller.h, src/app/mailcontroller.cpp, src/models/accountlistmodel.h,
+  src/models/accountlistmodel.cpp
+- inputs: `m_sessions`, `saveAccounts()`, `AccountListModel` (one row per session, in order).
+- output: `Q_INVOKABLE void moveAccount(const QString &email, int delta)` (delta -1 up, +1 down;
+  ignores a move past either end or an unknown email) that moves the session in `m_sessions`,
+  calls `saveAccounts()`, and makes `AccountListModel` move the row (`beginMoveRows`/`endMoveRows`,
+  not a reset, so the sidebar's expanded/collapsed sections and the selection stay). No
+  reconnect, no new request, the open folder stays open.
+- verify: build succeeds; `ctest --preset dev` passes; a model test (extend the existing
+  `AccountListModel` test if there is one, else add `autotests/accountlistmodeltest.cpp`) moves a
+  row up, down, and past the end.
+- notes:
+
+### T149 — Settings → Accounts: move up / down buttons
+- status: todo
+- depends on: T148
+- parallel-safe with: none
+- files: src/qml/AccountSettingsPage.qml
+- inputs: T148.
+- output: each account row has two small buttons (arrow up / arrow down, tooltips "Move up" /
+  "Move down"); the first row's up and the last row's down are disabled. The sidebar sections
+  reorder at once.
+- verify: `qmllint` clean; offscreen start prints no new QML warnings.
+- notes:
+
+### T150 — Manual check: reorder accounts
+- status: todo
+- depends on: T149
+- parallel-safe with: none
+- files: none
+- inputs: the user's desktop with the Yahoo and Gmail accounts.
+- output: confirmed: the buttons swap the accounts in Settings and in the sidebar; the order is
+  still the same after restarting; the open folder and messages stay as they were.
+- verify: manual, with the user.
+- notes:
+
 ## Execution Loop
 
 Execute the plan as a loop. Each iteration handles one task in a fresh context, then ends.

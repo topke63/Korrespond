@@ -2795,7 +2795,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   the OAuth client fails. Build; 14/14 tests; no UI uses it yet (T138).
 
 ### T137 — `AccountSession`: sync progress text
-- status: todo
+- status: done
 - depends on: none
 - parallel-safe with: T136
 - files: src/app/accountsession.h, src/app/accountsession.cpp
@@ -2803,7 +2803,10 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - output: `syncText()` (e.g. "Syncing INBOX 120 / 340", empty when idle) and a signal
   `syncTextChanged()`; cleared when the sync ends.
 - verify: build succeeds; all tests pass.
-- notes:
+- notes: Done 2026-10-09. `AccountSession::syncText()` ("Syncing <folder name> done / total", the
+  folder shown by its display name) updates on every `SyncManager::progress` and is cleared when
+  the sync ends, aborts, fails or is stopped (`setSyncing(false)`); signal `syncTextChanged()`.
+  Build; 14/14 tests.
 
 ### T138 — `AccountListModel`: status roles
 - status: todo

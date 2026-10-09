@@ -9,6 +9,8 @@
 #include "retention.h"
 #include "syncmanager.h"
 
+#include <KLocalizedString>
+
 #include <QDateTime>
 
 AccountSession::AccountSession(const Account &account, const QString &storeDir, const StorageSettings &storage, QObject *parent)
@@ -42,6 +44,9 @@ AccountSession::AccountSession(const Account &account, const QString &storeDir, 
 
     // Store errors are logged, not shown: the mail itself still works from the server.
     connect(m_sync, &SyncManager::progress, this, &AccountSession::updateStorageUsage);
+    connect(m_sync, &SyncManager::progress, this, [this](const QString &folder, int done, int total) {
+        setSyncText(i18nc("@info:status sync progress: folder, messages done of total", "Syncing %1 %2 / %3", m_folderModel->displayName(folder), done, total));
+    });
     connect(m_sync, &SyncManager::syncFinished, this, [this] {
         setSyncing(false);
         updateStorageUsage();
@@ -93,6 +98,19 @@ QString AccountSession::stateName(ConnectionState state)
         break;
     }
     return QStringLiteral("idle");
+}
+
+void AccountSession::setSyncText(const QString &text)
+{
+    if (text != m_syncText) {
+        m_syncText = text;
+        Q_EMIT syncTextChanged();
+    }
+}
+
+QString AccountSession::syncText() const
+{
+    return m_syncText;
 }
 
 void AccountSession::setConnectionState(ConnectionState state, const QString &error)
@@ -303,6 +321,9 @@ void AccountSession::updateStorageUsage()
 
 void AccountSession::setSyncing(bool syncing)
 {
+    if (!syncing) {
+        setSyncText({}); // a sync that has ended has nothing to report
+    }
     if (syncing != m_syncing) {
         m_syncing = syncing;
         Q_EMIT syncingChanged();

@@ -53,6 +53,8 @@ public:
     [[nodiscard]] bool storageActive() const; // storage on and the store open
     [[nodiscard]] qint64 storageUsedBytes() const; // 0 when storage is off or not ready
     [[nodiscard]] bool syncing() const;
+    // What the running sync is doing, e.g. "Syncing Inbox 120 / 340"; empty when none runs.
+    [[nodiscard]] QString syncText() const;
 
     // Logs in (secret = password, or for OAuth accounts the access token) and lists the folders.
     void connectWithSecret(const QString &secret);
@@ -87,11 +89,13 @@ Q_SIGNALS:
     void errorOccurred(const QString &message);
     void syncingChanged();
     void connectionStateChanged();
+    void syncTextChanged();
     void storageUsageChanged();
 
 private:
     void onFoldersListed(const QList<FolderInfo> &folders);
     void setConnectionState(ConnectionState state, const QString &error = {});
+    void setSyncText(const QString &text);
     void markConnected(); // the server answered
     OAuthClient *oauth();
     void onAccessToken(const QString &accessToken);
@@ -103,6 +107,7 @@ private:
     QString m_refreshToken;
     ConnectionState m_connectionState = Idle;
     QString m_lastError;
+    QString m_syncText;
     bool m_loggedIn = false; // the first access token has been used to connect
     ImapClient *m_client;
     FolderModel *m_folderModel;

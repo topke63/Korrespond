@@ -33,8 +33,31 @@
 #include <QUrl>
 
 #include <algorithm>
+#include <unistd.h>
 
 using namespace Qt::StringLiterals;
+
+// Removes attachment folders left by runs that crashed or were killed (see isStaleAttachmentFolder()).
+// Linux only: liveness is read from /proc. Symlinks and folders of other users are never touched.
+static void removeStaleAttachmentFolders()
+{
+#ifdef Q_OS_LINUX
+    const QDir temp(QDir::tempPath());
+    const QFileInfoList entries = temp.entryInfoList({u"plasma-mail-*"_s}, QDir::Dirs | QDir::NoDotAndDotDot | QDir::NoSymLinks);
+    const auto pidAlive = [](qint64 pid) {
+        return QFileInfo::exists(u"/proc/"_s + QString::number(pid));
+    };
+    for (const QFileInfo &info : entries) {
+        if (info.isSymLink() || !info.isDir() || info.ownerId() != ::getuid()) {
+            continue;
+        }
+        const qint64 age = info.lastModified().secsTo(QDateTime::currentDateTime());
+        if (isStaleAttachmentFolder(info.fileName(), age, pidAlive) && !QFileInfo(info.absoluteFilePath()).isSymLink()) {
+            QDir(info.absoluteFilePath()).removeRecursively();
+        }
+    }
+#endif
+}
 
 MailController::MailController(QObject *parent)
     : QObject(parent)
@@ -49,6 +72,7 @@ MailController::MailController(QObject *parent)
     m_googleConfigured = GoogleOAuthSettings::load().isConfigured();
     connect(m_checkTimer, &QTimer::timeout, this, &MailController::checkForNewMail);
     connect(this, &MailController::busyChanged, this, &MailController::updateActivity);
+    removeStaleAttachmentFolders();
     // Opened attachments are deleted at quit, not only when the controller is destroyed (the engine
     // owning it is torn down after the event loop, which may not be reached on every exit path).
     if (QCoreApplication *app = QCoreApplication::instance()) {
@@ -1382,6 +1406,7 @@ void MailController::showMessage(AccountSession *session, const QString &folder,
 {
     const KMime::Message &msg = *message;
     m_openMessage = message;
+    m_attachmentCache.reset();
     // The const getters return nullptr for missing headers instead of creating empty ones.
     m_messageSubject = msg.subject() ? msg.subject()->asUnicodeString() : QString();
     m_messageFrom = msg.from() ? msg.from()->asUnicodeString() : QString(); // "Name <address>"
@@ -1423,6 +1448,7 @@ void MailController::clearMessage(bool clearUid)
     m_messageFlagged = false;
     m_messageUnread = false;
     m_openMessage.reset();
+    m_attachmentCache.reset();
     Q_EMIT currentMessageChanged();
 }
 
@@ -1818,12 +1844,20 @@ bool writeOwnerOnly(const QString &path, const QByteArray &data)
 }
 }
 
+const QList<AttachmentData> &MailController::attachmentList() const
+{
+    if (!m_attachmentCache) {
+        m_attachmentCache = attachmentParts(*m_openMessage); // callers check m_openMessage first
+    }
+    return *m_attachmentCache;
+}
+
 bool MailController::attachmentIsRisky(int index)
 {
     if (!m_openMessage || index < 0) {
         return false;
     }
-    const QList<AttachmentData> parts = attachmentParts(*m_openMessage);
+    const QList<AttachmentData> &parts = attachmentList();
     return index < parts.size() && isRiskyAttachment(parts.at(index));
 }
 
@@ -1832,7 +1866,7 @@ QString MailController::attachmentFileName(int index) const
     if (!m_openMessage || index < 0) {
         return {};
     }
-    const QList<AttachmentData> parts = attachmentParts(*m_openMessage);
+    const QList<AttachmentData> &parts = attachmentList();
     return index < parts.size() ? parts.at(index).name : QString();
 }
 
@@ -1841,7 +1875,7 @@ void MailController::openAttachment(int index)
     if (!m_openMessage || index < 0) {
         return;
     }
-    const QList<AttachmentData> parts = attachmentParts(*m_openMessage);
+    const QList<AttachmentData> &parts = attachmentList();
     if (index >= parts.size()) {
         return;
     }
@@ -1851,7 +1885,8 @@ void MailController::openAttachment(int index)
         return;
     }
     if (!m_attachmentDir) {
-        m_attachmentDir = std::make_unique<QTemporaryDir>(QDir::tempPath() + u"/plasma-mail-XXXXXX"_s); // mode 0700
+        m_attachmentDir = std::make_unique<QTemporaryDir>(QDir::tempPath() + u"/plasma-mail-"_s + QString::number(QCoreApplication::applicationPid())
+                                                          + u"-XXXXXX"_s); // mode 0700
     }
     if (!m_attachmentDir->isValid()) {
         Q_EMIT errorOccurred(i18n("Could not create a temporary folder for the attachment."));
@@ -1868,7 +1903,9 @@ void MailController::openAttachment(int index)
         Q_EMIT errorOccurred(i18n("Could not write the attachment to a temporary file."));
         return;
     }
-    QDesktopServices::openUrl(QUrl::fromLocalFile(path));
+    if (!QDesktopServices::openUrl(QUrl::fromLocalFile(path))) {
+        Q_EMIT errorOccurred(i18n("No program is set up to open this file."));
+    }
 }
 
 bool MailController::saveAttachment(int index, const QUrl &target)
@@ -1876,7 +1913,7 @@ bool MailController::saveAttachment(int index, const QUrl &target)
     if (!m_openMessage || index < 0 || !target.isLocalFile() || target.toLocalFile().isEmpty()) {
         return false;
     }
-    const QList<AttachmentData> parts = attachmentParts(*m_openMessage);
+    const QList<AttachmentData> &parts = attachmentList();
     if (index >= parts.size()) {
         return false;
     }

@@ -3296,10 +3296,11 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   Closed 2026-10-09: the user tried the final build and said "it's fine now" (a general confirmation; no per-case details given).
 
 ### T158 — Attachments: follow-ups from T152
-- status: todo
+- status: done
 - depends on: T153
 - parallel-safe with: none
-- files: src/app/mailcontroller.h, src/app/mailcontroller.cpp, src/app/main.cpp
+- files: src/app/mailcontroller.h, src/app/mailcontroller.cpp (main.cpp not needed; the sweep rule went
+  into src/engine/messagerenderer.{h,cpp} + autotests/messagerenderertest.cpp)
 - inputs: tester notes of T152.
 - output: (a) the decoded attachment parts are cached with the open message instead of re-decoding
   the whole message on every openAttachment/saveAttachment/attachmentIsRisky call; (b) when
@@ -3307,7 +3308,13 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   errorOccurred; (c) at start, remove stale `plasma-mail-*` temp folders owned by the user (left
   after a crash; they hold decoded attachments).
 - verify: build; `ctest --preset dev`; offscreen start clean.
-- notes:
+- notes: Done 2026-10-09 (user approved). (a) `m_attachmentCache` (optional list), reset in showMessage
+  and clearMessage, the only places m_openMessage changes. (b) openUrl false → errorOccurred. (c) Temp
+  template now `plasma-mail-<pid>-XXXXXX`; `removeStaleAttachmentFolders()` at controller start (Linux
+  only): own, non-symlink dirs in tempPath where `isStaleAttachmentFolder()` says so (new form: pid
+  gone from /proc; old form: older than 24 h). Tested end to end with TMPDIR in scratch: only dead-pid
+  and 2-day-old folders removed; symlinks, their targets, files and live folders kept. ctest 17/17.
+  Limit: inside a sandbox without the host's /proc a live host instance would look dead.
 
 ### T159 — Real qmllint baseline
 - status: todo

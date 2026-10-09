@@ -7,6 +7,7 @@
 #include "appsettings.h"
 #include "folderutils.h"
 #include "imapclient.h"
+#include "messagerenderer.h"
 #include "newmailtracker.h"
 #include "outgoingmessage.h"
 #include "storagesettings.h"
@@ -23,6 +24,7 @@
 #include <deque>
 #include <map>
 #include <memory>
+#include <optional>
 #include <set>
 
 namespace KMime
@@ -446,6 +448,8 @@ private:
     std::shared_ptr<KMime::Message> m_openMessage; // the loaded open message, for composeFor()
     std::unique_ptr<QTemporaryDir> m_attachmentDir; // created on first open, removed with the controller
     int m_attachmentCount = 0;
+    mutable std::optional<QList<AttachmentData>> m_attachmentCache; // decoded parts of m_openMessage, built on first use
+    const QList<AttachmentData> &attachmentList() const;
     StorageSettings m_storage;
     qint64 m_storageUsedBytes = 0;
     bool m_syncing = false;

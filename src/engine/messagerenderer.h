@@ -8,6 +8,7 @@
 #include <QList>
 #include <QString>
 #include <QStringList>
+#include <functional>
 
 namespace KMime
 {
@@ -50,3 +51,9 @@ QList<AttachmentData> attachmentParts(const KMime::Message &msg);
 // is an executable or script suffix, or its declared or detected MIME type is one of those kinds.
 // "report.exe.pdf" is judged by ".pdf" and is not risky.
 bool isRiskyAttachment(const AttachmentData &part);
+
+// Decides whether a folder of the temp directory is a leftover of an earlier run, from its name
+// ("plasma-mail-<pid>-XXXXXX", or the older "plasma-mail-XXXXXX" without a pid, X = 6 letters or
+// digits) and age in seconds. Pid folders are stale when that process is gone; old-style ones
+// when older than a day. Anything else is never stale.
+bool isStaleAttachmentFolder(const QString &name, qint64 ageSeconds, const std::function<bool(qint64 pid)> &pidAlive);

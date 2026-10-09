@@ -236,3 +236,16 @@ bool isRiskyAttachment(const AttachmentData &part)
     }
     return mimeIsRisky(db.mimeTypeForFile(part.name, QMimeDatabase::MatchExtension));
 }
+
+bool isStaleAttachmentFolder(const QString &name, qint64 ageSeconds, const std::function<bool(qint64 pid)> &pidAlive)
+{
+    static const QRegularExpression pidPattern(u"^plasma-mail-([0-9]{1,10})-[A-Za-z0-9]{6}$"_s);
+    static const QRegularExpression oldPattern(u"^plasma-mail-[A-Za-z0-9]{6}$"_s);
+    const QRegularExpressionMatch match = pidPattern.match(name);
+    if (match.hasMatch()) {
+        bool ok = false;
+        const qint64 pid = match.captured(1).toLongLong(&ok);
+        return ok && pid > 0 && !pidAlive(pid);
+    }
+    return oldPattern.match(name).hasMatch() && ageSeconds > 24 * 3600;
+}

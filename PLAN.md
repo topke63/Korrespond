@@ -3504,7 +3504,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   stay blocked.
 
 ### T166 — Manual check: load images
-- status: waiting (manual check with the user)
+- status: done
 - depends on: T165
 - parallel-safe with: none
 - files: none
@@ -3513,6 +3513,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   message is blocked again; a message without images shows no bar.
 - verify: manual, with the user.
 - notes:
+  Closed 2026-10-09: the user tried Load images and said "it is good now".
 
 ## Execution Loop
 

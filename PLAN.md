@@ -1669,7 +1669,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   targets. (Configure prints "no upstream / no remote origin" from the git-hook helper; harmless.)
 
 ### T75 — `OAuthClient`: Google sign-in in the browser
-- status: todo
+- status: done
 - depends on: T72, T74
 - parallel-safe with: T68–T71
 - files: src/engine/oauthclient.h, src/engine/oauthclient.cpp (+ one line in src/CMakeLists.txt)
@@ -1679,7 +1679,10 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   refreshToken, QDateTime expiresAt)` and `failed(QString message)` (readable, no tokens). The
   browser page after the redirect says the user can close it.
 - verify: `cmake --build build --target plasmamail_engine` succeeds (live check in T80).
-- notes:
+- notes: Done 2026-10-09. Callback host forced to 127.0.0.1 (Google's loopback redirect);
+  a new signIn() cancels one still waiting. Emits failed() when the client isn't configured,
+  the listener can't start, the user cancels (access_denied), on network/state errors, or when
+  Google returns no refresh token. Only one signal per sign-in. Engine builds without warnings.
 
 ### T76 — `OAuthClient`: refresh the access token
 - status: todo

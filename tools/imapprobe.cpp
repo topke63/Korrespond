@@ -25,12 +25,14 @@
 #include <KMime/Message>
 
 #include <QCoreApplication>
+#include <QGuiApplication>
 #include <QTimer>
 
 #include <termios.h>
 #include <unistd.h>
 
 #include <iostream>
+#include <memory>
 #include <string>
 
 using namespace Qt::StringLiterals;
@@ -68,7 +70,19 @@ static QString megabytes(qint64 bytes)
 
 int main(int argc, char *argv[])
 {
-    QCoreApplication app(argc, argv);
+    // Opening the browser for the Google sign-in (--google) needs QGuiApplication; the other
+    // modes stay console-only.
+    bool googleMode = false;
+    for (int i = 1; i < argc; ++i) {
+        googleMode = googleMode || std::string(argv[i]) == "--google";
+    }
+    std::unique_ptr<QCoreApplication> appHolder;
+    if (googleMode) {
+        appHolder = std::make_unique<QGuiApplication>(argc, argv);
+    } else {
+        appHolder = std::make_unique<QCoreApplication>(argc, argv);
+    }
+    QCoreApplication &app = *appHolder;
     const bool syncMode = app.arguments().contains(u"--sync"_s);
 
     const QString provider = qEnvironmentVariable("PLASMAMAIL_PROVIDER", u"yahoo"_s);

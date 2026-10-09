@@ -1716,7 +1716,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   session logs in with the new token. 12/12 tests pass (live check in T80).
 
 ### T78 — Link the OAuth client into `imap-probe`
-- status: todo
+- status: done
 - depends on: T76
 - parallel-safe with: T77
 - files: tools/CMakeLists.txt
@@ -1724,7 +1724,9 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - output: `imap-probe` links what `OAuthClient` needs (engine already public-links Gui/NetworkAuth;
   confirm and adjust only if needed); `imap-probe` uses `QGuiApplication` only with `--google`.
 - verify: `cmake --build build --target imap-probe` succeeds.
-- notes:
+- notes: Done 2026-10-09. The engine already links Gui/NetworkAuth publicly; `imap-probe` now
+  names Qt6::Gui too (it includes QGuiApplication). It makes a QGuiApplication only when
+  `--google` is on the command line (`tools/imapprobe.cpp`), else a QCoreApplication as before.
 
 ### T79 — `imap-probe --google`
 - status: todo

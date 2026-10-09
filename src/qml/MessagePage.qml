@@ -32,6 +32,54 @@ Kirigami.Page {
         return { name: match[1].length > 0 ? match[1] : match[2], address: match[2] };
     }
 
+    function openReply() {
+        const replyData = MailController.composeFor("reply");
+        if (replyData.isEmpty) {
+            return;
+        }
+        const composeWindow = Qt.createQmlObject('import "qrc:/qml/ComposeWindow.qml" as ComposeWindow; ComposeWindow.ComposeWindow {}', page);
+        composeWindow.initialAccount = replyData.account;
+        composeWindow.initialTo = replyData.to;
+        composeWindow.initialCc = replyData.cc;
+        composeWindow.initialSubject = replyData.subject;
+        composeWindow.initialBody = replyData.body;
+        composeWindow.initialInReplyTo = replyData.inReplyTo;
+        composeWindow.initialReferences = replyData.references;
+        composeWindow.open();
+    }
+
+    function openReplyAll() {
+        const replyAllData = MailController.composeFor("replyAll");
+        if (replyAllData.isEmpty) {
+            return;
+        }
+        const composeWindow = Qt.createQmlObject('import "qrc:/qml/ComposeWindow.qml" as ComposeWindow; ComposeWindow.ComposeWindow {}', page);
+        composeWindow.initialAccount = replyAllData.account;
+        composeWindow.initialTo = replyAllData.to;
+        composeWindow.initialCc = replyAllData.cc;
+        composeWindow.initialSubject = replyAllData.subject;
+        composeWindow.initialBody = replyAllData.body;
+        composeWindow.initialInReplyTo = replyAllData.inReplyTo;
+        composeWindow.initialReferences = replyAllData.references;
+        composeWindow.open();
+    }
+
+    function openForward() {
+        const forwardData = MailController.composeFor("forward");
+        if (forwardData.isEmpty) {
+            return;
+        }
+        const composeWindow = Qt.createQmlObject('import "qrc:/qml/ComposeWindow.qml" as ComposeWindow; ComposeWindow.ComposeWindow {}', page);
+        composeWindow.initialAccount = forwardData.account;
+        composeWindow.initialTo = forwardData.to;
+        composeWindow.initialCc = forwardData.cc;
+        composeWindow.initialSubject = forwardData.subject;
+        composeWindow.initialBody = forwardData.body;
+        composeWindow.initialInReplyTo = forwardData.inReplyTo;
+        composeWindow.initialReferences = forwardData.references;
+        composeWindow.open();
+    }
+
     // The subject is shown large in the page itself; the title bar holds the message actions.
     title: ""
     // Mimestream-style action bar. Reply, Reply All, Forward and Label are still shown for the
@@ -164,7 +212,16 @@ Kirigami.Page {
                         icon.name: modelData.icon
                         text: modelData.text
                         display: QQC2.AbstractButton.IconOnly
-                        enabled: false // not implemented in milestone 1
+                        enabled: MailController.canCompose // enable only when we can compose a message
+                        onClicked: {
+                            if (modelData.icon === "mail-reply-sender") {
+                                openReply();
+                            } else if (modelData.icon === "mail-reply-all") {
+                                openReplyAll();
+                            } else if (modelData.icon === "mail-forward") {
+                                openForward();
+                            }
+                        }
                     }
                 }
                 Component {

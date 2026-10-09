@@ -3022,7 +3022,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   error clears the search FIFO; m_requests can leak).
 
 ### T146 — Toolbar: hover text on the buttons right of Archive/Delete
-- status: todo
+- status: waiting (code done; live hover check with the user)
 - depends on: T114, T143
 - parallel-safe with: none
 - files: src/qml/MessagePage.qml
@@ -3036,7 +3036,12 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   a disabled button still explains itself, as Archive and Delete do.
 - verify: `qmllint` clean; offscreen start prints no new QML warnings; the user hovers the buttons
   (manual).
-- notes:
+- notes: 2026-10-09. `buttonComponent` gets QQC2.ToolTip (text from a new `tooltip` model field):
+  "Reply (R)", "Reply All (Shift+R)", "Forward (Shift+F)", "Label". Move to Folder: its tooltip already
+  worked (QtTest probe hosting the real MessagePage, enabled and disabled; disabled ToolButtons still
+  report hovered in Qt 6.12); it now says "Move to Folder is not available for this message." when
+  disabled, like Archive/Delete. qmllint clean, ctest 16/16, offscreen start clean. The app the user
+  was running had been started before this rebuild, so it must be restarted to show the change.
 
 ## Execution Loop
 

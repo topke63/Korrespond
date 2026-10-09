@@ -72,11 +72,11 @@ Kirigami.Page {
                 { unread: true },
                 { flag: true },
                 { move: "folder" },
-                { icon: "tag", text: KI18n.i18nc("@action:button", "Label") },
+                { icon: "tag", text: KI18n.i18nc("@action:button", "Label"), tooltip: KI18n.i18nc("@info:tooltip", "Label") },
                 { separator: true },
-                { icon: "mail-reply-sender", kind: "reply", text: KI18n.i18nc("@action:button", "Reply") },
-                { icon: "mail-reply-all", kind: "replyAll", text: KI18n.i18nc("@action:button", "Reply All") },
-                { icon: "mail-forward", kind: "forward", text: KI18n.i18nc("@action:button", "Forward") }
+                { icon: "mail-reply-sender", kind: "reply", text: KI18n.i18nc("@action:button", "Reply"), tooltip: KI18n.i18nc("@info:tooltip", "Reply") + " (R)" },
+                { icon: "mail-reply-all", kind: "replyAll", text: KI18n.i18nc("@action:button", "Reply All"), tooltip: KI18n.i18nc("@info:tooltip", "Reply All") + " (Shift+R)" },
+                { icon: "mail-forward", kind: "forward", text: KI18n.i18nc("@action:button", "Forward"), tooltip: KI18n.i18nc("@info:tooltip", "Forward") + " (Shift+F)" }
             ]
 
             delegate: Loader {
@@ -172,7 +172,7 @@ Kirigami.Page {
                         down: moveMenu.visible
                         onClicked: moveMenu.popup(this, 0, height)
 
-                        QQC2.ToolTip.text: text
+                        QQC2.ToolTip.text: enabled ? text : KI18n.i18nc("@info:tooltip", "Move to Folder is not available for this message.")
                         QQC2.ToolTip.visible: hovered && !moveMenu.visible
                         QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
 
@@ -191,6 +191,10 @@ Kirigami.Page {
                         display: QQC2.AbstractButton.IconOnly
                         enabled: MailController.canCompose // enable only when we can compose a message
                         onClicked: page.openCompose(modelData.kind)
+
+                        QQC2.ToolTip.text: modelData.tooltip
+                        QQC2.ToolTip.visible: hovered
+                        QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
                     }
                 }
                 Component {

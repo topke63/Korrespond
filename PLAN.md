@@ -2606,6 +2606,98 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - verify: manual, with the user.
 - notes:
 
+# Milestone 3c — Resizable panels (user request 2026-10-09: "I need to resize panels")
+
+- **Goal**: the sidebar and the message-list column can be made wider or narrower by dragging
+  the thin divider between panels; the message column takes the rest. Sizes are remembered.
+- **Today**: the sidebar is fixed (14 grid units, `FolderSidebar.qml`); the list column has
+  Kirigami hints min 20 / preferred 28 / max 40 grid units (`MessageListPage.qml`) and cannot be
+  dragged; Kirigami's page row has no drag handles of its own.
+- **Decisions** (made while planning; change only with the user):
+  - Our own divider: a thin vertical handle on the right edge of the sidebar and of the list
+    column (a hover/drag highlight, the horizontal-split cursor), dragged with a `DragHandler`.
+    Double-click on a handle resets that panel to its default width.
+  - Widths are stored in logical pixels in plasmamailrc `[General]` (`SidebarWidth`,
+    `ListWidth`), clamped: sidebar 160–420, list 280–800; defaults = today's sizes. Saved when the
+    drag ends, not on every pixel.
+  - When the window is narrow (sidebar slides over / one column at a time) there are no handles
+    and the stored widths are not used.
+  - The message column keeps filling the remaining width; the list's maximum rises from 40 grid
+    units to the clamp above.
+- **Out of scope**: dragging the message column itself, a splitter between the toolbar and the
+  message body, remembering the window size/position (separate request if wanted), reordering
+  panels.
+
+### T130 — `AppSettings`: panel widths
+- status: todo
+- depends on: none
+- parallel-safe with: none
+- files: src/engine/appsettings.h, src/engine/appsettings.cpp, autotests/appsettingstest.cpp
+- inputs: T122 `AppSettings` (clamping pattern).
+- output: `sidebarWidth` (default 224) and `listWidth` (default 448) with `[General]` keys
+  `SidebarWidth` / `ListWidth`, clamped to 160–420 and 280–800 on load and save; constants for the
+  bounds and defaults; tests: defaults, round trip, clamping on load and save, other options kept.
+- verify: `ctest --test-dir build -R appsettingstest --output-on-failure`
+- notes:
+
+### T131 — Controller: panel width properties
+- status: todo
+- depends on: T130
+- parallel-safe with: T132
+- files: src/app/mailcontroller.h, src/app/mailcontroller.cpp
+- inputs: T130; `saveAppSettings` as the pattern.
+- output: properties `sidebarWidth`, `listWidth` (NOTIFY `panelWidthsChanged`) and constants for
+  the limits/defaults exposed to QML; `Q_INVOKABLE void savePanelWidths(int sidebar, int list)`
+  (clamps, saves, emits; no restart of anything else); `saveAppSettings` keeps the widths.
+- verify: build succeeds; all tests pass.
+- notes:
+
+### T132 — `PanelResizer.qml`: the drag handle
+- status: todo
+- depends on: none
+- parallel-safe with: T130, T131
+- files: src/qml/PanelResizer.qml (new), src/CMakeLists.txt
+- inputs: Kirigami theme colours; `DragHandler`, `HoverHandler`, `Qt.SplitHCursor`.
+- output: a 6 px wide item (a 1 px visible line, highlighted on hover/drag) with properties
+  `minimum`, `maximum`, `defaultWidth`, `panelWidth`; while dragging it updates a `liveWidth`
+  (clamped); signals `resized(int width)` on release and `resetRequested()` on double-click.
+- verify: offscreen start prints no new QML warnings; screenshot of the handle placed on a panel.
+- notes:
+
+### T133 — Sidebar: resizable
+- status: todo
+- depends on: T131, T132
+- parallel-safe with: none
+- files: src/qml/FolderSidebar.qml
+- inputs: T131, T132; `modal` mode of the drawer.
+- output: the sidebar's width follows `MailController.sidebarWidth` (live while dragging) with a
+  handle on its right edge when docked (not modal); release saves; double-click resets.
+- verify: offscreen start prints no new QML warnings; the sidebar looks unchanged at the default.
+- notes:
+
+### T134 — Message list: resizable
+- status: todo
+- depends on: T131, T132
+- parallel-safe with: none
+- files: src/qml/MessageListPage.qml
+- inputs: T131, T132; the page's `Kirigami.ColumnView` hints.
+- output: `preferredWidth` follows `MailController.listWidth` (live while dragging), `minimumWidth`
+  / `maximumWidth` from the clamp; a handle on the list's right edge when the window is wide
+  enough for two columns; release saves; double-click resets; the message column fills the rest.
+- verify: offscreen start prints no new QML warnings; the list looks unchanged at the default.
+- notes:
+
+### T135 — Manual check: resizing panels
+- status: todo
+- depends on: T133, T134
+- parallel-safe with: none
+- files: none
+- inputs: the user's desktop.
+- output: confirmed: both dividers drag smoothly with the right cursor; limits hold; double-click
+  resets; sizes survive a restart; narrow window still works (no handles).
+- verify: manual, with the user.
+- notes:
+
 ## Execution Loop
 
 Execute the plan as a loop. Each iteration handles one task in a fresh context, then ends.

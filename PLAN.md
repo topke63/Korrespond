@@ -3546,6 +3546,56 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   Closed 2026-10-09: the user tried Load images and said "it is good now".
   Skipped 2026-10-09 on the user's decision. Confirmed earlier: the look, colours and sizes of the bar ("looks fine"). Never checked live: the network-off test (red chip, error tooltip, click to reconnect), the live "Syncing …" text, unread count vs tray tooltip.
 
+# Milestone 3h — Drag and drop attachments (user request 2026-10-09)
+
+- **Goal**: files can be dragged from the file manager onto the compose window to attach them,
+  as an addition to the Attach button.
+- **Decisions** (made while planning; change only with the user):
+  - Reuse `composer.addAttachments(urls)` (it already asks `MailController.fileInfo(url)`, skips
+    duplicates, and the 25 MB rule and the chips apply as with the button). No new C++.
+  - Only local files are accepted (`file:` URLs); anything else (text, remote URLs) is ignored
+    and the drop is not accepted, so dropping text into the body field keeps working. A folder
+    is ignored (as `fileInfo` already does, to be confirmed).
+  - While the message is being sent (`composer.waiting` or `MailController.sending`) a drop is
+    ignored.
+  - While files are dragged over the window a translucent overlay with the attach icon and the
+    text "Drop files to attach" shows; it hides on drop or when the drag leaves.
+- **Out of scope**: dragging out of the message view (saving attachments by drag), dragging
+  inline images into the body, dropping onto the main window to start a new message.
+
+### T167 — Compose window: drop files to attach
+- status: todo
+- depends on: T156
+- parallel-safe with: none
+- files: src/qml/ComposeWindow.qml
+- inputs: `addAttachments(urls)`, `attachDialog`, `MailController.fileInfo(url)`.
+- output: a `DropArea` filling the window content (`keys` not needed; `onEntered` accepts only
+  when `drag.hasUrls` and every URL is a `file:` URL, else `drag.accepted = false`; `onDropped`
+  calls `composer.addAttachments(drop.urls)` unless sending), an overlay as described above bound
+  to `dropArea.containsDrag`, with theme colours and `Accessible` text; the text fields keep
+  working for text drops.
+- verify: real lint (`cmake --build --preset dev --target all_qmllint`) adds no warnings over the
+  baseline (2); build succeeds; `ctest --preset dev` passes; offscreen start with a throw-away
+  profile prints no new QML warnings; a test hosting the real `ComposeWindow.qml` with a stand-in
+  controller (as in the earlier T156 test) sends a synthetic drop (`QTest`/`QQuickWindow` drag
+  events or `Drag` simulation, whichever works offscreen) with two files and checks two chips;
+  with a text-only drop checks no chip; if a synthetic drop is not possible offscreen, say so in
+  the notes and rely on the user's check.
+- notes:
+
+### T168 — Manual check: drag and drop attachments
+- status: todo
+- depends on: T167
+- parallel-safe with: none
+- files: none
+- inputs: the user's desktop and file manager (Dolphin).
+- output: confirmed: dragging one and several files from Dolphin onto the compose window attaches
+  them (chips and total), the overlay shows while dragging, duplicates are not added twice, a file
+  over 25 MB in total gives the red message and disables Send, and dropping text still works in
+  the body.
+- verify: manual, with the user.
+- notes:
+
 ## Execution Loop
 
 Execute the plan as a loop. Each iteration handles one task in a fresh context, then ends.

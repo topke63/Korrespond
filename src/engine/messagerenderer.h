@@ -3,7 +3,9 @@
 
 #pragma once
 
+#include <QByteArray>
 #include <QColor>
+#include <QList>
 #include <QString>
 #include <QStringList>
 
@@ -29,3 +31,17 @@ QString messagePreview(const KMime::Message &msg, int maxLength = 150);
 // Display names of the message's attachments, in order: the Content-Disposition filename,
 // else the Content-Type name, else a translated "Unnamed attachment".
 QStringList attachmentNames(const KMime::Message &msg);
+
+// A file name that is safe to use inside a chosen folder: only the last path component (split on
+// '/' and '\\'), control characters removed, trimmed. "." , ".." and empty become "attachment".
+QString safeAttachmentFileName(const QString &raw);
+
+struct AttachmentData {
+    QString name; // already passed through safeAttachmentFileName()
+    QString mimeType; // application/octet-stream when the part has none
+    QByteArray data; // decoded content
+};
+
+// The message's attachments with their decoded content, in the same order and with the same
+// part selection as attachmentNames().
+QList<AttachmentData> attachmentParts(const KMime::Message &msg);

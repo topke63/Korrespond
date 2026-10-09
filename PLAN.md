@@ -3154,7 +3154,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   attachments, forwarding with the original attachments (a later request), virus scanning.
 
 ### T151 — Engine: attachment data from a message
-- status: todo
+- status: done
 - depends on: T9
 - parallel-safe with: T155
 - files: src/engine/messagerenderer.h, src/engine/messagerenderer.cpp,
@@ -3166,7 +3166,12 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   milestone decisions) and the Content-Type (`application/octet-stream` when missing).
 - verify: build succeeds; the renderer test gets rows for: a base64 text attachment, a name with
   `../` and a slash, an unnamed attachment, and no attachments; `ctest --preset dev` passes.
-- notes:
+- notes: Done 2026-10-09. Free functions in messagerenderer.h: `AttachmentData`,
+  `attachmentParts(msg)` (same `msg.attachments()` order and naming as attachmentNames()) and
+  `safeAttachmentFileName(raw)` (last component after / or \\, Other_Control removed, trimmed; empty,
+  "." or ".." → "attachment") for T152. KMime here has `decodedBody()` (decodedContent() was renamed
+  in 25.12). A part without Content-Type gets KMime's default text/plain (RFC 2045), not
+  octet-stream. attachmentNames() still returns raw names (UI unchanged). ctest 17/17.
 
 ### T152 — Controller: open and save an attachment
 - status: todo

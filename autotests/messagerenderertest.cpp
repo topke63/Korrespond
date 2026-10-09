@@ -212,6 +212,76 @@ private Q_SLOTS:
         QCOMPARE(attachmentNames(msg), expected);
     }
 
+    void testAttachmentParts_data()
+    {
+        QTest::addColumn<QByteArray>("raw");
+        QTest::addColumn<QString>("name");
+        QTest::addColumn<QString>("mime");
+        QTest::addColumn<QByteArray>("data");
+
+        const QByteArray head = "Subject: a\nMIME-Version: 1.0\nContent-Type: multipart/mixed; boundary=M\n\n--M\nContent-Type: text/plain\n\nbody\n";
+        const QByteArray tail = "--M--\n";
+        const QByteArray b64 = "Content-Transfer-Encoding: base64\n\nSGVsbG8sIHdvcmxkIQ==\n";
+        const QByteArray hello = "Hello, world!";
+        auto row = [&](const char *tag, const QByteArray &partHead, const QString &name, const QString &mime) {
+            QTest::newRow(tag) << head + "--M\n" + partHead + b64 + tail << name << mime << hello;
+        };
+        row("base64 text", "Content-Type: text/plain\nContent-Disposition: attachment; filename=\"hello.txt\"\n", u"hello.txt"_s, u"text/plain"_s);
+        row("parent dirs", "Content-Type: text/plain\nContent-Disposition: attachment; filename=\"../../etc/passwd\"\n", u"passwd"_s, u"text/plain"_s);
+        row("slash and backslash", "Content-Type: text/plain\nContent-Disposition: attachment; filename=\"a/b\\\\c.txt\"\n", u"c.txt"_s, u"text/plain"_s);
+        row("control chars",
+            "Content-Type: text/plain\nContent-Disposition: attachment; filename*=UTF-8''%20a%0Ab%09c%7F.txt\n",
+            u"abc.txt"_s,
+            u"text/plain"_s);
+        row("only dots", "Content-Type: text/plain\nContent-Disposition: attachment; filename=\"..\"\n", u"attachment"_s, u"text/plain"_s);
+        row("unnamed", "Content-Type: application/octet-stream\nContent-Disposition: attachment\n", u"attachment"_s, u"application/octet-stream"_s);
+        row("no content type", "Content-Disposition: attachment; filename=x.bin\n", u"x.bin"_s, u"text/plain"_s);
+    }
+
+    void testAttachmentParts()
+    {
+        QFETCH(QByteArray, raw);
+        QFETCH(QString, name);
+        QFETCH(QString, mime);
+        QFETCH(QByteArray, data);
+        KMime::Message msg;
+        msg.setContent(raw);
+        msg.parse();
+        const auto parts = attachmentParts(msg);
+        QCOMPARE(parts.size(), 1);
+        QCOMPARE(parts[0].name, name);
+        QCOMPARE(parts[0].mimeType, mime);
+        QCOMPARE(parts[0].data, data);
+    }
+
+    void testAttachmentPartsNone()
+    {
+        KMime::Message msg;
+        msg.setContent("Subject: a\nContent-Type: text/plain\n\nbody\n");
+        msg.parse();
+        QVERIFY(attachmentParts(msg).isEmpty());
+    }
+
+    void testAttachmentPartsOrder()
+    {
+        const QByteArray raw =
+            "Subject: a\nMIME-Version: 1.0\nContent-Type: multipart/mixed; boundary=M\n\n--M\nContent-Type: text/plain\n\nbody\n"
+            "--M\nContent-Type: application/pdf\nContent-Disposition: attachment; filename=a.pdf\n\nAAA\n"
+            "--M\nContent-Type: text/plain\nContent-Disposition: attachment; filename=b.txt\n\nBBB\n--M--\n";
+        KMime::Message msg;
+        msg.setContent(raw);
+        msg.parse();
+        const auto parts = attachmentParts(msg);
+        const QStringList names = attachmentNames(msg);
+        QCOMPARE(parts.size(), 2);
+        QCOMPARE(names.size(), 2);
+        for (int i = 0; i < 2; ++i) {
+            QCOMPARE(parts[i].name, names[i]);
+        }
+        QCOMPARE(parts[0].mimeType, u"application/pdf"_s);
+        QCOMPARE(parts[1].mimeType, u"text/plain"_s);
+    }
+
     void testPreviewPlain()
     {
         // Line breaks and runs of spaces become single spaces; quoted lines are skipped.

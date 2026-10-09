@@ -123,3 +123,45 @@ QStringList attachmentNames(const KMime::Message &msg)
     }
     return names;
 }
+
+QString safeAttachmentFileName(const QString &raw)
+{
+    QString name = raw.mid(raw.lastIndexOf(u'/') + 1);
+    name = name.mid(name.lastIndexOf(u'\\') + 1);
+    QString cleaned;
+    for (const QChar c : std::as_const(name)) {
+        if (c.category() != QChar::Other_Control) {
+            cleaned.append(c);
+        }
+    }
+    cleaned = cleaned.trimmed();
+    if (cleaned.isEmpty() || cleaned == u"."_s || cleaned == u".."_s) {
+        return u"attachment"_s;
+    }
+    return cleaned;
+}
+
+QList<AttachmentData> attachmentParts(const KMime::Message &msg)
+{
+    QList<AttachmentData> result;
+    for (const KMime::Content *part : msg.attachments()) {
+        QString name;
+        if (const auto *disposition = part->contentDisposition()) {
+            name = disposition->filename();
+        }
+        if (name.isEmpty()) {
+            if (const auto *type = part->contentType()) {
+                name = type->name();
+            }
+        }
+        QString mime;
+        if (const auto *type = part->contentType()) {
+            mime = QString::fromLatin1(type->mimeType());
+        }
+        if (mime.isEmpty()) {
+            mime = u"application/octet-stream"_s;
+        }
+        result.append(AttachmentData{safeAttachmentFileName(name), mime, part->decodedBody()});
+    }
+    return result;
+}

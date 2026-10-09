@@ -40,7 +40,8 @@ static void scheduleScreenshot(QQmlApplicationEngine &engine)
                 return;
             }
             const int uidRole = model->roleNames().key("uid");
-            controller->openMessage(model->index(0, 0).data(uidRole).toLongLong());
+            const int accountRole = model->roleNames().key("account");
+            controller->openMessage(model->index(0, 0).data(accountRole).toString(), model->index(0, 0).data(uidRole).toLongLong());
         });
     }
     QTimer::singleShot(delay, &engine, [&engine, file] {

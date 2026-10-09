@@ -71,7 +71,7 @@ Kirigami.Page {
                         text: MailController.messageFlagged ? KI18n.i18nc("@action:button", "Unflag")
                                                             : KI18n.i18nc("@action:button", "Flag")
                         display: QQC2.AbstractButton.IconOnly
-                        onClicked: MailController.setFlagged(MailController.currentUid, !MailController.messageFlagged)
+                        onClicked: MailController.setFlagged(MailController.currentMessageAccount, MailController.currentUid, !MailController.messageFlagged)
 
                         QQC2.ToolTip.text: text + " (Ctrl+Shift+F)"
                         QQC2.ToolTip.visible: hovered
@@ -117,7 +117,7 @@ Kirigami.Page {
     Shortcut {
         sequence: "Ctrl+Shift+F"
         enabled: page.hasMessage
-        onActivated: MailController.setFlagged(MailController.currentUid, !MailController.messageFlagged)
+        onActivated: MailController.setFlagged(MailController.currentMessageAccount, MailController.currentUid, !MailController.messageFlagged)
     }
     Component.onCompleted: showHtml()
 

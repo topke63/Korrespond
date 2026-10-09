@@ -11,9 +11,10 @@ import PlasmaMail
 Kirigami.ScrollablePage {
     id: page
 
-    // Shows `uid` in the message column after this page (on narrow windows, moves there).
-    function openMessage(uid) {
-        MailController.openMessage(uid);
+    // Shows message `uid` of `account` in the message column after this page (on narrow windows,
+    // moves there).
+    function openMessage(account, uid) {
+        MailController.openMessage(account, uid);
         applicationWindow().pageStack.currentIndex = Kirigami.ColumnView.index + 1;
     }
 
@@ -78,6 +79,7 @@ Kirigami.ScrollablePage {
             id: row
 
             required property int index
+            required property string account
             required property var uid
             required property string subject
             required property string from
@@ -95,8 +97,8 @@ Kirigami.ScrollablePage {
             bottomPadding: Kirigami.Units.smallSpacing * 2
             leftPadding: Kirigami.Units.smallSpacing
             rightPadding: Kirigami.Units.largeSpacing * 1.5
-            highlighted: uid === MailController.currentUid
-            onClicked: page.openMessage(uid)
+            highlighted: uid === MailController.currentUid && account === MailController.currentMessageAccount
+            onClicked: page.openMessage(account, uid)
 
             background: Rectangle {
                 radius: Kirigami.Units.cornerRadius
@@ -165,7 +167,7 @@ Kirigami.ScrollablePage {
                             icon.height: Kirigami.Units.iconSizes.small
                             display: QQC2.AbstractButton.IconOnly
                             text: row.flagged ? KI18n.i18nc("@action:button", "Unflag") : KI18n.i18nc("@action:button", "Flag")
-                            onClicked: MailController.setFlagged(row.uid, !row.flagged)
+                            onClicked: MailController.setFlagged(row.account, row.uid, !row.flagged)
                         }
                         QQC2.Label {
                             text: row.dateText

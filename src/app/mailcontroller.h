@@ -54,6 +54,8 @@ class MailController : public QObject
     Q_PROPERTY(QString currentFolderName READ currentFolderName NOTIFY currentFolderChanged)
     // Views over every account's inbox, shown above the accounts: list of {path, name, iconName}.
     Q_PROPERTY(QVariantList sharedFolders READ sharedFolders CONSTANT)
+    // Email of the account the open message belongs to.
+    Q_PROPERTY(QString currentMessageAccount READ currentMessageAccount NOTIFY currentMessageChanged)
     Q_PROPERTY(qint64 currentUid READ currentUid NOTIFY currentMessageChanged)
     Q_PROPERTY(QString messageSubject READ messageSubject NOTIFY currentMessageChanged)
     Q_PROPERTY(QString messageFrom READ messageFrom NOTIFY currentMessageChanged)
@@ -96,6 +98,7 @@ public:
     [[nodiscard]] QString currentFolder() const;
     [[nodiscard]] QString currentFolderName() const;
     [[nodiscard]] QVariantList sharedFolders() const;
+    [[nodiscard]] QString currentMessageAccount() const;
     [[nodiscard]] qint64 currentUid() const;
     [[nodiscard]] QString messageSubject() const;
     [[nodiscard]] QString messageFrom() const;
@@ -139,25 +142,19 @@ public:
     Q_INVOKABLE void removeAccount(const QString &account);
     // Removes the first account; kept until the settings pass the account (T96).
     Q_INVOKABLE void removeAccount();
-    // Shows the newest messages of `path` (clears the list first). With storage on, the stored
+    // Shows the newest messages of `path` of `account` (clears the list first); for a shared view
+    // path the account is ignored (pass an empty string). With storage on, the stored
     // copies show at once and the server's list replaces them when it arrives.
     Q_INVOKABLE void selectFolder(const QString &account, const QString &path);
-    // The same for the account that is open now (a shared view for the shared paths). Kept
-    // until the sidebar passes the account (T93).
-    Q_INVOKABLE void selectFolder(const QString &path);
     // Reloads the folder list and the current folder's messages.
     Q_INVOKABLE void refresh();
     // Shows message `uid` of the current folder, from its local copy when there is one, else
     // fetched from the server; marks it read if it was unread (on the server and locally).
     // The message properties stay empty until it has arrived.
     Q_INVOKABLE void openMessage(const QString &account, qint64 uid);
-    // For the open account; removed with T94.
-    Q_INVOKABLE void openMessage(qint64 uid);
     // Flags or unflags message `uid` of the current list (or the open message): updates the list
     // and the open message at once, then stores the flag on the server.
     Q_INVOKABLE void setFlagged(const QString &account, qint64 uid, bool flagged);
-    // For the open account; removed with T94.
-    Q_INVOKABLE void setFlagged(qint64 uid, bool flagged);
     // Saves the local storage settings (arguments as the properties), applies them to the local
     // copies at once (turning storage off deletes them) and starts a sync when storage is on.
     Q_INVOKABLE void saveStorageSettings(bool enabled, const QString &importSince, int keepValue, int keepUnit, int sizeValue, int sizeUnit);

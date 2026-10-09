@@ -1986,7 +1986,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   "not placed in the graphics scene" ones were there before).
 
 ### T94 — Message list and message view pass the account
-- status: todo
+- status: done
 - depends on: T88
 - parallel-safe with: T93, T96
 - files: src/qml/MessageListPage.qml, src/qml/MessagePage.qml
@@ -1995,7 +1995,12 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - output: rows open/flag with `(account, uid)`; the selected row checks account + uid; the
   message view flags with its message's account.
 - verify: offscreen start prints no new QML warnings.
-- notes:
+- notes: Done 2026-10-09. Added `MailController.currentMessageAccount` (it was not in T88). The
+  list rows open and flag with their `account` role; a row is selected only when uid and account
+  match; the message view flags with the open message's account. The one-argument `openMessage`
+  and `setFlagged` are removed (the screenshot hook in main.cpp now passes the row's account).
+  Checked offscreen/offline with the made-up two-account copy: no new QML warnings, and of the two
+  same-uid rows only the opened one is highlighted. 12/12 tests pass. The one-argument `selectFolder` is gone too (internal calls pass an empty account for shared views).
 
 ### T96 — Settings → Accounts lists every account
 - status: todo

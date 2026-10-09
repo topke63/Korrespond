@@ -235,6 +235,11 @@ ImapClient::HeaderFilter MailController::filterFor(const QString &path)
     return ImapClient::AllMessages;
 }
 
+QString MailController::currentMessageAccount() const
+{
+    return m_messageAccount;
+}
+
 qint64 MailController::currentUid() const
 {
     return m_currentUid;
@@ -407,12 +412,6 @@ QVariantMap MailController::defaultStorageSettings() const
     };
 }
 
-void MailController::selectFolder(const QString &path)
-{
-    // Shared views belong to no account; a folder path belongs to the open account.
-    selectFolder(isSharedView(path) ? QString() : (m_currentAccount.isEmpty() ? accountEmail() : m_currentAccount), path);
-}
-
 void MailController::selectFolder(const QString &account, const QString &path)
 {
     if (path.isEmpty()) {
@@ -567,11 +566,6 @@ void MailController::onHeadersFetched(AccountSession *session, const QString &fo
     mergeSharedParts();
 }
 
-void MailController::openMessage(qint64 uid)
-{
-    openMessage(currentEmail(), uid);
-}
-
 void MailController::openMessage(const QString &account, qint64 uid)
 {
     AccountSession *session = sessionFor(account);
@@ -596,11 +590,6 @@ void MailController::openMessage(const QString &account, qint64 uid)
     }
     beginRequest();
     session->client()->fetchMessage(m_messageFolder, uid);
-}
-
-void MailController::setFlagged(qint64 uid, bool flagged)
-{
-    setFlagged(currentEmail(), uid, flagged);
 }
 
 void MailController::setFlagged(const QString &account, qint64 uid, bool flagged)
@@ -800,7 +789,7 @@ void MailController::removeAccount(const QString &account)
             Q_EMIT currentFolderChanged();
         }
         if (!m_sessions.isEmpty()) {
-            selectFolder(QLatin1StringView(allInboxesPath));
+            selectFolder(QString(), QLatin1StringView(allInboxesPath));
         }
     } else if (isSharedView(m_currentFolder)) {
         mergeSharedParts(); // without the removed account's messages
@@ -956,11 +945,11 @@ void MailController::applyFolderList()
         m_messageModel->clear();
         clearMessage(true);
         Q_EMIT currentFolderChanged();
-        selectFolder(QLatin1StringView(allInboxesPath));
+        selectFolder(QString(), QLatin1StringView(allInboxesPath));
     } else {
         Q_EMIT currentFolderChanged(); // the display name may have changed
         if (wasShowingStored) {
-            selectFolder(m_currentFolder); // now ask the server too
+            selectFolder(m_currentAccount, m_currentFolder); // now ask the server too
         }
     }
 }

@@ -1658,14 +1658,15 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   deletes the group and unsets both variables. 12/12 test executables pass.
 
 ### T74 — Link Qt NetworkAuth
-- status: todo
+- status: done
 - depends on: none
 - parallel-safe with: T68–T73
 - files: CMakeLists.txt, src/CMakeLists.txt
 - inputs: `qt6-networkauth` 6.11 is installed.
 - output: `NetworkAuth` in the root `find_package(Qt6 …)`; `plasmamail_engine` links `Qt6::NetworkAuth`.
 - verify: `cmake --preset dev && cmake --build --preset dev` succeeds.
-- notes:
+- notes: Done 2026-10-09. `cmake --preset dev && cmake --build --preset dev` builds all
+  targets. (Configure prints "no upstream / no remote origin" from the git-hook helper; harmless.)
 
 ### T75 — `OAuthClient`: Google sign-in in the browser
 - status: todo

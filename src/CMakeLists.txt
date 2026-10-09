@@ -23,6 +23,7 @@ target_link_libraries(plasmamail_engine PUBLIC
     KF6::Mime
     KPim6::IMAP
     Qt6::Network
+    Qt6::NetworkAuth
     Qt6Keychain::Qt6Keychain
     Qt6::Sql
 )

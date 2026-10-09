@@ -17,7 +17,7 @@ Kirigami.ScrollablePage {
     // moves there).
     function openMessage(account, uid) {
         MailController.openMessage(account, uid);
-        applicationWindow().pageStack.currentIndex = Kirigami.ColumnView.index + 1;
+        (page.QQC2.ApplicationWindow.window as Kirigami.ApplicationWindow).pageStack.currentIndex = Kirigami.ColumnView.index + 1;
     }
 
     title: MailController.searchActive ? KI18n.i18nc("@title", "Search") : MailController.currentFolderName
@@ -42,7 +42,7 @@ Kirigami.ScrollablePage {
     // saved on a bigger window (or a smaller window now) cannot push it off the screen.
     readonly property int maxWidth: Math.max(MailController.listMinWidth,
                                              Math.min(MailController.listMaxWidth,
-                                                      applicationWindow().width - MailController.sidebarWidth - Kirigami.Units.gridUnit * 30))
+                                                      (page.QQC2.ApplicationWindow.window as Kirigami.ApplicationWindow).width - MailController.sidebarWidth - Kirigami.Units.gridUnit * 30))
 
     // On the page's overlay, so it does not scroll with the list. Not in a narrow window, where
     // one column is shown at a time.
@@ -50,7 +50,7 @@ Kirigami.ScrollablePage {
         id: resizer
 
         parent: page.overlay
-        visible: applicationWindow().wideScreen
+        visible: (page.QQC2.ApplicationWindow.window as Kirigami.ApplicationWindow).wideScreen
         anchors.right: parent.right
         anchors.top: parent.top
         anchors.bottom: parent.bottom
@@ -71,9 +71,9 @@ Kirigami.ScrollablePage {
             onTriggered: {
                 // A separate window per message; it destroys itself when closed.
                 const component = Qt.createComponent("PlasmaMail", "ComposeWindow");
-                const composer = component.createObject(applicationWindow());
+                const composer = component.createObject((page.QQC2.ApplicationWindow.window as Kirigami.ApplicationWindow));
                 if (composer) {
-                    composer.show();
+                    (composer as Window).show();
                 } else {
                     console.warn(component.errorString());
                 }

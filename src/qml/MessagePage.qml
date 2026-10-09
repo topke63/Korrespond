@@ -47,7 +47,7 @@ Kirigami.Page {
             return;
         }
         const component = Qt.createComponent("PlasmaMail", "ComposeWindow");
-        const composer = component.createObject(applicationWindow(), {
+        const composer = component.createObject((page.QQC2.ApplicationWindow.window as Kirigami.ApplicationWindow), {
             initialAccount: data.account,
             initialTo: data.to,
             initialCc: data.cc,
@@ -57,7 +57,7 @@ Kirigami.Page {
             initialReferences: data.references
         });
         if (composer) {
-            composer.show();
+            (composer as Window).show();
         } else {
             console.warn(component.errorString());
         }

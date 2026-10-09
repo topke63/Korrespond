@@ -2,8 +2,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 import QtQuick
-import QtQuick.Controls as QQC2
-import QtQuick.Layouts
 import org.kde.ki18n
 import org.kde.kirigami as Kirigami
 import org.kde.kirigamiaddons.settings as KirigamiSettings
@@ -116,7 +114,7 @@ Kirigami.ApplicationWindow {
         ignoreUnknownSignals: true // the mobile settings page has no closing signal
 
         function onClosing() {
-            const pageStack = settings.configViewItem.pageStack;
+            const pageStack = (settings.configViewItem as Kirigami.ApplicationWindow)?.pageStack;
             if (pageStack) {
                 pageStack.layers.clear();
                 pageStack.clear();
@@ -193,8 +191,9 @@ Kirigami.ApplicationWindow {
             }
             // After removing the account there is nothing left to configure.
             if (!MailController.hasAccount && settings.configViewItem) {
-                if (typeof settings.configViewItem.close === "function") {
-                    settings.configViewItem.close(); // desktop: the settings window
+                const configWindow = settings.configViewItem as Window;
+                if (configWindow) {
+                    configWindow.close(); // desktop: the settings window
                 } else {
                     mainWindow.pageStack.layers.clear(); // mobile: the settings layer
                 }

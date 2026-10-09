@@ -105,7 +105,7 @@ FormCard.FormCardPage {
                     removeDialog.close();
                     MailController.removeAccount(page.email);
                     // Main.qml closes the settings when it was the last account.
-                    const stack = page.QQC2.ApplicationWindow.window.pageStack;
+                    const stack = (page.QQC2.ApplicationWindow.window as Kirigami.ApplicationWindow).pageStack;
                     if (stack.layers.depth > 1) {
                         stack.layers.pop();
                     }

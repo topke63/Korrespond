@@ -40,7 +40,7 @@ Kirigami.OverlayDrawer {
         }
     }
 
-    edge: Qt.application.layoutDirection === Qt.RightToLeft ? Qt.RightEdge : Qt.LeftEdge
+    edge: Application.layoutDirection === Qt.RightToLeft ? Qt.RightEdge : Qt.LeftEdge
     // Docked: the width the user chose (live while dragging). Sliding over a narrow window: fixed.
     width: modal ? Kirigami.Units.gridUnit * 14 : Math.min(maxDockedWidth, resizer.dragging ? resizer.liveWidth : MailController.sidebarWidth)
     // Docked beside the pages the sidebar fills the page row. The drawer's own height subtracts the

@@ -38,7 +38,7 @@ FormCard.FormCardPage {
                 required property string authMethod
                 required property int index
 
-                onClicked: page.QQC2.ApplicationWindow.window.pageStack.layers.push(detailsPage, {
+                onClicked: (page.QQC2.ApplicationWindow.window as Kirigami.ApplicationWindow).pageStack.layers.push(detailsPage, {
                     email: email,
                     displayName: displayName,
                     provider: provider,
@@ -108,7 +108,7 @@ FormCard.FormCardPage {
         FormCard.FormButtonDelegate {
             text: KI18n.i18nc("@action:button", "Add Account…")
             icon.name: "list-add-user"
-            onClicked: page.QQC2.ApplicationWindow.window.pageStack.layers.push(setupPage)
+            onClicked: (page.QQC2.ApplicationWindow.window as Kirigami.ApplicationWindow).pageStack.layers.push(setupPage)
         }
     }
 

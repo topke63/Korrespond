@@ -15,7 +15,8 @@
   `cmake -S . -B build -G Ninja && cmake --build build && ctest --test-dir build --output-on-failure`
   QML lint (since T159, 2026-10-09): `cmake --build --preset dev --target all_qmllint` (the Qt 6 qmllint
   with the build's import paths; `/usr/bin/qmllint` is an old 1.0 tool that prints nothing — don't use
-  it). Baseline: **20** tagged warnings (10 missing-property, 7 unqualified, 3 unused-imports);
+  it). Baseline: **2** tagged warnings since T160 (2 unqualified: `applicationWindow()` in
+  FolderSidebar.qml, a Drawer; was 20 after T159);
   count with `... 2>&1 | grep -o "\[[a-z-]*\]$" | wc -l`. A task must not raise it.
 - **Open questions**:
   - **Q1** (answered 2026-10-08: yes, ready; the user types it in themselves. **Corrected 2026-10-08:** in the first GUI run the user entered their web login password, which Yahoo refuses over IMAP; an app password still has to be generated before T24): Does the user have a Yahoo app password ready (Yahoo → Account security →
@@ -3354,17 +3355,27 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   Qt.application.layoutDirection, 3 unused imports.
 
 ### T160 — QML lint: the remaining 20 warnings
-- status: todo
+- status: done
 - depends on: T159
 - parallel-safe with: none
 - files: src/qml/Main.qml, src/qml/NotificationSettingsPage.qml, src/qml/MessageListPage.qml,
-  src/qml/MessagePage.qml, src/qml/FolderSidebar.qml, src/qml/Account*Page.qml
+  src/qml/MessagePage.qml, src/qml/FolderSidebar.qml, src/qml/Account*Page.qml (Details, Settings, Setup)
 - inputs: T159's list.
 - output: unused imports removed (check attached properties first); `pageStack`, `show`, `close` on
   typed objects (e.g. `Kirigami.ApplicationWindow` casts / typed properties) or a commented
   `// qmllint disable` where Kirigami gives no type; count below 20.
 - verify: lint count lower; offscreen start and the scratch probes clean.
-- notes: optional quality task, not requested by the user.
+- notes: optional quality task; user approved 2026-10-09. Done: lint 20 → 2. `(page.QQC2.ApplicationWindow
+  .window as Kirigami.ApplicationWindow)` for pageStack/maxWidth/wideScreen instead of
+  applicationWindow() in MessageListPage/MessagePage and the window's pageStack in Account*Page;
+  `(composer as Window).show()`; `Application.layoutDirection`; Main.qml: `(configViewItem as
+  Kirigami.ApplicationWindow)?.pageStack` and `configViewItem as Window` → close() else layers.clear()
+  (same as the old duck typing: desktop ConfigWindow vs mobile page); unused imports removed (Main:
+  QQC2, Layouts; NotificationSettingsPage: QQC2). Left: FolderSidebar's 2 `applicationWindow()` calls
+  (a Drawer has no ApplicationWindow attached property; `parent` not proven to be the same window).
+  Screenshots HEAD vs new on a seeded throw-away profile: main, open message, settings (accounts,
+  notifications, storage), RTL: pixel-identical; compose new/reply differ only by the caret blink.
+  Logs unchanged. Not run: remove-last-account with settings open, mobile settings page.
 
 # Milestone 3f — Readable HTML messages (user request 2026-10-09: "colors need fix", "visibility")
 

@@ -49,7 +49,7 @@ Kirigami.ScrollablePage {
         target: MailController
         enabled: page.asLayer
         function onAccountChanged() {
-            const stack = page.QQC2.ApplicationWindow.window.pageStack;
+            const stack = (page.QQC2.ApplicationWindow.window as Kirigami.ApplicationWindow).pageStack;
             if (stack.layers.depth > 1) {
                 stack.layers.pop();
             }

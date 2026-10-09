@@ -2872,7 +2872,10 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   the error in the tooltip and "Up to date" changes when back online; syncing text appears during a
   sync; counters match the tray tooltip.
 - verify: manual, with the user.
-- notes:
+- notes: 2026-10-09: the user ran the installed build and said "looks fine" (look, colours and
+  sizes of the bar). **Not reported yet:** the network-off test (red chip, error tooltip,
+  click-to-reconnect), a live "Syncing …" text, and unread count vs tray tooltip — so this stays
+  `todo` until the user confirms them or says to close it.
 
 ## Execution Loop
 

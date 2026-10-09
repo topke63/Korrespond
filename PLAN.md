@@ -2994,7 +2994,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   setup page; no fake account added), so "fits at default width" moves to T144.
 
 ### T144 — Manual check: last action in the status bar
-- status: waiting (manual check with the user)
+- status: done
 - depends on: T143
 - parallel-safe with: none
 - files: none
@@ -3005,6 +3005,8 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - verify: manual, with the user.
 - notes: Also check the bar still fits at the default window width with the label shown (from
   T143). Needs a rebuild/reinstall of the running app first.
+  Closed 2026-10-09 by the user after trying the last-action label in the status bar.
+
 
 ### T145 — Moves dropped on reconnect / over-broad move failures (found in T142)
 - status: todo
@@ -3022,7 +3024,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   error clears the search FIFO; m_requests can leak).
 
 ### T146 — Toolbar: hover text on the buttons right of Archive/Delete
-- status: waiting (code done; live hover check with the user)
+- status: done
 - depends on: T114, T143
 - parallel-safe with: none
 - files: src/qml/MessagePage.qml
@@ -3042,6 +3044,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   report hovered in Qt 6.12); it now says "Move to Folder is not available for this message." when
   disabled, like Archive/Delete. qmllint clean, ctest 16/16, offscreen start clean. The app the user
   was running had been started before this rebuild, so it must be restarted to show the change.
+  Closed 2026-10-09 by the user after hovering the toolbar buttons.
 
 ## Execution Loop
 

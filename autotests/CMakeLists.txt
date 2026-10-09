@@ -121,3 +121,10 @@ ecm_add_test(
     TEST_NAME idlepolicytest
     LINK_LIBRARIES plasmamail_engine Qt6::Test
 )
+
+# Test for ImapIdleWatcher
+ecm_add_test(
+    imapidlewatchertest.cpp
+    TEST_NAME imapidlewatchertest
+    LINK_LIBRARIES plasmamail_engine Qt6::Test
+)

@@ -8,6 +8,7 @@ add_library(plasmamail_engine STATIC
     engine/folderutils.cpp
     engine/idlepolicy.cpp
     engine/imapclient.cpp
+    engine/imapidlewatcher.cpp
     engine/messagecomposer.cpp
     engine/messagerenderer.cpp
     engine/messagestore.cpp

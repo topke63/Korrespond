@@ -3663,10 +3663,11 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   reportFailure first). idlepolicytest; ctest 18/18.
 
 ### T170 — Engine: `ImapIdleWatcher`
-- status: todo
+- status: done
 - depends on: T169
 - parallel-safe with: none
-- files: src/engine/imapidlewatcher.h, src/engine/imapidlewatcher.cpp, src/CMakeLists.txt
+- files: src/engine/imapidlewatcher.h, src/engine/imapidlewatcher.cpp, src/CMakeLists.txt,
+  autotests/imapidlewatchertest.cpp, autotests/CMakeLists.txt
 - inputs: how `ImapClient::session()` creates and logs in a `KIMAP::Session` (password and
   OAuth), `KIMAP::IdleJob`, `IdlePolicy`.
 - output: class `ImapIdleWatcher : QObject` with `start(const Account &, credentials)` / `stop()`,
@@ -3681,7 +3682,18 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   server (start with an unreachable host → `Failed` then retries with the delays using a fake
   clock or a short override; `stop()` while connecting emits nothing afterwards); real IMAP is
   checked in T173 (corrected 2026-10-09: the plan said T174).
-- notes:
+- notes: Done 2026-10-09. KIMAP IdleJob (header `<KIMAP/IdleJob>`, file kimap/idlejob.h): signals
+  `mailBoxStats` and `mailBoxMessageFlagsChanged` (both → inboxChanged), `stop()` sends DONE, no
+  "idling started" signal (state Idling right after start), no expunge signal. IdleJob disables the
+  session timeout while idling and restores it on stop (KIMAP 26.08.2, checked by disassembly; a 70 s
+  quiet IDLE held). `start(account, CredentialsProvider)` asks for the secret before every login (OAuth
+  token refresh); null provider → Failed, no retry. Login code duplicated from ImapClient (tied to its
+  members), noted in a comment. reportConnected once per login, not per 20-min restart. Logs: state
+  names only. Tests (19/19): closed-port failures + retries, empty secret, stop semantics, and a
+  fake implicit-TLS IMAP server on 127.0.0.1 (throw-away self-signed cert embedded in the test):
+  EXAMINE + IDLE + `* 3 EXISTS` → inboxChanged; no IDLE capability → Unavailable, no retry; server
+  drop → reconnect and idle again; 300 ms restart keeps one connection. Not testable here: a real
+  server (T173).
 
 ### T171 — Controller: use the watcher, poll less
 - status: todo

@@ -3122,7 +3122,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   open the details page (a row click still does). qmllint clean, ctest 17/17, offscreen clean.
 
 ### T150 — Manual check: reorder accounts
-- status: waiting (manual check with the user)
+- status: done
 - depends on: T149
 - parallel-safe with: none
 - files: none
@@ -3152,6 +3152,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   - Never put attachment names or contents into logs.
 - **Out of scope**: drag and drop into the compose window, inline images in the body, previews of
   attachments, forwarding with the original attachments (a later request), virus scanning.
+  Closed 2026-10-09: the user tried the Move up / Move down buttons and said reordering works (restart persistence not reported).
   Closed 2026-10-09: the user tried the Move up / Move down buttons and said reordering works (restart persistence not reported).
 
 ### T151 — Engine: attachment data from a message

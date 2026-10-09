@@ -1,0 +1,9 @@
+[Global]
+IconName=plasma-mail
+Name=Plasma Mail
+Comment=Plasma Mail
+
+[Event/newmail]
+Name=New mail
+Comment=New mail has arrived
+Action=Popup

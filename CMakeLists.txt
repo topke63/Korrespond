@@ -38,6 +38,7 @@ add_subdirectory(tools)
 # The app icon (file name sc-apps-<name>.svg → hicolor/scalable/apps) and the launcher entry.
 ecm_install_icons(ICONS data/icons/sc-apps-plasma-mail.svg data/icons/sc-apps-plasma-mail-unread.svg DESTINATION ${KDE_INSTALL_ICONDIR} THEME hicolor)
 install(FILES data/plasma-mail.desktop DESTINATION ${KDE_INSTALL_APPDIR})
+install(FILES data/plasma-mail.notifyrc DESTINATION ${KDE_INSTALL_KNOTIFYRCDIR})
 
 # Only build tests if they exist and BUILD_TESTING is enabled
 if(BUILD_TESTING)

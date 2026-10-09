@@ -622,6 +622,15 @@ void MailController::onHeadersFetched(AccountSession *session, const QString &fo
     }
     if (!shared) {
         m_messageModel->setMessages(shown);
+        // A click on a notification asked for a message of this list.
+        if (!m_pendingOpenAccount.isEmpty() && session->account().email == m_pendingOpenAccount) {
+            const qint64 uid = std::exchange(m_pendingOpenUid, 0);
+            const QString account = std::exchange(m_pendingOpenAccount, QString());
+            if (m_messageModel->message(account, uid).uid == uid) {
+                openMessage(account, uid);
+                Q_EMIT showMessageRequested();
+            }
+        }
         return;
     }
     // One account's answer replaces only that account's part of the merged list.
@@ -760,6 +769,21 @@ void MailController::adjustUnread(const AccountSession *session, const QString &
 QString MailController::moveKey(const QString &account, const QString &folder, qint64 uid)
 {
     return u"%1\n%2\n%3"_s.arg(account, folder).arg(uid);
+}
+
+void MailController::openNewMail(const QString &account, qint64 uid)
+{
+    const AccountSession *session = sessionFor(account);
+    if (!session || uid <= 0) {
+        return;
+    }
+    const QString inbox = folderForRole(session->folders(), u"inbox"_s);
+    if (inbox.isEmpty()) {
+        return;
+    }
+    m_pendingOpenAccount = session->account().email;
+    m_pendingOpenUid = uid;
+    selectFolder(m_pendingOpenAccount, inbox); // the message opens when the list is in
 }
 
 void MailController::archiveMessage()

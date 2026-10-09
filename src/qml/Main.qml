@@ -150,6 +150,10 @@ Kirigami.ApplicationWindow {
         function onErrorOccurred(message: string) {
             window.showPassiveNotification(message);
         }
+        // A notification was clicked: show the message column (the window itself is raised in C++).
+        function onShowMessageRequested() {
+            window.pageStack.currentIndex = window.pageStack.depth - 1;
+        }
         function onAccountChanged() {
             // Adding a second account keeps the open mail view; only the first or the last one
             // switches between setup and mail.

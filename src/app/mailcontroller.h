@@ -187,6 +187,10 @@ public:
     // account (`folderPath`). The server moves it first; only then it leaves the list and the
     // local copies, and the next message opens (or none, after the last one). On failure
     // nothing changes and errorOccurred is emitted. Mail is never deleted for good.
+    // Shows the inbox of `account` with message `uid` open (for a click on a notification). The
+    // message opens once the inbox list has arrived; showMessageRequested() then asks the window
+    // to show the message column.
+    Q_INVOKABLE void openNewMail(const QString &account, qint64 uid);
     Q_INVOKABLE void archiveMessage();
     Q_INVOKABLE void deleteMessage();
     Q_INVOKABLE void moveMessage(const QString &folderPath);
@@ -215,6 +219,7 @@ Q_SIGNALS:
     void storageUsageChanged();
     void syncingChanged();
     void unreadCountChanged();
+    void showMessageRequested();
     // New mail found by a background check. With count == 1, sender ("Name <address>") and
     // subject describe the message; uid is the newest new message of the account's inbox.
     void newMailArrived(const QString &account, int count, const QString &sender, const QString &subject, qint64 uid);
@@ -278,6 +283,8 @@ private:
     QList<AccountSession *> m_sessions; // saved accounts, in order
     AccountSession *m_pending = nullptr; // being verified by setupAccount()
     QString m_pendingPassword;
+    QString m_pendingOpenAccount; // see openNewMail()
+    qint64 m_pendingOpenUid = 0;
     bool m_googleConfigured = false;
     // The open shared view: each account's part of the merged list, and the accounts already asked.
     std::map<QString, QList<MessageSummary>> m_sharedParts;

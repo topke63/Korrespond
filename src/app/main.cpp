@@ -7,6 +7,7 @@
 
 #include "appsettings.h"
 #include "mailcontroller.h"
+#include "mailnotifier.h"
 #include "trayicon.h"
 
 #include <QAbstractItemModel>
@@ -121,11 +122,13 @@ int main(int argc, char *argv[])
     // The tray icon; not in the screenshot runs (they must not put icons on the desktop), unless
     // PLASMAMAIL_SCREENSHOT_TRAY=1.
     std::unique_ptr<TrayIcon> tray;
+    std::unique_ptr<MailNotifier> notifier;
     const bool screenshotRun = !qEnvironmentVariableIsEmpty("PLASMAMAIL_SCREENSHOT") && qEnvironmentVariableIntValue("PLASMAMAIL_SCREENSHOT_TRAY") != 1;
     auto controller = engine.singletonInstance<MailController *>("PlasmaMail", "MailController");
     if (!screenshotRun && controller && !engine.rootObjects().isEmpty()) {
         tray = std::make_unique<TrayIcon>(controller, qobject_cast<QWindow *>(engine.rootObjects().constFirst()));
         tray->setKeepInTray(AppSettings::load().keepInTray);
+        notifier = std::make_unique<MailNotifier>(controller, qobject_cast<QWindow *>(engine.rootObjects().constFirst()));
     }
 
     return app.exec();

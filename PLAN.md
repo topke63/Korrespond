@@ -2548,7 +2548,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   tray itself, the click behaviour and the menu need the desktop (T129).
 
 ### T127 — New-mail notification
-- status: todo
+- status: done
 - depends on: T123, T125
 - parallel-safe with: T126
 - files: src/app/mailnotifier.h, src/app/mailnotifier.cpp, data/plasma-mail.notifyrc (new) (+ CMake lines)
@@ -2557,7 +2557,17 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   design decisions) with an "Open" default action → `MailController` shows that message (select
   the account's inbox, open uid) and raises the window.
 - verify: build; manual in T129.
-- notes:
+- notes: Done 2026-10-09 (not seen on a desktop yet). `MailNotifier` (src/app/mailnotifier.*):
+  on `newMailArrived`, unless the window is the active one, a `KNotification` (event `newmail`,
+  component `plasma-mail`, logo icon): one message → title = sender's name (address if no name),
+  text = subject; several → "N new messages" + the account's email. Default action "Open" →
+  `MailController::openNewMail(account, uid)` (new): selects that account's inbox, opens the
+  message once the list has arrived (`m_pendingOpen*`), and emits `showMessageRequested` (Main.qml
+  moves to the message column); the notifier also shows/raises the window. New
+  `data/plasma-mail.notifyrc` installed to `KNOTIFYRCDIR` (the install into a scratch prefix
+  was checked); before installing KDE has no event config, so it uses its defaults. No
+  message text is logged. Build without warnings, 14/14 tests, offline start with tray + notifier
+  unchanged. Not triggered: needs real new mail (T129).
 
 ### T128 — Settings: Notifications page
 - status: todo

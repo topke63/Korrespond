@@ -29,7 +29,7 @@
 3. Outlook/Microsoft via OAuth2 (reuses milestone 2 code).
 4. Compose / reply / forward over SMTP (KPim6::SMTP is installed): **pulled into Milestone 3**
    (2026-10-09, with all the message-toolbar actions).
-5. IDLE, notifications, background sync timer, and **reordering accounts** (user request
+5. IDLE (push), and **reordering accounts** (user request
    2026-10-08: drag handle or move up/down in Settings → Accounts, saved in the config and
    mirrored in the sidebar's account sections). The rest of multiple accounts (account manager
    with "Add Account…", shared views merging every inbox) moved into Milestone 2.
@@ -2366,6 +2366,162 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - inputs: global verify command.
 - output: clean build, all tests pass, no new QML warnings.
 - verify: `rm -rf build && cmake --preset dev && cmake --build --preset dev && ctest --preset dev`
+- notes:
+
+# Milestone 3b — App icon, tray icon, new-mail notifications (user request 2026-10-09)
+
+- **Goal**: Plasma Mail has its own icon/logo (window, launcher, tray, About page); a tray icon
+  shows unread mail and lets the window be hidden to the tray; new mail triggers a desktop
+  notification.
+- **Decisions** (made while planning; change only with the user):
+  - The logo is an SVG made by hand (a simple envelope on a rounded square with the Plasma
+    "spark" colour, blue #3daee9 like the unread accent), installed as the themed icon
+    `plasma-mail` (scalable + PNG sizes made with rsvg-convert); `plasma-mail.desktop` makes the
+    app show in the launcher. Install rules are added (`cmake --install` works; the dev build uses
+    the icon from the source tree).
+  - Tray: `KStatusNotifierItem` (works on Plasma and other SNI trays): icon `plasma-mail`, a
+    badge/overlay with the unread count, left click shows/hides the window, menu: Show, Check
+    for Mail, Quit. Closing the window keeps the app running in the tray **only if** the user turns
+    on "Keep running in the tray when the window is closed" (default off, saved in plasmamailrc).
+  - New mail needs the app to look for it: this milestone adds a **background check every
+    5 minutes** (all connected accounts re-list their INBOX); IDLE (push) stays for later. A
+    message counts as new when its uid is above the highest uid seen for that account's inbox
+    since the previous check, it is unread, and it is not older than the last check by more than a
+    day (so the first start after a long time doesn't announce old mail).
+  - Notification: `KNotification` (event id `newmail`, `plasma-mail.notifyrc` installed): one
+    notification per account per check ("3 new messages in topke63@yahoo.com", or sender + subject
+    for a single message); clicking it shows the window and opens that message. No notification
+    while the window is focused. Notification settings use KDE's standard dialog (a "Configure
+    Notifications…" row in Settings).
+  - Never put message content into logs; the notification text is shown by the desktop only.
+- **Out of scope**: IDLE, sounds of our own (KDE's notification settings handle them), badges in
+  the launcher, per-folder notification rules, notifications for Gmail threads.
+
+### T120 — App icon (logo)
+- status: todo
+- depends on: none
+- parallel-safe with: T121, T122
+- files: data/icons/sc-apps-plasma-mail.svg (new)
+- inputs: —
+- output: a clean SVG logo (envelope on a rounded square, blue, readable at 16 px), checked by
+  rendering 16/32/48/128 px PNGs with `rsvg-convert` into a scratch folder and viewing them.
+- verify: the PNGs look right at all four sizes (looked at by me, then the user).
+- notes:
+
+### T121 — Install the icon and desktop file
+- status: todo
+- depends on: T120
+- parallel-safe with: T122
+- files: CMakeLists.txt, src/CMakeLists.txt, data/plasma-mail.desktop (new)
+- inputs: ECM `KDEInstallDirs`, `ecm_install_icons`.
+- output: `ecm_install_icons` for the SVG; `plasma-mail.desktop` (Name, Comment, Exec, Icon=
+  plasma-mail, Categories=Network;Email;Qt;KDE;) installed; `install(TARGETS plasma-mail)`.
+  `QGuiApplication::setWindowIcon(QIcon::fromTheme("plasma-mail", QIcon(":/…")))` so the window
+  and About page show it when run from the build folder (icon also added to the QML module as a
+  resource).
+- verify: `cmake --install build --prefix <a fresh scratch folder>` installs the icon, desktop
+  file and binary; `desktop-file-validate` (if installed) passes; offscreen start prints no new warnings.
+- notes:
+
+### T122 — Settings: Keep running in the tray (storage of the option)
+- status: todo
+- depends on: none
+- parallel-safe with: T120, T121
+- files: src/engine/appsettings.h, src/engine/appsettings.cpp, autotests/appsettingstest.cpp (+ CMake lines)
+- inputs: `StorageSettings` as the pattern.
+- output: `AppSettings` with `keepInTray` (bool, default false) and `checkMinutes` (default 5,
+  1–60), load/save in plasmamailrc group `[General]`; tests: defaults, round trip, out-of-range
+  clamped.
+- verify: `ctest --test-dir build -R appsettingstest --output-on-failure`
+- notes:
+
+### T123 — Link KStatusNotifierItem and KNotifications
+- status: todo
+- depends on: none
+- parallel-safe with: T120–T122
+- files: CMakeLists.txt, src/CMakeLists.txt
+- inputs: `KF6StatusNotifierItem`, `KF6Notifications` are installed.
+- output: both found in the root `find_package(KF6 …)`; `plasma-mail` links them.
+- verify: `cmake --preset dev && cmake --build --preset dev`.
+- notes:
+
+### T124 — `NewMailChecker`: find new messages
+- status: todo
+- depends on: T83
+- parallel-safe with: T122, T123
+- files: src/engine/newmailtracker.h, src/engine/newmailtracker.cpp, autotests/newmailtrackertest.cpp (+ CMake lines)
+- inputs: `MessageSummary`; design rules above (highest uid seen, unread, not too old).
+- output: pure logic class: `QList<MessageSummary> newMessages(account, folder, uidValidity,
+  summaries, now)` and `markSeenUpTo`; remembers the highest uid per (account, folder,
+  uidValidity); a UIDVALIDITY change or the first run records without announcing; tests for first
+  run, second run with 2 new, read mail ignored, old mail ignored, UIDVALIDITY reset, two accounts.
+- verify: `ctest --test-dir build -R newmailtrackertest --output-on-failure`
+- notes:
+
+### T125 — Background check every few minutes
+- status: todo
+- depends on: T122, T124, T88
+- parallel-safe with: T126
+- files: src/app/mailcontroller.h, src/app/mailcontroller.cpp
+- inputs: T122 `checkMinutes`, T124; sessions already list folders and fetch headers.
+- output: a timer (`checkMinutes`) asks every connected account for its INBOX headers (the
+  newest 20) without touching the open view; results go through the tracker; signal
+  `newMailArrived(account, count, sender, subject, uid)` (sender/subject only for count 1);
+  property `unreadCount` (unread messages of all inboxes, from the stored/fetched headers) for the
+  tray. A reconnect after errors is tried on the next tick.
+- verify: build; manual in T129.
+- notes:
+
+### T126 — Tray icon
+- status: todo
+- depends on: T121, T122, T123
+- parallel-safe with: T125
+- files: src/app/trayicon.h, src/app/trayicon.cpp, src/app/main.cpp (+ CMake line)
+- inputs: `KStatusNotifierItem`, T122 `keepInTray`.
+- output: `TrayIcon` object: icon `plasma-mail`, tooltip "Plasma Mail – N unread", overlay/state
+  `NeedsAttention` while unread > 0; left click toggles the main window; menu Show, Check for
+  Mail (`MailController.refresh()`), Quit. With `keepInTray` the window's close hides it instead
+  of quitting (`Window.onClosing`); otherwise unchanged.
+- verify: build; offscreen start prints no new warnings; manual in T129.
+- notes:
+
+### T127 — New-mail notification
+- status: todo
+- depends on: T123, T125
+- parallel-safe with: T126
+- files: src/app/mailnotifier.h, src/app/mailnotifier.cpp, data/plasma-mail.notifyrc (new) (+ CMake lines)
+- inputs: `KNotification`, `newMailArrived`.
+- output: on `newMailArrived`, unless the window is active: a `newmail` notification (texts per the
+  design decisions) with an "Open" default action → `MailController` shows that message (select
+  the account's inbox, open uid) and raises the window.
+- verify: build; manual in T129.
+- notes:
+
+### T128 — Settings: Notifications page
+- status: todo
+- depends on: T122, T126, T127
+- parallel-safe with: none
+- files: src/qml/NotificationSettingsPage.qml (new), src/qml/Main.qml, src/app/mailcontroller.h, src/app/mailcontroller.cpp
+- inputs: T122 values; `KNotifyConfigWidget` is widgets-only, so the page has our own switches
+  and a "Configure Notifications…" button that runs `systemsettings kcm_notifications` / the
+  KDE per-app dialog via `KNotifyConfigWidget` in a small helper if available.
+- output: a "Notifications" settings module: "Check for new mail every N minutes" (1–60), "Keep
+  running in the tray when the window is closed", and the button above.
+- verify: offscreen start with `PLASMAMAIL_SCREENSHOT_SETTINGS=notifications` prints no new
+  warnings and shows the page.
+- notes:
+
+### T129 — Manual check: icon, tray, notification
+- status: todo
+- depends on: T121, T126, T127, T128
+- parallel-safe with: none
+- files: none
+- inputs: the user's desktop; send a mail to the user's own address from another account (or
+  webmail) while the app runs.
+- output: confirmed: icon in the window, launcher (after install) and tray; unread count in the
+  tray tooltip; closing hides to the tray when enabled; a new mail gives one notification within
+  the check interval; clicking it opens the message; no notification for old mail at startup.
+- verify: manual, with the user.
 - notes:
 
 ## Execution Loop

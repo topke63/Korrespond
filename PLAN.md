@@ -1933,7 +1933,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   not exercised at runtime yet (the UI can't add a second account until T96/T97) — covered by T95.
 
 ### T91 — `MailController`: storage over all accounts
-- status: todo
+- status: done
 - depends on: T88
 - parallel-safe with: T89, T90
 - files: src/app/mailcontroller.cpp
@@ -1941,7 +1941,11 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - output: `storageUsedBytes` = sum over accounts; `syncing` = any session syncing;
   `cleanUpNow` and `saveStorageSettings` apply to every session; `storageReady` = all stores open.
 - verify: build succeeds; all tests pass.
-- notes:
+- notes: Done 2026-10-09. Already in place from T85: `storageUsedBytes` sums the sessions,
+  `syncing` is true when any session syncs, `saveStorageSettings` and `cleanUpNow` go to every
+  session, `storageReady` needs every store open. Added here: a newly added account gets the
+  current storage settings when it joins (they may have changed while it was being verified).
+  Build and 12/12 tests pass.
 
 ### T92 — `MailController`: Google accounts (sign-in, startup, refresh)
 - status: todo

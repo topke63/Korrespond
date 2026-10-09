@@ -868,6 +868,7 @@ void MailController::onSessionFolders(AccountSession *session)
             }
             const bool firstAccount = m_sessions.isEmpty();
             m_sessions.append(session);
+            session->setStorageSettings(m_storage); // they may have changed while it was verified
             saveAccounts();
             m_accounts->setSessions(m_sessions);
             updateStorageUsage();

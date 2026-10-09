@@ -24,6 +24,9 @@
 
 using namespace Qt::StringLiterals;
 
+// Most matches ImapClient::search() fetches: the newest this many by UID.
+constexpr int SearchLimit = 200;
+
 QDateTime messageDate(const KMime::Message &message)
 {
     if (const auto *date = message.date(); date && date->dateTime().isValid()) {
@@ -453,6 +456,38 @@ void ImapClient::fetchHeaders(const QString &folder, int limit, HeaderFilter fil
         fetchSummaries(KIMAP::ImapSet(std::max(1, count - limit + 1), count), false, folder, filter, generation);
     });
     select->start();
+}
+
+void ImapClient::search(const QString &folder, const QString &text)
+{
+    // A blank term would match everything; treat it as "no results" without asking the server.
+    if (text.trimmed().isEmpty()) {
+        Q_EMIT headersFetched(folder, AllMessages, {});
+        return;
+    }
+    session();
+    const quint64 generation = m_generation;
+    queueSelect(folder, generation);
+    const QString needle = text.trimmed();
+    auto search = new KIMAP::SearchJob(session());
+    search->setUidBased(true);
+    search->setTerm(KIMAP::Term(KIMAP::Term::Or,
+                                {KIMAP::Term(KIMAP::Term::Subject, needle), KIMAP::Term(KIMAP::Term::From, needle), KIMAP::Term(KIMAP::Term::Body, needle)}));
+    connect(search, &KJob::result, this, [this, folder, generation](KJob *job) {
+        if (!checkJob(job, generation)) {
+            return;
+        }
+        QList<qint64> uids = static_cast<KIMAP::SearchJob *>(job)->results();
+        if (uids.isEmpty() || !m_session) {
+            Q_EMIT headersFetched(folder, AllMessages, {});
+            return;
+        }
+        std::sort(uids.begin(), uids.end());
+        KIMAP::ImapSet set;
+        set.add(QList<qint64>(uids.cend() - std::min<qsizetype>(SearchLimit, uids.size()), uids.cend()));
+        fetchSummaries(set, true, folder, AllMessages, generation);
+    });
+    search->start();
 }
 
 void ImapClient::searchSince(const QString &folder, const QDate &since)

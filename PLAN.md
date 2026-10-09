@@ -2385,7 +2385,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - notes:
 
 ### T116 — `ImapClient`: search
-- status: todo
+- status: done
 - depends on: none
 - parallel-safe with: T99–T115
 - files: src/engine/imapclient.h, src/engine/imapclient.cpp
@@ -2393,7 +2393,9 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - output: `void search(const QString &folder, const QString &text)` → `headersFetched` for the
   matches (subject, from, body text).
 - verify: build. Live check in T117.
-- notes:
+- notes: UID SEARCH Or(Subject, From, Body), capped to the newest 200 matches (`SearchLimit`), then
+  fetchSummaries → headersFetched(folder, AllMessages, …). Blank text emits an empty list at once.
+  Build ok, ctest 16/16; no ImapClient unit test (no fake server), live check in T117.
 
 ### T117 — Search field in the toolbar
 - status: todo

@@ -73,6 +73,10 @@ public:
     // the newest `limit` unread ones. Emits inboxChecked(), never headersFetched(), so it does
     // not disturb what the UI shows.
     void checkInbox(const QString &folder, int limit);
+    // Server-side search of `folder` for `text` in Subject, From or Body. Emits headersFetched()
+    // (filter AllMessages) with the headers of the matches, newest first; empty if none match.
+    // Capped to the newest 200 matches (highest UIDs), so a very broad term returns only those.
+    void search(const QString &folder, const QString &text);
     void fetchMessage(const QString &folder, qint64 uid);
     // Sets or clears \Seen (read / unread). markSeen() is setSeen(…, true).
     void setSeen(const QString &folder, qint64 uid, bool seen);

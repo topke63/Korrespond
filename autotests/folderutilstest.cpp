@@ -178,6 +178,37 @@ private Q_SLOTS:
         folder.role = role;
         QCOMPARE(SyncManager::isChosen(folder), stored);
     }
+
+    static FolderInfo folder(const QString &path, const QString &role)
+    {
+        FolderInfo info;
+        info.path = path;
+        info.name = path;
+        info.role = role;
+        return info;
+    }
+
+    void testFolderForRole()
+    {
+        const QList<FolderInfo> folders = {folder(u"INBOX"_s, u"inbox"_s), folder(u"Trash"_s, u"trash"_s), folder(u"Old Trash"_s, u"trash"_s)};
+        QCOMPARE(folderForRole(folders, u"trash"_s), u"Trash"_s); // the first one
+        QCOMPARE(folderForRole(folders, u"inbox"_s), u"INBOX"_s);
+        QVERIFY(folderForRole(folders, u"archive"_s).isEmpty());
+        QVERIFY(folderForRole({}, u"trash"_s).isEmpty());
+    }
+
+    void testArchiveTarget()
+    {
+        // Yahoo-like: a real Archive folder.
+        QCOMPARE(archiveTarget({folder(u"INBOX"_s, u"inbox"_s), folder(u"Archive"_s, u"archive"_s)}), u"Archive"_s);
+        // Gmail-like: no archive folder, All Mail does the job.
+        QCOMPARE(archiveTarget({folder(u"INBOX"_s, u"inbox"_s), folder(u"[Gmail]/All Mail"_s, u"all"_s)}), u"[Gmail]/All Mail"_s);
+        // Both: the archive folder wins.
+        QCOMPARE(archiveTarget({folder(u"[Gmail]/All Mail"_s, u"all"_s), folder(u"Archive"_s, u"archive"_s)}), u"Archive"_s);
+        // Neither: nothing to archive to.
+        QVERIFY(archiveTarget({folder(u"INBOX"_s, u"inbox"_s), folder(u"Trash"_s, u"trash"_s)}).isEmpty());
+        QVERIFY(archiveTarget({}).isEmpty());
+    }
 };
 
 QTEST_GUILESS_MAIN(FolderUtilsTest)

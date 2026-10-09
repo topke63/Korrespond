@@ -21,3 +21,10 @@ QString folderRoleFromFlags(const QString &path, const QList<QByteArray> &flags)
 // inbox, flagged, drafts, sent, archive, all, important, junk, trash, then others by path
 // case-insensitively
 void sortFolders(QList<FolderInfo> &folders);
+
+// The path of the first folder with this role, or an empty string when there is none.
+QString folderForRole(const QList<FolderInfo> &folders, const QString &role);
+
+// Where Archive moves a message to: the "archive" folder, else (Gmail) "all", whose All Mail
+// holds every message that is not in the inbox any more. Empty when there is neither.
+QString archiveTarget(const QList<FolderInfo> &folders);

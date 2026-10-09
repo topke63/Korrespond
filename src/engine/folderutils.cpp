@@ -3,6 +3,8 @@
 
 #include "folderutils.h"
 
+#include <algorithm>
+
 using namespace Qt::StringLiterals;
 
 static QString roleFromFlags(const QString &path, const QList<QByteArray> &flags)
@@ -55,4 +57,18 @@ void sortFolders(QList<FolderInfo> &folders)
         }
         return a.path.compare(b.path, Qt::CaseInsensitive) < 0;
     });
+}
+
+QString folderForRole(const QList<FolderInfo> &folders, const QString &role)
+{
+    const auto it = std::find_if(folders.cbegin(), folders.cend(), [&role](const FolderInfo &folder) {
+        return folder.role == role;
+    });
+    return it == folders.cend() ? QString() : it->path;
+}
+
+QString archiveTarget(const QList<FolderInfo> &folders)
+{
+    const QString archive = folderForRole(folders, QStringLiteral("archive"));
+    return archive.isEmpty() ? folderForRole(folders, QStringLiteral("all")) : archive;
 }

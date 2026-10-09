@@ -2153,7 +2153,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   pass; nothing calls it yet and nothing was run against a server (T107).
 
 ### T102 — Folder lookup for Archive and Delete
-- status: todo
+- status: done
 - depends on: none
 - parallel-safe with: T99–T101
 - files: src/engine/folderutils.h, src/engine/folderutils.cpp, autotests/folderutilstest.cpp
@@ -2161,7 +2161,10 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - output: `QString folderForRole(const QList<FolderInfo>&, const QString &role)` (empty if none)
   and `archiveTarget(...)` (archive, else all for Gmail) with tests.
 - verify: `ctest --test-dir build -R folderutilstest --output-on-failure`
-- notes:
+- notes: Done 2026-10-09. `folderForRole(folders, role)` (first match, else empty) and
+  `archiveTarget(folders)` (archive, else all, else empty); the trash folder is just
+  `folderForRole(…, "trash")`. 2 new tests (first of several, Yahoo-like, Gmail-like, both,
+  neither/empty).
 
 ### T103 — `MessageStore`: remove one message
 - status: todo

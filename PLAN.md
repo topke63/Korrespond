@@ -3021,6 +3021,23 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - notes: pre-existing; not part of the user's request. Same family as T117's note (a non-fatal
   error clears the search FIFO; m_requests can leak).
 
+### T146 — Toolbar: hover text on the buttons right of Archive/Delete
+- status: todo
+- depends on: T114, T143
+- parallel-safe with: none
+- files: src/qml/MessagePage.qml
+- inputs: the user's report (2026-10-09): "action buttons from Move to Folder to the right don't have
+  hover text". Buttons affected: Move to Folder, Label, Reply, Reply All, Forward. Archive, Delete,
+  Mark as Unread and Flag already have `QQC2.ToolTip` with the shortcut.
+- output: every toolbar button shows a tooltip on hover with its name and shortcut, like the
+  others (Reply "(R)", Reply All "(Shift+R)", Forward "(Shift+F)"; Label and Move have none). The
+  generic `buttonComponent` gets the tooltip. Move to Folder already has one in the code, so find
+  out why it does not show (is the button disabled? disabled controls get no hover) and fix it so
+  a disabled button still explains itself, as Archive and Delete do.
+- verify: `qmllint` clean; offscreen start prints no new QML warnings; the user hovers the buttons
+  (manual).
+- notes:
+
 ## Execution Loop
 
 Execute the plan as a loop. Each iteration handles one task in a fresh context, then ends.

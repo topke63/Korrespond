@@ -3360,6 +3360,54 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - verify: lint count lower; offscreen start and the scratch probes clean.
 - notes: optional quality task, not requested by the user.
 
+# Milestone 3f — Readable HTML messages (user request 2026-10-09: "colors need fix", "visibility")
+
+- **Goal**: an HTML message is always readable in the app, dark or light theme. Today plain-text
+  mail gets the theme's text and background colours, but HTML mail is passed through unchanged
+  (`messageBodyHtml`, HTML branch): without colours of its own the web view falls back to its
+  defaults (black text, dark-blue links) on the theme's background, which is hard to read in the
+  dark theme (the user's screenshot: a reply with quoted text and links).
+- **Decisions** (made while planning; change only with the user):
+  - A mail that sets **no colours of its own** (no `color`, `background`, `bgcolor` or `<font
+    color>` in its markup or style) gets the theme: text colour, link colour (the theme's link
+    colour, readable on the background), quote bars and the background, through a `<style>` block
+    placed before the mail's markup, so the mail's own rules still win.
+  - A mail that **sets its own colours** (newsletters) was designed for a light page: it is shown
+    on a white page with black default text, so its colours stay readable in both themes. No
+    "invert colours" tricks.
+  - Detection is a simple check of the raw HTML text, in the engine; a wrong guess only picks
+    the other readable option. No remote loads are added (CSP and image policy stay as they are).
+- **Out of scope**: a setting to switch modes, per-sender choices, dark versions of images.
+
+### T161 — Engine: readable colours for HTML messages
+- status: todo
+- depends on: T7
+- parallel-safe with: none
+- files: src/engine/messagerenderer.h, src/engine/messagerenderer.cpp,
+  autotests/messagerenderertest.cpp, src/app/mailcontroller.cpp (only if the link colour has to be
+  passed in; the palette is read at the call near `messageBodyHtml(msg, palette.color(...))`)
+- inputs: `messageBodyHtml(msg, text, background)`; the Qt palette's `Link` colour.
+- output: the HTML branch adds the style block described above when the mail has no colours of
+  its own, and a white-page block (`html{background:#fff;color:#000}`, links default) when it
+  has. The function signature gains a link colour argument only if needed; existing callers and
+  tests are updated.
+- verify: build succeeds; renderer test rows: HTML without colours (contains the theme text and
+  background colours and the link colour), HTML with `style="color:#333"`, with `bgcolor`, with
+  `<font color>`, with `border-color` only (counts as no own colours); the CSP meta still comes
+  first; `ctest --preset dev` passes.
+- notes:
+
+### T162 — Manual check: readable HTML messages
+- status: todo
+- depends on: T161
+- parallel-safe with: none
+- files: none
+- inputs: the user's desktop; the reply with quoted text from the screenshot and a newsletter
+  with its own colours.
+- output: confirmed: both are readable, links included, in the dark theme.
+- verify: manual, with the user.
+- notes:
+
 ## Execution Loop
 
 Execute the plan as a loop. Each iteration handles one task in a fresh context, then ends.

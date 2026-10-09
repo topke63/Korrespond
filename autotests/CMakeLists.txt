@@ -10,6 +10,13 @@ ecm_add_test(
     LINK_LIBRARIES plasmamail_engine Qt6::Test
 )
 
+# Test for AppSettings
+ecm_add_test(
+    appsettingstest.cpp
+    TEST_NAME appsettingstest
+    LINK_LIBRARIES plasmamail_engine Qt6::Test
+)
+
 # Test for FolderModel
 ecm_add_test(
     foldermodeltest.cpp

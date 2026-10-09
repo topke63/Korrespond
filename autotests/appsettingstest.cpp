@@ -1,0 +1,97 @@
+// SPDX-FileCopyrightText: 2026 topke <topke63@gmail.com>
+// SPDX-License-Identifier: GPL-2.0-or-later
+
+#include <KConfigGroup>
+#include <KSharedConfig>
+
+#include <QStandardPaths>
+#include <QTest>
+
+#include "appsettings.h"
+
+using namespace Qt::StringLiterals;
+
+class AppSettingsTest : public QObject
+{
+    Q_OBJECT
+
+private:
+    static KConfigGroup group()
+    {
+        return KSharedConfig::openConfig(u"plasmamailrc"_s)->group(u"General"_s);
+    }
+
+private Q_SLOTS:
+    void initTestCase()
+    {
+        // Before the first openConfig(): the config file then lives in a test directory.
+        QStandardPaths::setTestModeEnabled(true);
+    }
+
+    void init()
+    {
+        KConfigGroup g = group();
+        g.deleteGroup();
+        g.sync();
+    }
+
+    void testDefaults()
+    {
+        const AppSettings settings = AppSettings::load();
+        QVERIFY(!settings.keepInTray);
+        QCOMPARE(settings.checkMinutes, 5);
+    }
+
+    void testRoundTrip()
+    {
+        AppSettings settings;
+        settings.keepInTray = true;
+        settings.checkMinutes = 15;
+        settings.save();
+        QCOMPARE(AppSettings::load(), settings);
+    }
+
+    void testValuesAreClampedWhenLoaded()
+    {
+        KConfigGroup g = group();
+        g.writeEntry("CheckMinutes", 0);
+        g.sync();
+        QCOMPARE(AppSettings::load().checkMinutes, 1);
+        g.writeEntry("CheckMinutes", 500);
+        g.sync();
+        QCOMPARE(AppSettings::load().checkMinutes, 60);
+        g.writeEntry("CheckMinutes", -3);
+        g.sync();
+        QCOMPARE(AppSettings::load().checkMinutes, 1);
+    }
+
+    void testValuesAreClampedWhenSaved()
+    {
+        AppSettings settings;
+        settings.checkMinutes = 1000;
+        settings.save();
+        QCOMPARE(group().readEntry("CheckMinutes", 0), 60);
+        settings.checkMinutes = 0;
+        settings.save();
+        QCOMPARE(group().readEntry("CheckMinutes", 0), 1);
+    }
+
+    void testGarbageMinutesFallBackToTheDefault()
+    {
+        KConfigGroup g = group();
+        g.writeEntry("CheckMinutes", "soon");
+        g.sync();
+        QCOMPARE(AppSettings::load().checkMinutes, 5);
+    }
+
+    void testSavingKeepsOtherGroups()
+    {
+        KSharedConfig::openConfig(u"plasmamailrc"_s)->group(u"Storage"_s).writeEntry("Enabled", true);
+        AppSettings().save();
+        QVERIFY(KSharedConfig::openConfig(u"plasmamailrc"_s)->group(u"Storage"_s).readEntry("Enabled", false));
+    }
+};
+
+QTEST_GUILESS_MAIN(AppSettingsTest)
+
+#include "appsettingstest.moc"

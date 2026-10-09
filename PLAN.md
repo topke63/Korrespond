@@ -2446,7 +2446,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   appeared in the stderr of the About-page run (not seen with other pages).
 
 ### T122 — Settings: Keep running in the tray (storage of the option)
-- status: todo
+- status: done
 - depends on: none
 - parallel-safe with: T120, T121
 - files: src/engine/appsettings.h, src/engine/appsettings.cpp, autotests/appsettingstest.cpp (+ CMake lines)
@@ -2455,7 +2455,12 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   1–60), load/save in plasmamailrc group `[General]`; tests: defaults, round trip, out-of-range
   clamped.
 - verify: `ctest --test-dir build -R appsettingstest --output-on-failure`
-- notes:
+- notes: Done 2026-10-09. `AppSettings { keepInTray = false; checkMinutes = 5 }` with `load()` /
+  `save()` in `[General]` (`KeepInTray`, `CheckMinutes`), limits 1–60 applied on load and save
+  (`minCheckMinutes` / `maxCheckMinutes`). 6 tests: defaults, round trip, clamping on load and on
+  save, a non-number falls back to 5, saving leaves the other groups alone. (KConfig reads any
+  other text as `true` for a bool, so there is no "garbage bool" test.) 13/13 test executables
+  pass.
 
 ### T123 — Link KStatusNotifierItem and KNotifications
 - status: todo

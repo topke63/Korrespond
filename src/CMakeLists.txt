@@ -4,6 +4,7 @@
 # Engine: accounts and IMAP access, no UI dependencies.
 add_library(plasmamail_engine STATIC
     engine/account.cpp
+    engine/appsettings.cpp
     engine/folderutils.cpp
     engine/imapclient.cpp
     engine/messagerenderer.cpp

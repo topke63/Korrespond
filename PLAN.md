@@ -3406,7 +3406,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   newsletter shown on white with its own colours. Found: quirks mode for every HTML mail → T163.
 
 ### T162 — Manual check: readable HTML messages
-- status: todo
+- status: done
 - depends on: T161
 - parallel-safe with: none
 - files: none
@@ -3415,6 +3415,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - output: confirmed: both are readable, links included, in the dark theme.
 - verify: manual, with the user.
 - notes:
+  Closed 2026-10-09: the user checked the reply and a newsletter in the dark theme and said they are readable.
 
 ### T163 — HTML mail renders in quirks mode (found in T161)
 - status: todo

@@ -3195,7 +3195,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   ctest 17/17, offscreen clean. Follow-ups in T158.
 
 ### T153 — Message view: clickable attachments
-- status: todo
+- status: done
 - depends on: T152
 - parallel-safe with: none
 - files: src/qml/MessagePage.qml
@@ -3205,10 +3205,16 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   arrow): Open, Save As… (a `QtQuick.Dialogs.FileDialog` in save mode, default name = the
   attachment name); tooltip with the full name.
 - verify: `qmllint` clean; offscreen start prints no new QML warnings.
-- notes:
+- notes: Done 2026-10-09. Chip click opens (risky → Kirigami.PromptDialog "Opening this type of file can
+  run code. Save it instead?" with Save As… / Cancel); arrow button + right click menu Open / Save As…;
+  one FileDialog (SaveFile, Downloads, default name = new `MailController.attachmentFileName(index)`,
+  the sanitized name, URL-encoded) → saveAttachment. `pendingIndex` is set before every
+  openAttachment, so the attachmentBlocked safety net does not depend on names. Also touched
+  src/app/mailcontroller.{h,cpp} (attachmentFileName). QtTest probe with a stub controller 8/8;
+  qmllint clean, ctest 17/17, offscreen clean. Chip labels still show the raw names (display only).
 
 ### T154 — Manual check: open and save attachments
-- status: todo
+- status: waiting (manual check with the user)
 - depends on: T153
 - parallel-safe with: none
 - files: none

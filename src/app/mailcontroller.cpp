@@ -1775,6 +1775,15 @@ bool MailController::attachmentIsRisky(int index)
     return index < parts.size() && isRiskyAttachment(parts.at(index));
 }
 
+QString MailController::attachmentFileName(int index) const
+{
+    if (!m_openMessage || index < 0) {
+        return {};
+    }
+    const QList<AttachmentData> parts = attachmentParts(*m_openMessage);
+    return index < parts.size() ? parts.at(index).name : QString();
+}
+
 void MailController::openAttachment(int index)
 {
     if (!m_openMessage || index < 0) {

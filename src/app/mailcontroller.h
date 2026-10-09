@@ -243,6 +243,9 @@ public:
     Q_INVOKABLE bool saveAttachment(int index, const QUrl &target);
     // True if opening it could run code (by file suffix, declared or detected type).
     Q_INVOKABLE bool attachmentIsRisky(int index);
+    // The safe file name of attachment `index` (as in messageAttachments, but without paths or control
+    // characters); empty if there is no such attachment in the open message.
+    Q_INVOKABLE QString attachmentFileName(int index) const;
     // Flags or unflags message `uid` of the current list (or the open message): updates the list
     // and the open message at once, then stores the flag on the server.
     Q_INVOKABLE void setFlagged(const QString &account, qint64 uid, bool flagged);

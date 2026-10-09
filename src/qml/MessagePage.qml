@@ -2,7 +2,9 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 import QtQuick
+import QtCore
 import QtQuick.Controls as QQC2
+import QtQuick.Dialogs
 import QtQuick.Layouts
 import QtWebEngine
 import org.kde.ki18n
@@ -247,6 +249,83 @@ Kirigami.Page {
     padding: 0
     onHtmlChanged: showHtml()
 
+    // Attachment currently being asked about / saved (never logged).
+    property int pendingIndex: -1
+    property string pendingName: ""
+
+    // Every call to MailController.openAttachment goes through here, so pendingIndex is always the
+    // attachment the controller is working on (its blocked signal is answered with it).
+    function openAttachment(index) {
+        pendingIndex = index;
+        if (MailController.attachmentIsRisky(index)) {
+            askSave(index);
+        } else {
+            MailController.openAttachment(index);
+        }
+    }
+
+    function askSave(index) {
+        pendingIndex = index;
+        pendingName = MailController.attachmentFileName(index);
+        riskyDialog.open();
+    }
+
+    function saveAttachmentAs(index) {
+        pendingIndex = index;
+        pendingName = MailController.attachmentFileName(index);
+        const folder = String(StandardPaths.writableLocation(StandardPaths.DownloadLocation)).replace(/\/+$/, "");
+        saveDialog.currentFolder = folder;
+        // Encoded, so '#', '?' or '%' in the name stay part of the file name.
+        saveDialog.selectedFile = folder + "/" + encodeURIComponent(pendingName);
+        saveDialog.open();
+    }
+
+    FileDialog {
+        id: saveDialog
+
+        fileMode: FileDialog.SaveFile
+        onAccepted: {
+            if (page.pendingIndex >= 0) {
+                MailController.saveAttachment(page.pendingIndex, selectedFile);
+            }
+        }
+    }
+
+    Kirigami.PromptDialog {
+        id: riskyDialog
+
+        title: KI18n.i18nc("@title:dialog", "Potentially Unsafe File")
+        subtitle: KI18n.i18nc("@info", "Opening this type of file can run code. Save it instead?")
+        standardButtons: Kirigami.Dialog.NoButton
+        customFooterActions: [
+            Kirigami.Action {
+                text: KI18n.i18nc("@action:button", "Save As…")
+                icon.name: "document-save-as"
+                onTriggered: {
+                    riskyDialog.close();
+                    page.saveAttachmentAs(page.pendingIndex);
+                }
+            },
+            Kirigami.Action {
+                text: KI18n.i18nc("@action:button", "Cancel")
+                icon.name: "dialog-cancel"
+                onTriggered: riskyDialog.close()
+            }
+        ]
+    }
+
+    Connections {
+        target: MailController
+
+        // Safety net: the controller refused to open a risky type. It is answered for the index that
+        // openAttachment was last called with (set by page.openAttachment), not by the name.
+        function onAttachmentBlocked(name) {
+            if (page.pendingIndex >= 0) {
+                page.askSave(page.pendingIndex);
+            }
+        }
+    }
+
     Shortcut {
         sequence: "Ctrl+Shift+F"
         enabled: page.hasMessage
@@ -366,15 +445,61 @@ Kirigami.Page {
                 Repeater {
                     model: MailController.messageAttachments
 
-                    delegate: Kirigami.Chip {
+                    delegate: Row {
+                        id: attachment
+
+                        required property int index
                         required property string modelData
 
-                        text: modelData
-                        icon.name: "mail-attachment"
-                        closable: false
-                        checkable: false
-                        hoverEnabled: false
-                        focusPolicy: Qt.NoFocus
+                        spacing: 0
+
+                        Kirigami.Chip {
+                            text: attachment.modelData
+                            icon.name: "mail-attachment"
+                            closable: false
+                            checkable: false
+                            hoverEnabled: true
+                            activeFocusOnTab: true
+                            focusPolicy: Qt.StrongFocus
+
+                            HoverHandler { cursorShape: Qt.PointingHandCursor }
+                            TapHandler {
+                                acceptedButtons: Qt.RightButton
+                                onTapped: attachmentMenu.popup()
+                            }
+                            QQC2.ToolTip.visible: hovered
+                            QQC2.ToolTip.text: attachment.modelData
+                            QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
+
+                            onClicked: page.openAttachment(attachment.index)
+                            Keys.onReturnPressed: clicked()
+                            Keys.onEnterPressed: clicked()
+                        }
+
+                        QQC2.ToolButton {
+                            icon.name: "arrow-down"
+                            display: QQC2.AbstractButton.IconOnly
+                            text: KI18n.i18nc("@action:button", "Attachment Actions")
+                            QQC2.ToolTip.visible: hovered
+                            QQC2.ToolTip.text: text
+                            QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
+                            onClicked: attachmentMenu.popup()
+                        }
+
+                        QQC2.Menu {
+                            id: attachmentMenu
+
+                            QQC2.MenuItem {
+                                text: KI18n.i18nc("@action:inmenu", "Open")
+                                icon.name: "document-open"
+                                onTriggered: page.openAttachment(attachment.index)
+                            }
+                            QQC2.MenuItem {
+                                text: KI18n.i18nc("@action:inmenu", "Save As…")
+                                icon.name: "document-save-as"
+                                onTriggered: page.saveAttachmentAs(attachment.index)
+                            }
+                        }
                     }
                 }
             }

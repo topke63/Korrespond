@@ -2666,7 +2666,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   KDE dialog need the desktop (T129).
 
 ### T129 — Manual check: icon, tray, notification
-- status: todo
+- status: skipped
 - depends on: T121, T126, T127, T128
 - parallel-safe with: none
 - files: none
@@ -2685,6 +2685,8 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   notification, the new mail appearing in the open list on its own. Not confirmed yet: clicking the
   notification to open the message, closing to the tray, "Configure Notifications…", and a sound
   (the notifyrc has `Action=Popup` only — a sound is an open question for the user).
+  Skipped 2026-10-09 on the user's decision. Confirmed earlier: tray icon and tooltip, the notification, the new mail appearing in the open list. Never checked: clicking a notification to open the message, closing to the tray, "Configure Notifications…". Sound: the user does not want one (the open question is answered: popup only).
+
 
 # Milestone 3c — Resizable panels (user request 2026-10-09: "I need to resize panels")
 

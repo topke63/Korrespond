@@ -2655,7 +2655,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   fixed here (it now copies `m_app` first).
 
 ### T131 — Controller: panel width properties
-- status: todo
+- status: done
 - depends on: T130
 - parallel-safe with: T132
 - files: src/app/mailcontroller.h, src/app/mailcontroller.cpp
@@ -2664,7 +2664,11 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   the limits/defaults exposed to QML; `Q_INVOKABLE void savePanelWidths(int sidebar, int list)`
   (clamps, saves, emits; no restart of anything else); `saveAppSettings` keeps the widths.
 - verify: build succeeds; all tests pass.
-- notes:
+- notes: Done 2026-10-09. Properties `sidebarWidth`, `listWidth` (NOTIFY `panelWidthsChanged`) and
+  CONSTANT `sidebarMin/Max/DefaultWidth`, `listMin/Max/DefaultWidth`; `savePanelWidths(sidebar,
+  list)` clamps, saves via a copy of `m_app` (so the tray/interval options stay) and emits only
+  when something changed. `saveAppSettings` already keeps the widths (T130). Build without
+  warnings, 14/14 tests; nothing in QML uses them yet (T133/T134).
 
 ### T132 — `PanelResizer.qml`: the drag handle
 - status: todo

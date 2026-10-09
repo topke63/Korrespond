@@ -411,6 +411,59 @@ int MailController::checkMinutes() const
     return m_app.checkMinutes;
 }
 
+int MailController::sidebarWidth() const
+{
+    return m_app.sidebarWidth;
+}
+
+int MailController::listWidth() const
+{
+    return m_app.listWidth;
+}
+
+int MailController::sidebarMinWidth() const
+{
+    return AppSettings::minSidebarWidth;
+}
+
+int MailController::sidebarMaxWidth() const
+{
+    return AppSettings::maxSidebarWidth;
+}
+
+int MailController::sidebarDefaultWidth() const
+{
+    return AppSettings::defaultSidebarWidth;
+}
+
+int MailController::listMinWidth() const
+{
+    return AppSettings::minListWidth;
+}
+
+int MailController::listMaxWidth() const
+{
+    return AppSettings::maxListWidth;
+}
+
+int MailController::listDefaultWidth() const
+{
+    return AppSettings::defaultListWidth;
+}
+
+void MailController::savePanelWidths(int sidebar, int list)
+{
+    AppSettings settings = m_app;
+    settings.sidebarWidth = std::clamp(sidebar, AppSettings::minSidebarWidth, AppSettings::maxSidebarWidth);
+    settings.listWidth = std::clamp(list, AppSettings::minListWidth, AppSettings::maxListWidth);
+    if (settings == m_app) {
+        return;
+    }
+    settings.save();
+    m_app = settings;
+    Q_EMIT panelWidthsChanged();
+}
+
 bool MailController::notificationsConfigurable() const
 {
     return !QStandardPaths::locate(QStandardPaths::GenericDataLocation, u"knotifications6/plasma-mail.notifyrc"_s).isEmpty();

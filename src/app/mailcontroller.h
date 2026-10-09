@@ -100,6 +100,15 @@ class MailController : public QObject
     // background check interval in minutes.
     Q_PROPERTY(bool keepInTray READ keepInTray NOTIFY appSettingsChanged)
     Q_PROPERTY(int checkMinutes READ checkMinutes NOTIFY appSettingsChanged)
+    // Widths of the folder sidebar and the message list column (logical pixels), and their limits.
+    Q_PROPERTY(int sidebarWidth READ sidebarWidth NOTIFY panelWidthsChanged)
+    Q_PROPERTY(int listWidth READ listWidth NOTIFY panelWidthsChanged)
+    Q_PROPERTY(int sidebarMinWidth READ sidebarMinWidth CONSTANT)
+    Q_PROPERTY(int sidebarMaxWidth READ sidebarMaxWidth CONSTANT)
+    Q_PROPERTY(int sidebarDefaultWidth READ sidebarDefaultWidth CONSTANT)
+    Q_PROPERTY(int listMinWidth READ listMinWidth CONSTANT)
+    Q_PROPERTY(int listMaxWidth READ listMaxWidth CONSTANT)
+    Q_PROPERTY(int listDefaultWidth READ listDefaultWidth CONSTANT)
     // KDE's notification settings for the app can be opened (the app's notifyrc is installed).
     Q_PROPERTY(bool notificationsConfigurable READ notificationsConfigurable CONSTANT)
 
@@ -150,6 +159,14 @@ public:
     [[nodiscard]] int unreadCount() const;
     [[nodiscard]] bool keepInTray() const;
     [[nodiscard]] int checkMinutes() const;
+    [[nodiscard]] int sidebarWidth() const;
+    [[nodiscard]] int listWidth() const;
+    [[nodiscard]] int sidebarMinWidth() const;
+    [[nodiscard]] int sidebarMaxWidth() const;
+    [[nodiscard]] int sidebarDefaultWidth() const;
+    [[nodiscard]] int listMinWidth() const;
+    [[nodiscard]] int listMaxWidth() const;
+    [[nodiscard]] int listDefaultWidth() const;
     [[nodiscard]] bool notificationsConfigurable() const;
 
     // Checks the credentials by logging in and listing folders; only then stores the password
@@ -204,6 +221,9 @@ public:
     // Saves the options at once: the check timer restarts with the new interval (1–60) and
     // appSettingsChanged is emitted (the tray follows keepInTray).
     Q_INVOKABLE void saveAppSettings(bool keepInTray, int checkMinutes);
+    // Remembers the widths the user dragged the panels to (clamped to the limits); call it when
+    // a drag ends. Emits panelWidthsChanged when something changed.
+    Q_INVOKABLE void savePanelWidths(int sidebar, int list);
     // Opens KDE's dialog for the app's notification events.
     Q_INVOKABLE void configureNotifications();
     Q_INVOKABLE void archiveMessage();
@@ -235,6 +255,7 @@ Q_SIGNALS:
     void syncingChanged();
     void unreadCountChanged();
     void appSettingsChanged();
+    void panelWidthsChanged();
     void showMessageRequested();
     // New mail found by a background check. With count == 1, sender ("Name <address>") and
     // subject describe the message; uid is the newest new message of the account's inbox.

@@ -3081,7 +3081,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - **Out of scope**: drag and drop, custom sorting rules.
 
 ### T148 — Controller and model: move an account
-- status: todo
+- status: done
 - depends on: T147
 - parallel-safe with: none
 - files: src/app/mailcontroller.h, src/app/mailcontroller.cpp, src/models/accountlistmodel.h,
@@ -3095,7 +3095,14 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - verify: build succeeds; `ctest --preset dev` passes; a model test (extend the existing
   `AccountListModel` test if there is one, else add `autotests/accountlistmodeltest.cpp`) moves a
   row up, down, and past the end.
-- notes:
+- notes: Done 2026-10-09. `MailController::moveAccount(email, ±1)` → `AccountListModel::moveRow(from,
+  to)` (beginMoveRows, destination to+1 when moving down) + `m_sessions.move` + `saveAccounts()`;
+  emits accountChanged() only when index 0 is involved (legacy first-account properties). The
+  sidebar's Repeater (FolderSidebar.qml) binds to the AccountListModel, so rowsMoved keeps its
+  sections. Also changed src/CMakeLists.txt (not listed): accountsession.cpp and
+  accountlistmodel.cpp moved into the `plasmamail_models` static lib so the new
+  autotests/accountlistmodeltest.cpp can link them (no QML registration involved). ctest 17/17,
+  fresh configure in a separate build dir ok, offscreen clean. moveAccount itself has no unit test.
 
 ### T149 — Settings → Accounts: move up / down buttons
 - status: todo

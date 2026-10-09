@@ -1,0 +1,76 @@
+// SPDX-FileCopyrightText: 2026 topke <topke63@gmail.com>
+// SPDX-License-Identifier: GPL-2.0-or-later
+
+#include "accountlistmodel.h"
+#include "accountsession.h"
+
+#include <QAbstractItemModelTester>
+#include <QSignalSpy>
+#include <QStandardPaths>
+#include <QTemporaryDir>
+#include <QTest>
+
+using namespace Qt::StringLiterals;
+
+class AccountListModelTest : public QObject
+{
+    Q_OBJECT
+
+private:
+    QStringList order(const AccountListModel &model) const
+    {
+        QStringList emails;
+        for (int row = 0; row < model.rowCount(); ++row) {
+            emails << model.data(model.index(row), AccountListModel::EmailRole).toString();
+        }
+        return emails;
+    }
+
+private Q_SLOTS:
+    void initTestCase()
+    {
+        QStandardPaths::setTestModeEnabled(true);
+    }
+
+    void testMoveRow()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        QList<AccountSession *> sessions;
+        for (const QString &name : {u"a"_s, u"b"_s, u"c"_s}) {
+            Account account;
+            account.email = name + u"@example.com"_s;
+            sessions.append(new AccountSession(account, dir.filePath(name), StorageSettings(), this));
+        }
+        AccountListModel model;
+        QAbstractItemModelTester tester(&model, QAbstractItemModelTester::FailureReportingMode::QtTest);
+        model.setSessions(sessions);
+        const QStringList abc{u"a@example.com"_s, u"b@example.com"_s, u"c@example.com"_s};
+        QCOMPARE(order(model), abc);
+
+        QSignalSpy moved(&model, &QAbstractItemModel::rowsMoved);
+        QSignalSpy reset(&model, &QAbstractItemModel::modelReset);
+
+        QVERIFY(model.moveRow(0, 1)); // down
+        QCOMPARE(order(model), (QStringList{u"b@example.com"_s, u"a@example.com"_s, u"c@example.com"_s}));
+        QCOMPARE(moved.count(), 1);
+
+        QVERIFY(model.moveRow(2, 1)); // up
+        QCOMPARE(order(model), (QStringList{u"b@example.com"_s, u"c@example.com"_s, u"a@example.com"_s}));
+        QCOMPARE(moved.count(), 2);
+
+        QVERIFY(!model.moveRow(2, 3)); // past the end
+        QVERIFY(!model.moveRow(0, -1));
+        QVERIFY(!model.moveRow(1, 1));
+        QCOMPARE(order(model), (QStringList{u"b@example.com"_s, u"c@example.com"_s, u"a@example.com"_s}));
+        QCOMPARE(moved.count(), 2);
+        QCOMPARE(reset.count(), 0);
+
+        // The folder models travel with their rows.
+        QCOMPARE(model.session(2)->account().email, u"a@example.com"_s);
+        qDeleteAll(sessions);
+    }
+};
+
+QTEST_GUILESS_MAIN(AccountListModelTest)
+#include "accountlistmodeltest.moc"

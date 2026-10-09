@@ -50,6 +50,7 @@ qt_add_qml_module(plasma-mail
     URI PlasmaMail
     VERSION 1.0
     SOURCES
+        app/accountsession.cpp app/accountsession.h
         app/mailcontroller.cpp app/mailcontroller.h
     QML_FILES
         qml/Main.qml

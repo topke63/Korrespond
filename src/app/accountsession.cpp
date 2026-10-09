@@ -1,0 +1,203 @@
+// SPDX-FileCopyrightText: 2026 topke <topke63@gmail.com>
+// SPDX-License-Identifier: GPL-2.0-or-later
+
+#include "accountsession.h"
+
+#include "foldermodel.h"
+#include "messagestore.h"
+#include "retention.h"
+#include "syncmanager.h"
+
+#include <QDateTime>
+
+AccountSession::AccountSession(const Account &account, const QString &storeDir, const StorageSettings &storage, QObject *parent)
+    : QObject(parent)
+    , m_account(account)
+    , m_client(new ImapClient(this))
+    , m_folderModel(new FolderModel(this))
+    , m_store(std::make_unique<MessageStore>(storeDir))
+    , m_sync(new SyncManager(m_client, m_store.get(), this))
+    , m_storage(storage)
+{
+    // Connected before anyone else can, so the session has saved the list when its own
+    // foldersListed() goes out.
+    connect(m_client, &ImapClient::foldersListed, this, &AccountSession::onFoldersListed);
+    connect(m_client, &ImapClient::headersFetched, this, &AccountSession::headersFetched);
+    connect(m_client, &ImapClient::messageFetched, this, &AccountSession::messageFetched);
+    connect(m_client, &ImapClient::errorOccurred, this, &AccountSession::errorOccurred);
+
+    // Store errors are logged, not shown: the mail itself still works from the server.
+    connect(m_sync, &SyncManager::progress, this, &AccountSession::updateStorageUsage);
+    connect(m_sync, &SyncManager::syncFinished, this, [this] {
+        setSyncing(false);
+        updateStorageUsage();
+    });
+    connect(m_sync, &SyncManager::aborted, this, [this] {
+        setSyncing(false);
+        updateStorageUsage();
+    });
+    connect(m_sync, &SyncManager::errorOccurred, this, [this](const QString &message) {
+        qWarning("Local storage sync failed for %s: %s", qPrintable(m_account.email), qPrintable(message));
+        setSyncing(false);
+        updateStorageUsage();
+    });
+
+    m_sync->setSettings(m_storage);
+    m_storeReady = m_store->open();
+    if (!m_storeReady) {
+        qWarning("Cannot open the local message store of %s: %s", qPrintable(m_account.email), qPrintable(m_store->lastError()));
+    }
+    updateStorageUsage();
+}
+
+// SyncManager uses the store, so it goes first.
+AccountSession::~AccountSession()
+{
+    delete m_sync;
+}
+
+const Account &AccountSession::account() const
+{
+    return m_account;
+}
+
+ImapClient *AccountSession::client() const
+{
+    return m_client;
+}
+
+MessageStore *AccountSession::store() const
+{
+    return m_store.get();
+}
+
+FolderModel *AccountSession::folderModel() const
+{
+    return m_folderModel;
+}
+
+QList<FolderInfo> AccountSession::folders() const
+{
+    return m_folders;
+}
+
+bool AccountSession::storageReady() const
+{
+    return m_storeReady;
+}
+
+bool AccountSession::storageActive() const
+{
+    return m_storeReady && m_storage.enabled;
+}
+
+qint64 AccountSession::storageUsedBytes() const
+{
+    return m_storageUsedBytes;
+}
+
+bool AccountSession::syncing() const
+{
+    return m_syncing;
+}
+
+void AccountSession::connectWithSecret(const QString &secret)
+{
+    // setAccount() disconnects, which a running sync would never hear about.
+    m_sync->stop();
+    setSyncing(false);
+    m_client->setAccount(m_account, secret);
+    m_client->listFolders();
+}
+
+bool AccountSession::showStoredFolders()
+{
+    if (!storageActive()) {
+        return false;
+    }
+    const QList<FolderInfo> stored = m_store->folders();
+    if (stored.isEmpty()) {
+        return false;
+    }
+    // Not m_folders: sync waits for the server's own list.
+    m_folderModel->setFolders(stored);
+    return true;
+}
+
+void AccountSession::onFoldersListed(const QList<FolderInfo> &folders)
+{
+    m_folders = folders;
+    m_folderModel->setFolders(folders);
+    if (storageActive() && !m_store->setFolders(folders)) {
+        qWarning("Cannot store the folder list of %s: %s", qPrintable(m_account.email), qPrintable(m_store->lastError()));
+    }
+    Q_EMIT foldersListed(folders);
+    startSync();
+}
+
+void AccountSession::setStorageSettings(const StorageSettings &storage)
+{
+    m_storage = storage;
+    m_sync->setSettings(storage);
+    if (!storage.enabled && m_syncing) {
+        m_sync->stop(); // no point downloading what is deleted next
+        setSyncing(false);
+    }
+    applyStorageLimits();
+    // The folder list may have arrived while storage was still off.
+    if (storageActive() && !m_folders.isEmpty() && !m_store->setFolders(m_folders)) {
+        qWarning("Cannot store the folder list of %s: %s", qPrintable(m_account.email), qPrintable(m_store->lastError()));
+    }
+    startSync();
+}
+
+void AccountSession::applyStorageLimits()
+{
+    if (!m_storeReady) {
+        return;
+    }
+    // A running sync applies the limits itself when it finishes each folder.
+    if (!m_syncing) {
+        const RetentionResult result = applyRetention(*m_store, m_storage, QDateTime::currentDateTime());
+        if (!result.ok) {
+            qWarning("Local storage cleanup failed for %s: %s", qPrintable(m_account.email), qPrintable(m_store->lastError()));
+        }
+    }
+    updateStorageUsage();
+}
+
+void AccountSession::clearStore()
+{
+    m_sync->stop();
+    setSyncing(false);
+    if (m_storeReady && !m_store->clear()) {
+        qWarning("Cannot delete the local copies of %s: %s", qPrintable(m_account.email), qPrintable(m_store->lastError()));
+    }
+    updateStorageUsage();
+}
+
+void AccountSession::startSync()
+{
+    if (!m_storeReady || !m_storage.enabled || m_syncing || m_folders.isEmpty()) {
+        return;
+    }
+    setSyncing(true);
+    m_sync->syncAll(m_folders);
+}
+
+void AccountSession::updateStorageUsage()
+{
+    const qint64 used = m_storeReady ? m_store->totalSize() : 0;
+    if (used != m_storageUsedBytes) {
+        m_storageUsedBytes = used;
+        Q_EMIT storageUsageChanged();
+    }
+}
+
+void AccountSession::setSyncing(bool syncing)
+{
+    if (syncing != m_syncing) {
+        m_syncing = syncing;
+        Q_EMIT syncingChanged();
+    }
+}

@@ -1785,7 +1785,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   account store → old files stay, account store unchanged. 12/12 test executables pass.
 
 ### T83 — `AccountSession`: one account's client, folders and store
-- status: todo
+- status: done
 - depends on: T68, T81
 - parallel-safe with: T69–T80
 - files: src/app/accountsession.h, src/app/accountsession.cpp (+ one line in src/CMakeLists.txt)
@@ -1795,7 +1795,13 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   `client()`, `store()`, `folderModel()`, `storageUsedBytes()`; it saves folder lists and starts
   syncs itself when storage is on; signals forward the client's. Not used by the controller yet.
 - verify: `cmake --build build --target plasma-mail` succeeds.
-- notes:
+- notes: Done 2026-10-09. `AccountSession(account, storeDir, storageSettings)`; extra API beyond
+  the plan: `showStoredFolders()`, `setStorageSettings()`, `applyStorageLimits()`, `clearStore()`,
+  `startSync()`, `syncing()`, `storageActive()/storageReady()`. The caller computes `storeDir`
+  (`MessageStore::accountDir`) and runs `moveLegacyStore` first (T85). Folder lists are saved and
+  syncs started whenever the server's list arrives, also for an account still being verified —
+  T90 must clear that store if verification fails. `foldersListed` is forwarded after the
+  session has handled it. Builds, 12/12 tests pass; not used by MailController yet.
 
 ### T84 — `AccountListModel` for the sidebar and settings
 - status: todo

@@ -1914,7 +1914,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   `openMessage` opens the first account's copy. T94 passes the row's account.
 
 ### T90 — `MailController`: add and remove accounts
-- status: todo
+- status: done
 - depends on: T88
 - parallel-safe with: T89
 - files: src/app/mailcontroller.h, src/app/mailcontroller.cpp
@@ -1923,7 +1923,14 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   refused); `removeAccount(account)` removes only that account: session, keychain entry, its
   store folder, config entry. Other accounts keep running.
 - verify: build succeeds; manual in T95.
-- notes:
+- notes: Done 2026-10-09. `setupAccount` refuses an email that is already added
+  ("… is already added.") and otherwise appends the verified account after the keychain write; the
+  first account resets the view as before, later ones just join an open shared view.
+  `removeAccount(account)` removes only that account (session, keychain entry, store folder,
+  config entry); if the open folder or message was its, the view goes to All Inboxes (or empties
+  with no accounts), otherwise a shared view is re-merged without it. The no-argument
+  `removeAccount()` is kept (removes the first account) until T96. Build and 12/12 tests pass;
+  not exercised at runtime yet (the UI can't add a second account until T96/T97) — covered by T95.
 
 ### T91 — `MailController`: storage over all accounts
 - status: todo

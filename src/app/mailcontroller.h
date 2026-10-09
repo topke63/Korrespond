@@ -113,8 +113,8 @@ public:
     [[nodiscard]] bool storageReady() const;
 
     // Checks the credentials by logging in and listing folders; only then stores the password
-    // in the keychain, saves the account and sets hasAccount. On failure nothing is saved and
-    // errorOccurred is emitted. provider: "yahoo", "gmail", "outlook" or "custom" (custom uses
+    // in the keychain and adds the account after the existing ones (an email that is already
+    // added is refused). On failure nothing is saved and errorOccurred is emitted. provider: "yahoo", "gmail", "outlook" or "custom" (custom uses
     // the host/port arguments; the others use their presets).
     Q_INVOKABLE void setupAccount(const QString &provider,
                                   const QString &email,
@@ -124,8 +124,10 @@ public:
                                   int imapPort = 993,
                                   const QString &smtpHost = {},
                                   int smtpPort = 465);
-    // Disconnects the first account, deletes its password from the keychain, its local copies
-    // and the account from the config.
+    // Disconnects one account and deletes its password from the keychain, its local copies and
+    // its entry in the config. The other accounts keep running.
+    Q_INVOKABLE void removeAccount(const QString &account);
+    // Removes the first account; kept until the settings pass the account (T96).
     Q_INVOKABLE void removeAccount();
     // Shows the newest messages of `path` (clears the list first). With storage on, the stored
     // copies show at once and the server's list replaces them when it arrives.
@@ -195,6 +197,7 @@ private:
     // Shows the uiSession()'s folder list: keeps the current folder if it still exists, else
     // opens All Inboxes.
     void applyFolderList();
+    void saveAccounts() const; // writes the sessions' accounts to the config, in order
     void fetchSharedPart(AccountSession *session);
     void mergeSharedParts();
     // The IMAP folder and filter behind a folder or shared-view path. A shared view reads each

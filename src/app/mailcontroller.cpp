@@ -693,6 +693,10 @@ void MailController::setupAccount(const QString &provider,
         return;
     }
 
+    if (sessionFor(account.email)) {
+        Q_EMIT errorOccurred(i18n("%1 is already added.", account.email));
+        return;
+    }
     if (m_pending) {
         discardSession(std::exchange(m_pending, nullptr), false);
     }
@@ -705,17 +709,21 @@ void MailController::setupAccount(const QString &provider,
 
 void MailController::removeAccount()
 {
-    resetRequests();
-    if (m_pending) {
+    removeAccount(accountEmail());
+}
+
+void MailController::removeAccount(const QString &account)
+{
+    if (m_pending && m_pending->account().email.compare(account, Qt::CaseInsensitive) == 0) {
         discardSession(std::exchange(m_pending, nullptr), false);
         m_pendingPassword.clear();
     }
-    if (m_sessions.isEmpty()) {
+    AccountSession *session = sessionFor(account);
+    if (!session) {
         return;
     }
-    // Only the first account for now (T90 lets the UI choose).
-    AccountSession *session = m_sessions.takeFirst();
     const QString email = session->account().email;
+    m_sessions.removeOne(session);
     connect(
         m_secrets,
         &SecretStore::passwordDeleted,
@@ -727,29 +735,43 @@ void MailController::removeAccount()
         },
         Qt::SingleShotConnection);
     m_secrets->deletePassword(email);
-    QList<Account> remaining;
-    for (const AccountSession *other : std::as_const(m_sessions)) {
-        remaining.append(other->account());
-    }
-    Account::saveAll(remaining);
+    saveAccounts();
     // The local copies belong to the removed account.
     discardSession(session, true);
     m_accounts->setSessions(m_sessions);
-    m_showingStored = false;
-    m_currentAccount.clear();
-    m_sharedParts.clear();
-    m_messageModel->clear();
-    clearMessage(true);
-    if (!m_currentFolder.isEmpty()) {
-        m_currentFolder.clear();
-        Q_EMIT currentFolderChanged();
+    m_sharedParts.erase(email);
+    if (m_messageAccount == email) {
+        clearMessage(true);
+    }
+    if (m_currentAccount == email || m_sessions.isEmpty()) {
+        // The open folder is gone: back to All Inboxes, or to nothing without accounts.
+        m_showingStored = false;
+        m_currentAccount.clear();
+        m_sharedParts.clear();
+        m_messageModel->clear();
+        clearMessage(true);
+        if (!m_currentFolder.isEmpty()) {
+            m_currentFolder.clear();
+            Q_EMIT currentFolderChanged();
+        }
+        if (!m_sessions.isEmpty()) {
+            selectFolder(QLatin1StringView(allInboxesPath));
+        }
+    } else if (isSharedView(m_currentFolder)) {
+        mergeSharedParts(); // without the removed account's messages
     }
     updateStorageUsage();
     updateSyncing();
     Q_EMIT accountChanged();
-    if (!m_sessions.isEmpty()) {
-        selectFolder(QLatin1StringView(allInboxesPath));
+}
+
+void MailController::saveAccounts() const
+{
+    QList<Account> accounts;
+    for (const AccountSession *session : m_sessions) {
+        accounts.append(session->account());
     }
+    Account::saveAll(accounts);
 }
 
 void MailController::connectSavedAccounts()
@@ -827,8 +849,7 @@ void MailController::onSessionFolders(AccountSession *session)
         return;
     }
 
-    // The login worked: now store the new account. It replaces the saved one (T90 will add
-    // accounts instead); the replaced account's password is removed from the keychain.
+    // The login worked: now keep the password and add the account.
     if (m_awaitingFolders.erase(session) > 0) {
         endRequest();
     }
@@ -845,26 +866,24 @@ void MailController::onSessionFolders(AccountSession *session)
                 Q_EMIT errorOccurred(i18n("Could not save the password for %1 in the keychain: %2", key, error));
                 return;
             }
-            const QList<AccountSession *> previous = std::exchange(m_sessions, {session});
-            for (AccountSession *old : previous) {
-                const bool sameAccount = old->account().email.compare(account.email, Qt::CaseInsensitive) == 0;
-                if (!sameAccount) {
-                    m_secrets->deletePassword(old->account().email);
-                }
-                discardSession(old, !sameAccount); // the same account's copies stay for the new session
-            }
-            Account::saveAll({account});
+            const bool firstAccount = m_sessions.isEmpty();
+            m_sessions.append(session);
+            saveAccounts();
             m_accounts->setSessions(m_sessions);
-            m_showingStored = false;
-            m_currentAccount.clear();
-            m_sharedParts.clear();
-            m_currentFolder.clear();
-            m_messageModel->clear();
-            clearMessage(true);
             updateStorageUsage();
             updateSyncing();
             Q_EMIT accountChanged();
-            applyFolderList();
+            if (firstAccount) {
+                m_showingStored = false;
+                m_currentAccount.clear();
+                m_sharedParts.clear();
+                m_currentFolder.clear();
+                m_messageModel->clear();
+                clearMessage(true);
+                applyFolderList();
+            } else if (isSharedView(m_currentFolder)) {
+                fetchSharedPart(session); // its inbox joins the open shared view
+            }
         },
         Qt::SingleShotConnection);
     m_secrets->writePassword(account.email, password);

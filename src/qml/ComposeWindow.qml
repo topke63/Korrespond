@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 import QtQuick
+import QtQuick.Dialogs
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.ki18n
@@ -23,11 +24,15 @@ Kirigami.ApplicationWindow {
     property var initialReferences: []
 
     readonly property bool hasContent: toField.text !== initialTo || ccField.text !== initialCc || bccField.text.length > 0
-        || subjectField.text !== initialSubject || bodyArea.text !== initialBody
+        || subjectField.text !== initialSubject || bodyArea.text !== initialBody || attachments.length > 0
     property bool discardConfirmed: false
     // True from pressing Send until the server has answered.
     property bool waiting: false
     property string errorText
+    // The files to attach: {path, name, size}.
+    property var attachments: []
+    readonly property double attachmentsTotal: attachments.reduce((sum, file) => sum + file.size, 0)
+    readonly property bool attachmentsTooLarge: attachmentsTotal > MailController.maxAttachmentBytes
 
     title: subjectField.text.length > 0 ? subjectField.text : KI18n.i18nc("@title:window", "New Message")
     width: Kirigami.Units.gridUnit * 38
@@ -36,7 +41,21 @@ Kirigami.ApplicationWindow {
     minimumHeight: Kirigami.Units.gridUnit * 16
     pageStack.globalToolBar.style: Kirigami.ApplicationHeaderStyle.None
 
+    function addAttachments(urls) {
+        const list = attachments.slice();
+        for (const url of urls) {
+            const info = MailController.fileInfo(url);
+            if (info.path !== undefined && !list.some(file => file.path === info.path)) {
+                list.push(info);
+            }
+        }
+        attachments = list;
+    }
+
     function send() {
+        if (attachmentsTooLarge) {
+            return;
+        }
         errorText = "";
         waiting = true;
         MailController.sendMessage({
@@ -47,7 +66,8 @@ Kirigami.ApplicationWindow {
             subject: subjectField.text,
             body: bodyArea.text,
             inReplyTo: initialInReplyTo,
-            references: initialReferences
+            references: initialReferences,
+            attachments: attachments.map(file => file.path)
         });
     }
 
@@ -216,6 +236,35 @@ Kirigami.ApplicationWindow {
                 Layout.fillWidth: true
             }
 
+            Flow {
+                Layout.fillWidth: true
+                Layout.margins: Kirigami.Units.smallSpacing
+                Layout.leftMargin: Kirigami.Units.gridUnit
+                spacing: Kirigami.Units.smallSpacing
+                visible: composer.attachments.length > 0
+
+                Repeater {
+                    model: composer.attachments
+
+                    delegate: Kirigami.Chip {
+                        required property var modelData
+
+                        text: modelData.name + " (" + Qt.locale().formattedDataSize(modelData.size) + ")"
+                        icon.name: "mail-attachment"
+                        closable: !composer.waiting
+                        checkable: false
+                        onRemoved: composer.attachments = composer.attachments.filter(file => file.path !== modelData.path)
+                    }
+                }
+                QQC2.Label {
+                    text: composer.attachmentsTooLarge
+                        ? KI18n.i18nc("@info", "Attachments are larger than 25 MB.")
+                        : KI18n.i18nc("@info", "Total: %1", Qt.locale().formattedDataSize(composer.attachmentsTotal))
+                    color: composer.attachmentsTooLarge ? Kirigami.Theme.negativeTextColor : Kirigami.Theme.disabledTextColor
+                    font: Kirigami.Theme.smallFont
+                }
+            }
+
             RowLayout {
                 Layout.fillWidth: true
                 Layout.margins: Kirigami.Units.largeSpacing
@@ -239,6 +288,16 @@ Kirigami.ApplicationWindow {
                     Layout.preferredWidth: Kirigami.Units.iconSizes.smallMedium
                 }
                 QQC2.Button {
+                    icon.name: "mail-attachment"
+                    display: QQC2.AbstractButton.IconOnly
+                    enabled: !composer.waiting
+                    onClicked: attachDialog.open()
+                    QQC2.ToolTip.text: KI18n.i18nc("@info:tooltip", "Attach files")
+                    QQC2.ToolTip.visible: hovered
+                    QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
+                    Accessible.name: KI18n.i18nc("@action:button", "Attach files")
+                }
+                QQC2.Button {
                     text: KI18n.i18nc("@action:button", "Discard")
                     icon.name: "edit-delete"
                     enabled: !composer.waiting
@@ -247,12 +306,20 @@ Kirigami.ApplicationWindow {
                 QQC2.Button {
                     text: KI18n.i18nc("@action:button", "Send")
                     icon.name: "document-send"
-                    enabled: !composer.waiting && !MailController.sending && fromBox.currentValue !== undefined
+                    enabled: !composer.waiting && !MailController.sending && !composer.attachmentsTooLarge && fromBox.currentValue !== undefined
                         && (toField.text.trim().length > 0 || ccField.text.trim().length > 0 || bccField.text.trim().length > 0)
                     onClicked: composer.send()
                 }
             }
         }
+    }
+
+    FileDialog {
+        id: attachDialog
+
+        title: KI18n.i18nc("@title:window", "Attach Files")
+        fileMode: FileDialog.OpenFiles
+        onAccepted: composer.addAttachments(selectedFiles)
     }
 
     Kirigami.PromptDialog {

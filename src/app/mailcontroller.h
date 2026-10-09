@@ -8,6 +8,7 @@
 #include "folderutils.h"
 #include "imapclient.h"
 #include "newmailtracker.h"
+#include "outgoingmessage.h"
 #include "storagesettings.h"
 
 #include <QAbstractListModel>
@@ -83,6 +84,8 @@ class MailController : public QObject
     Q_PROPERTY(bool canCompose READ canCompose NOTIFY currentMessageChanged)
     // A message is being sent (one at a time).
     Q_PROPERTY(bool sending READ sending NOTIFY sendingChanged)
+    // The most the attachments of one message may add up to, in bytes.
+    Q_PROPERTY(qint64 maxAttachmentBytes READ maxAttachmentBytes CONSTANT)
     // The folders of the open message's account (for the Move to Folder menu).
     Q_PROPERTY(QAbstractListModel *messageFolderModel READ messageFolderModel NOTIFY currentMessageChanged)
     // Local storage settings. importSince is an ISO date ("yyyy-MM-dd"), empty = all mail; the
@@ -165,6 +168,10 @@ public:
     [[nodiscard]] bool canMove() const;
     [[nodiscard]] bool canCompose() const;
     [[nodiscard]] bool sending() const;
+    [[nodiscard]] static qint64 maxAttachmentBytes()
+    {
+        return OutgoingMessage::MaxAttachmentBytes;
+    }
     [[nodiscard]] QAbstractListModel *messageFolderModel() const;
     [[nodiscard]] bool storageEnabled() const;
     [[nodiscard]] QString importSince() const;
@@ -280,6 +287,8 @@ public:
     // subject, body (plain text), inReplyTo, references (a list). Answers with messageSent() or
     // sendFailed(text); the caller keeps the text until then. One message at a time.
     Q_INVOKABLE void sendMessage(const QVariantMap &message);
+    // {path, name, size} of a local file or file URL, for the attachment chips; empty when it is not a file.
+    Q_INVOKABLE QVariantMap fileInfo(const QUrl &url) const;
     Q_INVOKABLE void archiveMessage();
     Q_INVOKABLE void deleteMessage();
     Q_INVOKABLE void moveMessage(const QString &folderPath);

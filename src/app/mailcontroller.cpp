@@ -385,6 +385,16 @@ void MailController::saveSentCopy(const QString &account, const QString &provide
     session->client()->appendMessage(sent, data, {"\\Seen"});
 }
 
+QVariantMap MailController::fileInfo(const QUrl &url) const
+{
+    const QString path = url.isLocalFile() ? url.toLocalFile() : url.toString();
+    const QFileInfo info(path);
+    if (path.isEmpty() || !info.isFile()) {
+        return {};
+    }
+    return {{u"path"_s, info.absoluteFilePath()}, {u"name"_s, info.fileName()}, {u"size"_s, info.size()}};
+}
+
 void MailController::sendMessage(const QVariantMap &message)
 {
     if (m_smtp) {
@@ -417,6 +427,14 @@ void MailController::sendMessage(const QVariantMap &message)
     outgoing.body = message.value(u"body"_s).toString();
     outgoing.inReplyTo = message.value(u"inReplyTo"_s).toString();
     outgoing.references = message.value(u"references"_s).toStringList();
+    const QVariantList attached = message.value(u"attachments"_s).toList();
+    for (const QVariant &item : attached) {
+        const QUrl url = item.toUrl();
+        const QString path = url.isLocalFile() ? url.toLocalFile() : item.toString();
+        if (!path.isEmpty()) {
+            outgoing.attachments.append(path);
+        }
+    }
     if (outgoing.to.isEmpty() && outgoing.cc.isEmpty() && outgoing.bcc.isEmpty()) {
         Q_EMIT sendFailed(i18n("Please enter a recipient."));
         return;

@@ -3249,7 +3249,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   `textContent()->decodedText()`. ctest 17/17 (outgoingmessagetest 14).
 
 ### T156 — Compose window: attach files
-- status: todo
+- status: done
 - depends on: T155, T112
 - parallel-safe with: none
 - files: src/qml/ComposeWindow.qml, src/app/mailcontroller.h, src/app/mailcontroller.cpp
@@ -3261,10 +3261,17 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   controller passes to the builder. The sent copy in Sent (T113) contains the attachments.
 - verify: build succeeds; `qmllint` clean; offscreen start prints no new QML warnings;
   `ctest --preset dev` passes.
-- notes:
+- notes: Done 2026-10-09. MailController: `maxAttachmentBytes` (CONSTANT), `fileInfo(url)` → {path, name,
+  size} ({} unless a regular file; QFileInfo::isFile is false for FIFOs/devices, checked), sendMessage
+  reads map["attachments"] (file URLs → toLocalFile). ComposeWindow: Attach button (mail-attachment)
+  → FileDialog OpenFiles, deduped closable chips with sizes, "Total: …", over 25 MB → red "Attachments
+  are larger than 25 MB." and Send disabled/refused; attachments alone count as content for the
+  discard prompt. QtTest probe with a stub controller 11/11 (FileDialog accept itself not driven).
+  ctest 17/17, offscreen clean. qmllint (real one, /usr/lib/qt6/bin/qmllint): 4 new "Unqualified
+  access" warnings of the kind the file already has (singleton + root id in a delegate) → T159.
 
 ### T157 — Manual check: send an attachment
-- status: todo
+- status: waiting (manual check with the user)
 - depends on: T156, T154
 - parallel-safe with: none
 - files: none
@@ -3288,6 +3295,22 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   after a crash; they hold decoded attachments).
 - verify: build; `ctest --preset dev`; offscreen start clean.
 - notes:
+
+### T159 — Real qmllint baseline
+- status: todo
+- depends on: none
+- parallel-safe with: none
+- files: src/qml/*.qml, CMakePresets.json or src/CMakeLists.txt (lint target)
+- inputs: found 2026-10-09: `/usr/bin/qmllint` is an old 1.0 tool that prints nothing, so every
+  "qmllint clean" so far (incl. T143, T146, T149, T153, T156) proved nothing. The Qt 6 one,
+  `/usr/lib/qt6/bin/qmllint`, reports ~250 warnings over src/qml (mostly "Unqualified access",
+  some missing-property `pageStack`, an id shadowing `window`, PlasmaMail import paths).
+- output: a lint command that uses the Qt 6 qmllint with the build's import paths (e.g. the
+  `all_qmllint` target of qt_add_qml_module, or a documented command) recorded under Global verify;
+  `pragma ComponentBehavior: Bound` and qualified ids where cheap; the remaining warnings counted and
+  written down as the baseline, so later tasks check "no new warnings" against it.
+- verify: the lint command runs; the count is at or below the recorded baseline; offscreen start clean.
+- notes: not a user request; a quality task found while verifying T156.
 
 ## Execution Loop
 

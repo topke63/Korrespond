@@ -2398,7 +2398,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   Build ok, ctest 16/16; no ImapClient unit test (no fake server), live check in T117.
 
 ### T117 — Search field in the toolbar
-- status: waiting (code done; manual check with the user)
+- status: done
 - depends on: T116, T88
 - parallel-safe with: none
 - files: src/app/mailcontroller.h, src/app/mailcontroller.cpp, src/qml/MessagePage.qml
@@ -2415,6 +2415,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   clears the whole FIFO (may show one stale listing); m_requests can leak when a reconnect drops
   jobs (pre-existing). Waiting: user tries search in a folder, in All Inboxes, Escape returns.
   2026-10-09 user try-out: Yahoo matches whole words only (`osmand` finds the OsmAnd mails, `osm` finds nothing). Fixed: the search field searches on Enter only (`autoAccept: false`; it used to search after every keystroke); the three terms are now nested ORs (IMAP's OR takes two keys). Partial-word search would need a local substring search; not planned.
+  Closed 2026-10-09 by the user after trying full-word search in All Inboxes.
 
 ### T118 — Label (needs Q5)
 - status: todo

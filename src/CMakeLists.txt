@@ -51,6 +51,7 @@ qt_add_qml_module(plasma-mail
     VERSION 1.0
     SOURCES
         app/accountsession.cpp app/accountsession.h
+        models/accountlistmodel.cpp models/accountlistmodel.h
         app/mailcontroller.cpp app/mailcontroller.h
     QML_FILES
         qml/Main.qml

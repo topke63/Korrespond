@@ -1804,7 +1804,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   session has handled it. Builds, 12/12 tests pass; not used by MailController yet.
 
 ### T84 — `AccountListModel` for the sidebar and settings
-- status: todo
+- status: done
 - depends on: T83
 - parallel-safe with: T85
 - files: src/models/accountlistmodel.h, src/models/accountlistmodel.cpp (+ CMake line)
@@ -1812,7 +1812,10 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - output: list model over `AccountSession*` with roles `email`, `displayName`, `provider`
   (readable name), `server`, `folderModel` (QObject*); `setSessions(QList<AccountSession*>)`.
 - verify: `cmake --build build --target plasma-mail` succeeds.
-- notes:
+- notes: Done 2026-10-09. The model lives in src/models/ but is compiled into the `plasma-mail`
+  target (not `plasmamail_models`), because AccountSession is in the app target. Sessions stay
+  owned by the caller; a deleted session drops out of the list. Extras: `session(row)` and the
+  static `providerName()` (T85 should make MailController::accountProvider use it).
 
 ### T85 — `MailController`: run every saved account through `AccountSession`
 - status: todo

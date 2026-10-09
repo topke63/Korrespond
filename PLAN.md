@@ -1750,7 +1750,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   prints the "No Google OAuth client" error and exits 1 (checked); live run is T80.
 
 ### T80 — Manual check: Google sign-in with `imap-probe`
-- status: todo
+- status: done
 - depends on: T79, Q4
 - parallel-safe with: T81–T92
 - files: none (record results; new tasks for bugs)
@@ -1759,6 +1759,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   roles, newest headers, refresh + second session work, no token in the output.
 - verify: (manual, with the user) `PLASMAMAIL_EMAIL=… build/bin/imap-probe --google` exits 0.
 - notes:
+  Closed 2026-10-09: the user signed in to Gmail in the app (own OAuth client, after the T147 fix) and confirmed "gmail works" next to Yahoo. T80 was done through the app, not the `imap-probe --google` command.
 
 ### T81 — Move the old single store into an account folder
 - status: done
@@ -2049,7 +2050,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   line is the old one). The configured state and the real sign-in are T80/T95.
 
 ### T95 — Manual end-to-end check: Gmail next to Yahoo
-- status: todo
+- status: done
 - depends on: T80, T89, T91, T93, T94, T96, T97
 - parallel-safe with: none
 - files: none (record results; new tasks for bugs)
@@ -2061,6 +2062,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   last account returns to the setup page (moved here from T24 by the user).
 - verify: manual, with the user.
 - notes:
+  Closed 2026-10-09: the user signed in to Gmail in the app (own OAuth client, after the T147 fix) and confirmed "gmail works" next to Yahoo. T80 was done through the app, not the `imap-probe --google` command.
 
 ### T98 — Global verify (Milestone 2)
 - status: todo

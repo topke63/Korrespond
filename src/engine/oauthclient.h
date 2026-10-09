@@ -25,15 +25,25 @@ public:
     // one signedIn() or failed(); a new call cancels a sign-in still waiting for the browser.
     void signIn(const QString &email);
 
+    // Gets a fresh access token from a stored refresh token. Answers with accessTokenChanged() or
+    // failed(). From then on, and after a sign-in, the token is renewed by itself about
+    // 5 minutes before it expires, each time with accessTokenChanged(). A revoked refresh
+    // token gives a failed() that asks the user to sign in again.
+    void refresh(const QString &refreshToken);
+
 Q_SIGNALS:
     void signedIn(const QString &accessToken, const QString &refreshToken, const QDateTime &expiresAt);
+    void accessTokenChanged(const QString &accessToken, const QDateTime &expiresAt);
     void failed(const QString &message);
 
 private:
     void finish();
     void fail(const QString &message);
+    bool loadClient();
 
     QOAuth2AuthorizationCodeFlow *m_flow;
     QPointer<QOAuthHttpServerReplyHandler> m_replyHandler;
     bool m_signingIn = false;
+    bool m_tokenInUse = false; // a refresh token is set; failures of later refreshes are reported
+    bool m_tokenEmitPending = false;
 };

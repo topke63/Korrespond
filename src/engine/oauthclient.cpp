@@ -25,6 +25,8 @@ OAuthClient::OAuthClient(QObject *parent)
     m_flow->setTokenUrl(QUrl(tokenUrl));
     m_flow->setRequestedScopeTokens({mailScope});
     m_flow->setPkceMethod(QOAuth2AuthorizationCodeFlow::PkceMethod::S256);
+    m_flow->setAutoRefresh(true);
+    m_flow->setRefreshLeadTime(std::chrono::minutes(5));
 
     connect(m_flow, &QAbstractOAuth::authorizeWithBrowser, this, [](const QUrl &url) {
         QDesktopServices::openUrl(url);
@@ -39,12 +41,32 @@ OAuthClient::OAuthClient(QObject *parent)
             return;
         }
         finish();
+        m_tokenInUse = true;
         Q_EMIT signedIn(m_flow->token(), m_flow->refreshToken(), m_flow->expirationAt());
+    });
+    // A refresh sets the token and its expiry one after the other; emit once both are in.
+    connect(m_flow, &QAbstractOAuth::tokenChanged, this, [this] {
+        if (m_signingIn || !m_tokenInUse || m_tokenEmitPending) {
+            return;
+        }
+        m_tokenEmitPending = true;
+        QMetaObject::invokeMethod(
+            this,
+            [this] {
+                m_tokenEmitPending = false;
+                if (m_tokenInUse && !m_flow->token().isEmpty()) {
+                    Q_EMIT accessTokenChanged(m_flow->token(), m_flow->expirationAt());
+                }
+            },
+            Qt::QueuedConnection);
     });
     // A refusal on Google's page (e.g. the user pressed Cancel) arrives here first, then as
     // requestFailed(); fail() reports only the first, more precise message.
     connect(m_flow, &QAbstractOAuth2::serverReportedErrorOccurred, this, [this](const QString &error, const QString &description) {
-        if (error == "access_denied"_L1) {
+        if (error == "invalid_grant"_L1) {
+            m_tokenInUse = false;
+            fail(i18n("Google no longer accepts this sign-in (it was revoked or expired). Please sign in again."));
+        } else if (error == "access_denied"_L1) {
             fail(i18n("Google sign-in was cancelled or access was denied."));
         } else {
             fail(i18n("Google sign-in failed: %1", description.isEmpty() ? error : description));
@@ -70,14 +92,9 @@ OAuthClient::~OAuthClient() = default;
 void OAuthClient::signIn(const QString &email)
 {
     finish();
-
-    const GoogleOAuthSettings settings = GoogleOAuthSettings::load();
-    if (!settings.isConfigured()) {
-        Q_EMIT failed(i18n("No Google OAuth client is set up. Add ClientId and ClientSecret to the [GoogleOAuth] group of plasmamailrc."));
+    if (!loadClient()) {
         return;
     }
-    m_flow->setClientIdentifier(settings.clientId);
-    m_flow->setClientIdentifierSharedKey(settings.clientSecret);
 
     m_replyHandler = new QOAuthHttpServerReplyHandler(this);
     m_replyHandler->setCallbackHost(u"127.0.0.1"_s);
@@ -104,6 +121,35 @@ void OAuthClient::signIn(const QString &email)
     m_flow->grant();
 }
 
+// Gives the flow the user's Google client; reports failed() when there is none.
+bool OAuthClient::loadClient()
+{
+    const GoogleOAuthSettings settings = GoogleOAuthSettings::load();
+    if (!settings.isConfigured()) {
+        Q_EMIT failed(i18n("No Google OAuth client is set up. Add ClientId and ClientSecret to the [GoogleOAuth] group of plasmamailrc."));
+        return false;
+    }
+    m_flow->setClientIdentifier(settings.clientId);
+    m_flow->setClientIdentifierSharedKey(settings.clientSecret);
+    return true;
+}
+
+void OAuthClient::refresh(const QString &refreshToken)
+{
+    finish();
+    m_tokenInUse = false;
+    if (refreshToken.isEmpty()) {
+        Q_EMIT failed(i18n("There is no saved Google sign-in. Please sign in again."));
+        return;
+    }
+    if (!loadClient()) {
+        return;
+    }
+    m_flow->setRefreshToken(refreshToken);
+    m_tokenInUse = true;
+    m_flow->refreshTokens();
+}
+
 // Stops listening on the loopback port; the flow keeps its tokens.
 void OAuthClient::finish()
 {
@@ -116,7 +162,7 @@ void OAuthClient::finish()
 
 void OAuthClient::fail(const QString &message)
 {
-    if (!m_signingIn) {
+    if (!m_signingIn && !m_tokenInUse) {
         return;
     }
     finish();

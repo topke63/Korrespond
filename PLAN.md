@@ -1685,7 +1685,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   Google returns no refresh token. Only one signal per sign-in. Engine builds without warnings.
 
 ### T76 — `OAuthClient`: refresh the access token
-- status: todo
+- status: done
 - depends on: T75
 - parallel-safe with: T68–T71
 - files: src/engine/oauthclient.h, src/engine/oauthclient.cpp
@@ -1695,7 +1695,10 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   about 5 minutes before expiry and emits `accessTokenChanged` again. A revoked refresh token
   gives a failed() message that tells the user to sign in again.
 - verify: `cmake --build build --target plasmamail_engine` succeeds (live check in T80).
-- notes:
+- notes: Done 2026-10-09. Uses Qt's autoRefresh with a 5-minute lead time; `tokenChanged` is
+  turned into one `accessTokenChanged` (queued, so the new expiry is already set). `invalid_grant`
+  from Google gives "revoked or expired, sign in again". An empty token or missing client gives
+  failed(). Engine builds without warnings; 12/12 tests pass (live check in T80).
 
 ### T77 — `ImapClient`: XOAUTH2 login
 - status: todo

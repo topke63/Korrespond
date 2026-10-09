@@ -38,6 +38,9 @@ public:
     // The sessions stay owned by the caller.
     void setSessions(const QList<AccountSession *> &sessions);
     [[nodiscard]] AccountSession *session(int row) const;
+    // Moves the row `from` to the place `to` (the row ends up at index `to`) without a reset.
+    // False if either index is out of range or the move is refused.
+    bool moveRow(int from, int to);
 
     // The readable name of an Account::provider value ("yahoo" → "Yahoo", unknown → "Custom IMAP").
     [[nodiscard]] static QString providerName(const QString &provider);

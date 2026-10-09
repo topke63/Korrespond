@@ -37,10 +37,12 @@ target_link_libraries(plasmamail_engine PUBLIC
 
 # Models: list models for the UI (QtCore only, no QML).
 add_library(plasmamail_models STATIC
+    app/accountsession.cpp
+    models/accountlistmodel.cpp
     models/foldermodel.cpp
     models/messagelistmodel.cpp
 )
-target_include_directories(plasmamail_models PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/models)
+target_include_directories(plasmamail_models PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/models ${CMAKE_CURRENT_SOURCE_DIR}/app)
 target_link_libraries(plasmamail_models PUBLIC
     plasmamail_engine
     KF6::I18n
@@ -56,10 +58,8 @@ qt_add_qml_module(plasma-mail
     URI PlasmaMail
     VERSION 1.0
     SOURCES
-        app/accountsession.cpp app/accountsession.h
         app/mailnotifier.cpp app/mailnotifier.h
         app/trayicon.cpp app/trayicon.h
-        models/accountlistmodel.cpp models/accountlistmodel.h
         app/mailcontroller.cpp app/mailcontroller.h
     QML_FILES
         qml/Main.qml

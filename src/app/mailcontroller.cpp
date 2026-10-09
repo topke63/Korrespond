@@ -1500,6 +1500,29 @@ void MailController::removeAccount(const QString &account)
     Q_EMIT accountChanged();
 }
 
+void MailController::moveAccount(const QString &email, int delta)
+{
+    if (delta != -1 && delta != 1) {
+        return;
+    }
+    const auto it = std::find_if(m_sessions.cbegin(), m_sessions.cend(), [&email](const AccountSession *session) {
+        return session->account().email == email;
+    });
+    if (it == m_sessions.cend()) {
+        return;
+    }
+    const int from = int(it - m_sessions.cbegin());
+    const int to = from + delta;
+    if (to < 0 || to >= m_sessions.size() || !m_accounts->moveRow(from, to)) {
+        return;
+    }
+    m_sessions.move(from, to);
+    saveAccounts();
+    if (from == 0 || to == 0) {
+        Q_EMIT accountChanged(); // the single-account properties follow the first account
+    }
+}
+
 void MailController::saveAccounts() const
 {
     QList<Account> accounts;

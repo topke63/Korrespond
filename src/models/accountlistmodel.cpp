@@ -114,6 +114,21 @@ AccountSession *AccountListModel::session(int row) const
     return row >= 0 && row < m_sessions.size() ? m_sessions.at(row).data() : nullptr;
 }
 
+bool AccountListModel::moveRow(int from, int to)
+{
+    const int count = int(m_sessions.size());
+    if (from < 0 || from >= count || to < 0 || to >= count || from == to) {
+        return false;
+    }
+    // beginMoveRows wants the row the block goes in front of, so one further when moving down.
+    if (!beginMoveRows({}, from, from, {}, to > from ? to + 1 : to)) {
+        return false;
+    }
+    m_sessions.move(from, to);
+    endMoveRows();
+    return true;
+}
+
 QString AccountListModel::providerName(const QString &provider)
 {
     if (provider == "yahoo"_L1) {

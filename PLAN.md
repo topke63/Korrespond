@@ -3120,6 +3120,125 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - verify: manual, with the user.
 - notes:
 
+# Milestone 3e — Attachments: open, save and attach (user request 2026-10-09)
+
+- **Goal**: the user can open and save the attachments of a received message (the chips in the
+  message view are only labels today), and attach files to a message being written.
+- **Decisions** (made while planning; change only with the user):
+  - Received attachments come from the whole message that is already stored locally or fetched
+    (`fetchMessage`); nothing new is asked of the server.
+  - Open = write the attachment into a private temp folder (created 0700 by the app, one folder
+    per session, removed at quit), then `QDesktopServices::openUrl`. Save As = a file dialog.
+    The file name from the message is never trusted: only its last path component is used,
+    control characters are removed, and an empty name becomes "attachment".
+  - **Never open executable or script types straight away** (`.sh`, `.desktop`, `.exe`, `.bat`,
+    `.cmd`, `.com`, `.scr`, `.jar`, `.appimage`, `.run`, `.py`, `.js`, …, and MIME types that are
+    executable): offer Save As only, with a short explanation.
+  - Attaching: a button in the compose window with a file dialog (several files at once), a list
+    of the attached files with a remove button each, total size shown; refuse above 25 MB in
+    total (Gmail's limit) with a clear message. Content-Type from `QMimeDatabase`, base64 body.
+  - Never put attachment names or contents into logs.
+- **Out of scope**: drag and drop into the compose window, inline images in the body, previews of
+  attachments, forwarding with the original attachments (a later request), virus scanning.
+
+### T151 — Engine: attachment data from a message
+- status: todo
+- depends on: T9
+- parallel-safe with: T155
+- files: src/engine/messagerenderer.h, src/engine/messagerenderer.cpp,
+  autotests/messagerenderertest.cpp
+- inputs: `attachmentNames()` (same order and the same naming rules).
+- output: `struct AttachmentData { QString name; QString mimeType; QByteArray data; };` and
+  `QList<AttachmentData> attachmentParts(const KMime::Message &msg)` in the same order as
+  `attachmentNames()`, with decoded content (`decodedContent()`), a safe file name (rules in the
+  milestone decisions) and the Content-Type (`application/octet-stream` when missing).
+- verify: build succeeds; the renderer test gets rows for: a base64 text attachment, a name with
+  `../` and a slash, an unnamed attachment, and no attachments; `ctest --preset dev` passes.
+- notes:
+
+### T152 — Controller: open and save an attachment
+- status: todo
+- depends on: T151
+- parallel-safe with: none
+- files: src/app/mailcontroller.h, src/app/mailcontroller.cpp
+- inputs: the open message (kept as `KMime::Message` or re-parsed from the stored raw), T151.
+- output: `Q_INVOKABLE void openAttachment(int index)` (temp folder + `QDesktopServices::openUrl`,
+  or `attachmentBlocked(name)` signal for executable types), `Q_INVOKABLE bool saveAttachment(int
+  index, const QUrl &target)` (writes the file, mode 0600, returns success; failure shows the
+  existing error toast), `Q_INVOKABLE bool attachmentIsRisky(int index)`. The temp folder is
+  created with 0700 on first use and removed on quit. No file names in logs.
+- verify: build succeeds; `ctest --preset dev` passes.
+- notes:
+
+### T153 — Message view: clickable attachments
+- status: todo
+- depends on: T152
+- parallel-safe with: none
+- files: src/qml/MessagePage.qml
+- inputs: T152; the chips at `MessagePage.qml` (`MailController.messageAttachments`).
+- output: clicking a chip opens the attachment (a risky one shows a dialog: "Opening this type of
+  file can run code. Save it instead?" with Save As…); a menu on each chip (right click or small
+  arrow): Open, Save As… (a `QtQuick.Dialogs.FileDialog` in save mode, default name = the
+  attachment name); tooltip with the full name.
+- verify: `qmllint` clean; offscreen start prints no new QML warnings.
+- notes:
+
+### T154 — Manual check: open and save attachments
+- status: todo
+- depends on: T153
+- parallel-safe with: none
+- files: none
+- inputs: the user's desktop; a message with a PDF or image attachment and one with an
+  unnamed or odd-named attachment.
+- output: confirmed: click opens it in the right program; Save As writes the same bytes; a
+  `.sh` attachment offers Save As only.
+- verify: manual, with the user.
+- notes:
+
+### T155 — Message builder: attachments
+- status: todo
+- depends on: T110
+- parallel-safe with: T151
+- files: src/engine/messagecomposer.h, src/engine/messagecomposer.cpp,
+  autotests/messagecomposertest.cpp
+- inputs: the existing builder (T110) that makes the `KMime::Message` / raw text to send.
+- output: the builder takes a list of file paths (`QStringList attachments`); the message becomes
+  `multipart/mixed` (the text part first, then one part per file with base64 transfer encoding, a
+  `Content-Disposition: attachment; filename=…` (RFC 2231 encoded when not ASCII) and a
+  Content-Type from `QMimeDatabase`). Without attachments the message is as before. Unreadable
+  file: the builder fails with an error message naming the file's base name only.
+- verify: build succeeds; the test builds a message with two small temp files (one non-ASCII
+  name), parses it back with KMime and finds both attachments with equal bytes; a message
+  without attachments is unchanged; `ctest --preset dev` passes.
+- notes:
+
+### T156 — Compose window: attach files
+- status: todo
+- depends on: T155, T112
+- parallel-safe with: none
+- files: src/qml/ComposeWindow.qml, src/app/mailcontroller.h, src/app/mailcontroller.cpp
+- inputs: T155; the compose window's Send path (`sendMessage(QVariantMap)`).
+- output: an "Attach" button (icon `mail-attachment`, tooltip "Attach files") opening a
+  multi-select `FileDialog`; a row of chips for the chosen files (name, size, a remove button);
+  total size label; Send is refused above 25 MB with the message "Attachments are larger than
+  25 MB." The `sendMessage` map gets an `attachments` list of local file paths that the
+  controller passes to the builder. The sent copy in Sent (T113) contains the attachments.
+- verify: build succeeds; `qmllint` clean; offscreen start prints no new QML warnings;
+  `ctest --preset dev` passes.
+- notes:
+
+### T157 — Manual check: send an attachment
+- status: todo
+- depends on: T156, T154
+- parallel-safe with: none
+- files: none
+- inputs: the user's accounts; send to the user's own address.
+- output: confirmed: a message with a picture and a PDF arrives at the other account with both
+  attachments, which open; Yahoo's Sent folder has a copy with them; Gmail has exactly one copy;
+  a too large file is refused.
+- verify: manual, with the user.
+- notes:
+
 ## Execution Loop
 
 Execute the plan as a loop. Each iteration handles one task in a fresh context, then ends.

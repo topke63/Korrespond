@@ -220,6 +220,9 @@ public:
     Q_INVOKABLE void removeAccount(const QString &account);
     // Removes the first account; kept until the settings pass the account (T96).
     Q_INVOKABLE void removeAccount();
+    // Moves a saved account one place up (delta -1) or down (+1) in the list and saves the order.
+    // Unknown accounts, other deltas and moves past either end are ignored. No reconnect.
+    Q_INVOKABLE void moveAccount(const QString &email, int delta);
     // Shows the newest messages of `path` of `account` (clears the list first); for a shared view
     // path the account is ignored (pass an empty string). With storage on, the stored
     // copies show at once and the server's list replaces them when it arrives.

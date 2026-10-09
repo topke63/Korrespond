@@ -45,6 +45,10 @@ void SmtpClient::send(const Account &account, const QString &secret, const Outgo
         return;
     }
     m_built = message.build(QDateTime::currentDateTime());
+    if (!m_built.error.isEmpty()) {
+        Q_EMIT failed(m_built.error);
+        return;
+    }
     if (m_built.recipients.isEmpty()) {
         Q_EMIT failed(i18n("There is no recipient."));
         return;

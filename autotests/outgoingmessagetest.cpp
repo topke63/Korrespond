@@ -3,6 +3,8 @@
 
 #include <KMime/Message>
 
+#include <QFile>
+#include <QTemporaryDir>
 #include <QTest>
 #include <QTimeZone>
 
@@ -135,6 +137,77 @@ private Q_SLOTS:
         message.bcc.clear();
         const OutgoingMessage::Built built = message.build(now);
         QCOMPARE(built.recipients, (QStringList{u"a@example.org"_s, u"b@example.org"_s}));
+    }
+
+    void testNoAttachmentsIsNotMultipart()
+    {
+        const auto parsed = parse(sample().build(now).data);
+        QCOMPARE(parsed->contentType()->mimeType(), QByteArray("text/plain"));
+        QVERIFY(parsed->attachments().isEmpty());
+    }
+
+    void testAttachments()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        QByteArray binary;
+        for (int i = 0; i < 256; ++i) {
+            binary.append(static_cast<char>(i));
+        }
+        const QString textName = u"résumé ü.txt"_s;
+        const QByteArray text = "Hello, résumé\n";
+        const auto write = [&](const QString &name, const QByteArray &bytes) {
+            QFile file(dir.filePath(name));
+            Q_ASSERT(file.open(QIODevice::WriteOnly));
+            file.write(bytes);
+            return file.fileName();
+        };
+        OutgoingMessage message = sample();
+        message.attachments = {write(textName, text), write(u"data.bin"_s, binary)};
+        const OutgoingMessage::Built built = message.build(now);
+        QVERIFY2(built.error.isEmpty(), qPrintable(built.error));
+        for (const char c : built.data) {
+            QVERIFY(static_cast<unsigned char>(c) < 128);
+        }
+
+        const auto parsed = parse(built.data);
+        QCOMPARE(parsed->contentType()->mimeType(), QByteArray("multipart/mixed"));
+        QVERIFY(!parsed->contentType()->boundary().isEmpty());
+        QVERIFY(parsed->textContent());
+        QCOMPARE(parsed->textContent()->decodedText(), u"Zdravo,\nsee you at 5 = fine?"_s);
+        const auto attachments = parsed->attachments();
+        QCOMPARE(attachments.size(), 2);
+        QCOMPARE(attachments.at(0)->contentDisposition()->filename(), textName);
+        QCOMPARE(attachments.at(0)->contentType()->mimeType(), QByteArray("text/plain"));
+        QCOMPARE(attachments.at(0)->decodedBody(), text);
+        QCOMPARE(attachments.at(1)->contentDisposition()->filename(), u"data.bin"_s);
+        QCOMPARE(attachments.at(1)->contentType()->mimeType(), QByteArray("application/octet-stream"));
+        QCOMPARE(attachments.at(1)->decodedBody(), binary);
+        QCOMPARE(built.recipients.size(), 4);
+    }
+
+    void testMissingAttachment()
+    {
+        OutgoingMessage message = sample();
+        message.attachments = {u"/nonexistent-dir/secret name.pdf"_s};
+        const OutgoingMessage::Built built = message.build(now);
+        QVERIFY(built.data.isEmpty());
+        QVERIFY(built.error.contains(u"secret name.pdf"_s));
+        QVERIFY(!built.error.contains(u"nonexistent-dir"_s));
+    }
+
+    void testTooLarge()
+    {
+        QTemporaryDir dir;
+        QFile file(dir.filePath(u"big.bin"_s));
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        QVERIFY(file.resize(OutgoingMessage::MaxAttachmentBytes + 1)); // sparse
+        file.close();
+        OutgoingMessage message = sample();
+        message.attachments = {file.fileName()};
+        const OutgoingMessage::Built built = message.build(now);
+        QVERIFY(built.data.isEmpty());
+        QVERIFY(built.error.contains(u"25 MB"_s));
     }
 };
 

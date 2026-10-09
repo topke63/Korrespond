@@ -3226,11 +3226,12 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - notes:
 
 ### T155 — Message builder: attachments
-- status: todo
+- status: done
 - depends on: T110
 - parallel-safe with: T151
-- files: src/engine/messagecomposer.h, src/engine/messagecomposer.cpp,
-  autotests/messagecomposertest.cpp
+- files: src/engine/outgoingmessage.h, src/engine/outgoingmessage.cpp, src/engine/smtpclient.cpp,
+  autotests/outgoingmessagetest.cpp (corrected 2026-10-09: the planned messagecomposer only builds
+  reply/forward text; `OutgoingMessage::build()` makes the bytes that are sent)
 - inputs: the existing builder (T110) that makes the `KMime::Message` / raw text to send.
 - output: the builder takes a list of file paths (`QStringList attachments`); the message becomes
   `multipart/mixed` (the text part first, then one part per file with base64 transfer encoding, a
@@ -3240,7 +3241,12 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - verify: build succeeds; the test builds a message with two small temp files (one non-ASCII
   name), parses it back with KMime and finds both attachments with equal bytes; a message
   without attachments is unchanged; `ctest --preset dev` passes.
-- notes:
+- notes: Done 2026-10-09. `OutgoingMessage::attachments` (paths), `MaxAttachmentBytes` (25 MB, raw
+  size), `Built::error` (empty data on failure); SmtpClient::send emits failed(error) synchronously,
+  after MailController has connected (checked). Errors name only the base name. Size checked before
+  reading and the read is bounded. Without attachments the output is unchanged. The sent copy (T113)
+  uses the same bytes, so it has the attachments. KMime: read a multipart body via
+  `textContent()->decodedText()`. ctest 17/17 (outgoingmessagetest 14).
 
 ### T156 — Compose window: attach files
 - status: todo

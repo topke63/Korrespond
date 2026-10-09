@@ -5,6 +5,12 @@
 
 #include <KMime/Message>
 
+#include <KLocalizedString>
+
+#include <QFile>
+#include <QFileInfo>
+#include <QMimeDatabase>
+
 #include <memory>
 
 using namespace Qt::StringLiterals;
@@ -61,14 +67,75 @@ OutgoingMessage::Built OutgoingMessage::build(const QDateTime &now) const
         }
     }
 
+    // Read the attachments first, so a bad one fails before any work.
+    struct Attachment {
+        QString name;
+        QByteArray mimeType;
+        QByteArray data;
+    };
+    QList<Attachment> files;
+    qint64 total = 0; // bytes read so far
+    for (const QString &path : attachments) {
+        const QFileInfo info(path);
+        if (total + info.size() > MaxAttachmentBytes) {
+            Built failed;
+            failed.error = i18n("Attachments are larger than 25 MB.");
+            return failed;
+        }
+        QFile file(path);
+        if (!info.isFile() || !file.open(QIODevice::ReadOnly)) {
+            Built failed;
+            failed.error = i18n("Could not read the attachment \"%1\".", info.fileName());
+            return failed;
+        }
+        Attachment attachment;
+        attachment.name = info.fileName();
+        attachment.mimeType = QMimeDatabase().mimeTypeForFile(info).name().toLatin1();
+        // Read at most one byte past the limit, so a file that grows or reports no size is still refused.
+        attachment.data = file.read(MaxAttachmentBytes - total + 1);
+        if (file.error() != QFile::NoError) {
+            Built failed;
+            failed.error = i18n("Could not read the attachment \"%1\".", info.fileName());
+            return failed;
+        }
+        total += attachment.data.size();
+        if (total > MaxAttachmentBytes) {
+            Built failed;
+            failed.error = i18n("Attachments are larger than 25 MB.");
+            return failed;
+        }
+        files.append(attachment);
+    }
+
     auto mimeVersion = std::make_unique<KMime::Headers::MIMEVersion>();
     mimeVersion->from7BitString("1.0");
     message.setHeader(std::move(mimeVersion));
-    message.contentType()->setMimeType("text/plain");
-    message.contentType()->setCharset("utf-8");
-    message.contentTransferEncoding()->setEncoding(KMime::Headers::CEquPr);
-    // KMime encodes the body (quoted-printable) when it assembles the message.
-    message.setBody(body.toUtf8());
+    if (files.isEmpty()) {
+        message.contentType()->setMimeType("text/plain");
+        message.contentType()->setCharset("utf-8");
+        message.contentTransferEncoding()->setEncoding(KMime::Headers::CEquPr);
+        // KMime encodes the body (quoted-printable) when it assembles the message.
+        message.setBody(body.toUtf8());
+    } else {
+        message.contentType()->setMimeType("multipart/mixed");
+        message.contentType()->setBoundary(KMime::multiPartBoundary());
+        auto text = std::make_unique<KMime::Content>();
+        text->contentType()->setMimeType("text/plain");
+        text->contentType()->setCharset("utf-8");
+        text->contentTransferEncoding()->setEncoding(KMime::Headers::CEquPr);
+        text->setBody(body.toUtf8());
+        message.appendContent(std::move(text));
+        for (const Attachment &attachment : files) {
+            auto part = std::make_unique<KMime::Content>();
+            part->contentType()->setMimeType(attachment.mimeType);
+            part->contentType()->setName(attachment.name);
+            part->contentTransferEncoding()->setEncoding(KMime::Headers::CEbase64);
+            part->contentDisposition()->setDisposition(KMime::Headers::CDattachment);
+            part->contentDisposition()->setFilename(attachment.name);
+            part->setBody(attachment.data);
+            message.appendContent(std::move(part));
+        }
+    }
 
     Built built;
     built.recipients = bareAddresses(message.to()->addresses()) + bareAddresses(message.cc()->addresses()) + bareAddresses(message.bcc()->addresses());

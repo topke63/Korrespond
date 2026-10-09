@@ -23,11 +23,19 @@ struct OutgoingMessage {
     // Message-IDs of the thread so far, oldest first.
     QString inReplyTo;
     QStringList references;
+    // Local files to attach. With any, the message is multipart/mixed.
+    QStringList attachments;
+
+    // Attachments above this total (bytes) are refused.
+    static constexpr qint64 MaxAttachmentBytes = 25 * 1024 * 1024;
 
     struct Built {
         QByteArray data; // the whole message, CRLF line ends; no Bcc header
         // The bare addresses for the SMTP envelope (RCPT TO), Bcc included.
         QStringList recipients;
+        // Not empty when the message could not be built (an attachment is unreadable or too big);
+        // `data` is empty then. Names only the file's base name.
+        QString error;
     };
 
     // Builds an RFC 5322 message: UTF-8 text (quoted-printable), encoded headers, Date from `now`,

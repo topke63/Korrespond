@@ -346,6 +346,27 @@ QString MailController::messageHtml() const
     return m_messageHtml;
 }
 
+bool MailController::messageHasRemoteImages() const
+{
+    return m_openMessage && m_messageHasRemoteImages && !m_remoteImagesLoaded;
+}
+
+bool MailController::remoteImagesLoaded() const
+{
+    return m_remoteImagesLoaded;
+}
+
+void MailController::loadRemoteImages()
+{
+    if (!m_openMessage || !m_messageHasRemoteImages || m_remoteImagesLoaded) {
+        return;
+    }
+    const QPalette palette = QGuiApplication::palette();
+    m_remoteImagesLoaded = true;
+    m_messageHtml = messageBodyHtml(*m_openMessage, palette.color(QPalette::Text), palette.color(QPalette::Base), palette.color(QPalette::Link), true);
+    Q_EMIT currentMessageChanged();
+}
+
 QStringList MailController::messageAttachments() const
 {
     return m_messageAttachments;
@@ -1414,6 +1435,8 @@ void MailController::showMessage(AccountSession *session, const QString &folder,
     m_messageDate = ::messageDate(msg); // falls back to the Received date
     const QPalette palette = QGuiApplication::palette();
     m_messageHtml = messageBodyHtml(msg, palette.color(QPalette::Text), palette.color(QPalette::Base), palette.color(QPalette::Link));
+    m_messageHasRemoteImages = ::messageHasRemoteImages(msg);
+    m_remoteImagesLoaded = false;
     m_messageAttachments = attachmentNames(msg);
     Q_EMIT currentMessageChanged();
 
@@ -1444,6 +1467,8 @@ void MailController::clearMessage(bool clearUid)
     m_messageTo.clear();
     m_messageDate = {};
     m_messageHtml.clear();
+    m_messageHasRemoteImages = false;
+    m_remoteImagesLoaded = false;
     m_messageAttachments.clear();
     m_messageFlagged = false;
     m_messageUnread = false;

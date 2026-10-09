@@ -30,6 +30,9 @@ bool htmlHasRemoteImages(const QString &html);
 // with http(s) URLs made clickable and shown in the given colors.
 // HTML mail without colours of its own gets the theme colours (and the link colour, made readable
 // on the background); HTML mail that sets its own colours is shown on a white page.
+// True when the message's HTML part refers to remote images; false for plain-text-only mail.
+bool messageHasRemoteImages(const KMime::Message &msg);
+
 QString messageBodyHtml(const KMime::Message &msg, const QColor &text, const QColor &background, const QColor &link, bool allowRemoteImages = false);
 
 // True if the HTML sets its own text or background colours: a CSS color / background /

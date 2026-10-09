@@ -72,6 +72,9 @@ class MailController : public QObject
     Q_PROPERTY(QString messageTo READ messageTo NOTIFY currentMessageChanged)
     Q_PROPERTY(QDateTime messageDate READ messageDate NOTIFY currentMessageChanged)
     Q_PROPERTY(QString messageHtml READ messageHtml NOTIFY currentMessageChanged)
+    // The open message has remote images that are not loaded yet / the user has loaded them.
+    Q_PROPERTY(bool messageHasRemoteImages READ messageHasRemoteImages NOTIFY currentMessageChanged)
+    Q_PROPERTY(bool remoteImagesLoaded READ remoteImagesLoaded NOTIFY currentMessageChanged)
     Q_PROPERTY(QStringList messageAttachments READ messageAttachments NOTIFY currentMessageChanged)
     Q_PROPERTY(bool messageFlagged READ messageFlagged NOTIFY currentMessageChanged)
     Q_PROPERTY(bool messageUnread READ messageUnread NOTIFY currentMessageChanged)
@@ -162,6 +165,9 @@ public:
     [[nodiscard]] QString messageTo() const;
     [[nodiscard]] QDateTime messageDate() const;
     [[nodiscard]] QString messageHtml() const;
+    [[nodiscard]] bool messageHasRemoteImages() const;
+    [[nodiscard]] bool remoteImagesLoaded() const;
+    Q_INVOKABLE void loadRemoteImages();
     [[nodiscard]] QStringList messageAttachments() const;
     [[nodiscard]] bool messageFlagged() const;
     [[nodiscard]] bool messageUnread() const;
@@ -442,6 +448,8 @@ private:
     QString m_messageTo;
     QDateTime m_messageDate;
     QString m_messageHtml;
+    bool m_messageHasRemoteImages = false; // the open message's HTML refers to remote images
+    bool m_remoteImagesLoaded = false;
     QStringList m_messageAttachments;
     bool m_messageFlagged = false;
     bool m_messageUnread = false;

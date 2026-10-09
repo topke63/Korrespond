@@ -19,6 +19,8 @@ Kirigami.Page {
     readonly property string html: MailController.messageHtml
 
     function showHtml() {
+        // Set right before loading so the setting and the HTML always belong to the same message.
+        view.settings.autoLoadImages = MailController.remoteImagesLoaded;
         view.loadHtml(html, "about:blank");
     }
 
@@ -513,6 +515,18 @@ Kirigami.Page {
             Layout.fillWidth: true
             visible: page.loaded
             opacity: 0.5
+        }
+
+        Kirigami.InlineMessage {
+            Layout.fillWidth: true
+            type: Kirigami.MessageType.Information
+            visible: page.loaded && MailController.messageHasRemoteImages
+            text: KI18n.i18nc("@info", "This message has images that were not loaded.")
+            actions: Kirigami.Action {
+                text: KI18n.i18nc("@action:button", "Load images")
+                icon.name: "view-preview"
+                onTriggered: MailController.loadRemoteImages()
+            }
         }
 
         Item {

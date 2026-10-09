@@ -3474,10 +3474,11 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   `<input src>` counts; srcset checked at its first URL). 3 new tests (12 detection rows); ctest 17/17.
 
 ### T165 — Message view: "Load images" bar
-- status: todo
+- status: done
 - depends on: T164
 - parallel-safe with: none
-- files: src/app/mailcontroller.h, src/app/mailcontroller.cpp, src/qml/MessagePage.qml
+- files: src/app/mailcontroller.h, src/app/mailcontroller.cpp, src/qml/MessagePage.qml (also
+  src/engine/messagerenderer.{h,cpp} + autotests/messagerenderertest.cpp for the engine helper)
 - inputs: T164; `showMessage()` builds `m_messageHtml`; the `WebEngineView` has
   `settings.autoLoadImages: false`.
 - output: property `messageHasRemoteImages` (true when the open message has remote images and they
@@ -3491,10 +3492,19 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   warnings over the baseline; `ctest --preset dev` passes; offscreen start with a throw-away
   profile and a seeded local message that has an `<img src="https://…">` (the tester may use the
   screenshot hook): the bar shows; after `loadRemoteImages()` it is gone. No network is used.
-- notes:
+- notes: Done 2026-10-09. Engine `messageHasRemoteImages(const KMime::Message&)` scans only the mail's
+  text/html part (mainBodyPart), 7 test rows. MailController: `messageHasRemoteImages`,
+  `remoteImagesLoaded`, `loadRemoteImages()` (rebuilds with allowRemoteImages=true, same colours);
+  both flags reset in showMessage/clearMessage; a background sync does not re-show the open message.
+  MessagePage: Kirigami.InlineMessage + "Load images" action; showHtml() sets
+  `view.settings.autoLoadImages = MailController.remoteImagesLoaded` right before loadHtml, so
+  another message never inherits it. Seeded offscreen screenshots (no network): bar on the remote-image
+  mail, none on a plain HTML mail; QtTest probe 7/7; ctest 17/17; lint 20 (= baseline). Loading
+  reloads the page (scroll resets); refs outside the scan (SVG image, video poster) show no bar and
+  stay blocked.
 
 ### T166 — Manual check: load images
-- status: todo
+- status: waiting (manual check with the user)
 - depends on: T165
 - parallel-safe with: none
 - files: none

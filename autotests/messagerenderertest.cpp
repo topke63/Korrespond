@@ -183,6 +183,45 @@ private Q_SLOTS:
         QCOMPARE(htmlHasRemoteImages(html), expected);
     }
 
+    void testMessageHasRemoteImages_data()
+    {
+        QTest::addColumn<QByteArray>("raw");
+        QTest::addColumn<bool>("expected");
+        QTest::newRow("html") << QByteArray("Subject: a\nContent-Type: text/html\n\n<img src=\"https://x.invalid/a.png\">\n") << true;
+        QTest::newRow("plain with url") << QByteArray("Subject: a\nContent-Type: text/plain\n\nsee https://x.invalid/a.png\n") << false;
+        QTest::newRow("html no images") << QByteArray("Subject: a\nContent-Type: text/html\n\n<p>Hello</p>\n") << false;
+        QTest::newRow("alternative") << QByteArray(
+            "Subject: a\nMIME-Version: 1.0\nContent-Type: multipart/alternative; boundary=B\n\n"
+            "--B\nContent-Type: text/plain\n\nHello\n"
+            "--B\nContent-Type: text/html\n\n<p>Hello</p><img src=\"https://x.invalid/pixel.png\" alt=\"x\">\n--B--\n")
+                                     << true;
+        QTest::newRow("related remote") << QByteArray(
+            "Subject: a\nMIME-Version: 1.0\nContent-Type: multipart/related; boundary=R\n\n"
+            "--R\nContent-Type: text/html\n\n<img src=\"https://x.invalid/a.png\">\n"
+            "--R\nContent-Type: image/png\nContent-ID: <a@x>\nContent-Transfer-Encoding: base64\n\nAAAA\n--R--\n")
+                                        << true;
+        QTest::newRow("related cid only") << QByteArray(
+            "Subject: a\nMIME-Version: 1.0\nContent-Type: multipart/related; boundary=R\n\n"
+            "--R\nContent-Type: text/html\n\n<img src=\"cid:a@x\">\n"
+            "--R\nContent-Type: image/png\nContent-ID: <a@x>\nContent-Transfer-Encoding: base64\n\nAAAA\n--R--\n")
+                                          << false;
+        QTest::newRow("html attachment") << QByteArray(
+            "Subject: a\nMIME-Version: 1.0\nContent-Type: multipart/mixed; boundary=M\n\n"
+            "--M\nContent-Type: text/plain\n\nTHE BODY\n"
+            "--M\nContent-Type: text/html\nContent-Disposition: attachment; filename=page.html\n\n<img src=\"https://x.invalid/a.png\">\n--M--\n")
+                                         << false;
+    }
+
+    void testMessageHasRemoteImages()
+    {
+        QFETCH(QByteArray, raw);
+        QFETCH(bool, expected);
+        KMime::Message msg;
+        msg.setContent(raw);
+        msg.parse();
+        QCOMPARE(messageHasRemoteImages(msg), expected);
+    }
+
     void testPlainTextEscapesMarkup()
     {
         const QString html = render("Subject: a\nContent-Type: text/plain; charset=utf-8\n\n<script>alert(1)</script> & <b>bold</b>\n");

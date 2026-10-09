@@ -117,6 +117,12 @@ QColor readableLinkColour(const QColor &link, const QColor &background)
     return target;
 }
 
+bool messageHasRemoteImages(const KMime::Message &msg)
+{
+    const KMime::Content *html = msg.mainBodyPart("text/html");
+    return html && html->contentType() && html->contentType()->isHTMLText() && htmlHasRemoteImages(html->decodedText());
+}
+
 QString messageBodyHtml(const KMime::Message &msg, const QColor &text, const QColor &background, const QColor &link, bool allowRemoteImages)
 {
     const KMime::Content *html = msg.mainBodyPart("text/html");

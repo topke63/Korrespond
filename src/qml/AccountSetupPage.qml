@@ -15,13 +15,19 @@ Kirigami.ScrollablePage {
     property bool asLayer: false
 
     readonly property bool isCustom: providerCombo.currentValue === "custom"
+    // Gmail signs in with Google in the browser: no password.
+    readonly property bool isGoogle: providerCombo.currentValue === "gmail"
     readonly property bool canConnect: emailField.text.trim().length > 0
-        && passwordField.text.length > 0
+        && (isGoogle ? MailController.googleConfigured : passwordField.text.length > 0)
         && (!isCustom || hostField.text.trim().length > 0)
         && !MailController.busy
 
     function connectAccount() {
         if (!canConnect) {
+            return;
+        }
+        if (isGoogle) {
+            MailController.setupGoogleAccount(emailField.text.trim(), nameField.text.trim());
             return;
         }
         // Yahoo app passwords never contain spaces, but are easy to paste with some.
@@ -58,7 +64,7 @@ Kirigami.ScrollablePage {
             model: [
                 { value: "yahoo", text: KI18n.i18nc("@item:inlistbox", "Yahoo"), enabled: true },
                 { value: "custom", text: KI18n.i18nc("@item:inlistbox", "Custom IMAP"), enabled: true },
-                { value: "gmail", text: KI18n.i18nc("@item:inlistbox", "Gmail (coming in a later version)"), enabled: false },
+                { value: "gmail", text: KI18n.i18nc("@item:inlistbox", "Gmail"), enabled: true },
                 { value: "outlook", text: KI18n.i18nc("@item:inlistbox", "Outlook (coming in a later version)"), enabled: false }
             ]
             delegate: QQC2.ItemDelegate {
@@ -91,8 +97,20 @@ Kirigami.ScrollablePage {
         Kirigami.PasswordField {
             id: passwordField
 
+            visible: !page.isGoogle
             Kirigami.FormData.label: KI18n.i18nc("@label:textbox", "Password:")
             onAccepted: page.connectAccount()
+        }
+
+        QQC2.Label {
+            visible: page.isGoogle
+            Layout.maximumWidth: Kirigami.Units.gridUnit * 20
+            wrapMode: Text.Wrap
+            font: Kirigami.Theme.smallFont
+            color: MailController.googleConfigured ? Kirigami.Theme.textColor : Kirigami.Theme.negativeTextColor
+            text: MailController.googleConfigured
+                ? KI18n.i18nc("@info", "Your browser opens so you can sign in with Google. Plasma Mail never sees your Google password.")
+                : KI18n.i18nc("@info", "Google sign-in needs an OAuth client. Add ClientId and ClientSecret to the [GoogleOAuth] group of ~/.config/plasmamailrc, then restart Plasma Mail.")
         }
 
         QQC2.Label {
@@ -126,16 +144,26 @@ Kirigami.ScrollablePage {
             textFromValue: (value, locale) => value.toString() // no thousands separator
         }
 
-        QQC2.Button {
-            text: KI18n.i18nc("@action:button", "Connect")
-            icon.name: "network-connect"
-            enabled: page.canConnect
-            onClicked: page.connectAccount()
-        }
+        RowLayout {
+            spacing: Kirigami.Units.largeSpacing
 
-        QQC2.BusyIndicator {
-            visible: MailController.busy
-            running: visible
+            QQC2.Button {
+                text: page.isGoogle ? KI18n.i18nc("@action:button", "Sign in with Google…") : KI18n.i18nc("@action:button", "Connect")
+                icon.name: page.isGoogle ? "internet-services" : "network-connect"
+                enabled: page.canConnect
+                onClicked: page.connectAccount()
+            }
+            // Gives up a login that is still being checked (e.g. the browser sign-in).
+            QQC2.Button {
+                visible: MailController.busy
+                text: KI18n.i18nc("@action:button", "Cancel")
+                icon.name: "dialog-cancel"
+                onClicked: MailController.cancelSetup()
+            }
+            QQC2.BusyIndicator {
+                visible: MailController.busy
+                running: visible
+            }
         }
     }
 }

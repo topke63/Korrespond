@@ -2026,7 +2026,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   here (it can't find the Kirigami imports).
 
 ### T97 — Setup page: Sign in with Google
-- status: todo
+- status: done
 - depends on: T92
 - parallel-safe with: T93, T94, T96
 - files: src/qml/AccountSetupPage.qml
@@ -2035,7 +2035,14 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   "Sign in with Google" button and a note that the browser opens; if not configured, a note
   points to the `[GoogleOAuth]` settings (Q4) instead. Usable both first-run and from "Add Account…".
 - verify: offscreen start prints no new QML warnings.
-- notes:
+- notes: Done 2026-10-09. Gmail is enabled in the provider list. For Gmail the password field and
+  the Yahoo hint are hidden, a note explains the browser sign-in, and the button reads "Sign in
+  with Google…" (calls `setupGoogleAccount(email, name)`). Without a configured client the note is
+  red and says to add ClientId/ClientSecret to `[GoogleOAuth]` and restart; the button is
+  disabled. Extra: a Cancel button next to the busy indicator (`cancelSetup()`), for every
+  provider. Checked offscreen with an empty config and a temporary Gmail default (reverted): the
+  not-configured state looks right; no new QML warnings (the "not placed in the graphics scene"
+  line is the old one). The configured state and the real sign-in are T80/T95.
 
 ### T95 — Manual end-to-end check: Gmail next to Yahoo
 - status: todo

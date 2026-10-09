@@ -32,52 +32,29 @@ Kirigami.Page {
         return { name: match[1].length > 0 ? match[1] : match[2], address: match[2] };
     }
 
-    function openReply() {
-        const replyData = MailController.composeFor("reply");
-        if (replyData.isEmpty) {
+    // Opens a compose window prefilled for "reply", "replyAll" or "forward" (see composeFor()).
+    // The initial values are passed to createObject() so ComposeWindow sees them when it completes.
+    function openCompose(kind) {
+        const data = MailController.composeFor(kind);
+        // composeFor() answers an empty map when no message is open.
+        if (!data.kind) {
             return;
         }
-        const composeWindow = Qt.createQmlObject('import "qrc:/qml/ComposeWindow.qml" as ComposeWindow; ComposeWindow.ComposeWindow {}', page);
-        composeWindow.initialAccount = replyData.account;
-        composeWindow.initialTo = replyData.to;
-        composeWindow.initialCc = replyData.cc;
-        composeWindow.initialSubject = replyData.subject;
-        composeWindow.initialBody = replyData.body;
-        composeWindow.initialInReplyTo = replyData.inReplyTo;
-        composeWindow.initialReferences = replyData.references;
-        composeWindow.open();
-    }
-
-    function openReplyAll() {
-        const replyAllData = MailController.composeFor("replyAll");
-        if (replyAllData.isEmpty) {
-            return;
+        const component = Qt.createComponent("PlasmaMail", "ComposeWindow");
+        const composer = component.createObject(applicationWindow(), {
+            initialAccount: data.account,
+            initialTo: data.to,
+            initialCc: data.cc,
+            initialSubject: data.subject,
+            initialBody: data.body,
+            initialInReplyTo: data.inReplyTo,
+            initialReferences: data.references
+        });
+        if (composer) {
+            composer.show();
+        } else {
+            console.warn(component.errorString());
         }
-        const composeWindow = Qt.createQmlObject('import "qrc:/qml/ComposeWindow.qml" as ComposeWindow; ComposeWindow.ComposeWindow {}', page);
-        composeWindow.initialAccount = replyAllData.account;
-        composeWindow.initialTo = replyAllData.to;
-        composeWindow.initialCc = replyAllData.cc;
-        composeWindow.initialSubject = replyAllData.subject;
-        composeWindow.initialBody = replyAllData.body;
-        composeWindow.initialInReplyTo = replyAllData.inReplyTo;
-        composeWindow.initialReferences = replyAllData.references;
-        composeWindow.open();
-    }
-
-    function openForward() {
-        const forwardData = MailController.composeFor("forward");
-        if (forwardData.isEmpty) {
-            return;
-        }
-        const composeWindow = Qt.createQmlObject('import "qrc:/qml/ComposeWindow.qml" as ComposeWindow; ComposeWindow.ComposeWindow {}', page);
-        composeWindow.initialAccount = forwardData.account;
-        composeWindow.initialTo = forwardData.to;
-        composeWindow.initialCc = forwardData.cc;
-        composeWindow.initialSubject = forwardData.subject;
-        composeWindow.initialBody = forwardData.body;
-        composeWindow.initialInReplyTo = forwardData.inReplyTo;
-        composeWindow.initialReferences = forwardData.references;
-        composeWindow.open();
     }
 
     // The subject is shown large in the page itself; the title bar holds the message actions.
@@ -97,9 +74,9 @@ Kirigami.Page {
                 { move: "folder" },
                 { icon: "tag", text: KI18n.i18nc("@action:button", "Label") },
                 { separator: true },
-                { icon: "mail-reply-sender", text: KI18n.i18nc("@action:button", "Reply") },
-                { icon: "mail-reply-all", text: KI18n.i18nc("@action:button", "Reply All") },
-                { icon: "mail-forward", text: KI18n.i18nc("@action:button", "Forward") }
+                { icon: "mail-reply-sender", kind: "reply", text: KI18n.i18nc("@action:button", "Reply") },
+                { icon: "mail-reply-all", kind: "replyAll", text: KI18n.i18nc("@action:button", "Reply All") },
+                { icon: "mail-forward", kind: "forward", text: KI18n.i18nc("@action:button", "Forward") }
             ]
 
             delegate: Loader {
@@ -213,15 +190,7 @@ Kirigami.Page {
                         text: modelData.text
                         display: QQC2.AbstractButton.IconOnly
                         enabled: MailController.canCompose // enable only when we can compose a message
-                        onClicked: {
-                            if (modelData.icon === "mail-reply-sender") {
-                                openReply();
-                            } else if (modelData.icon === "mail-reply-all") {
-                                openReplyAll();
-                            } else if (modelData.icon === "mail-forward") {
-                                openForward();
-                            }
-                        }
+                        onClicked: page.openCompose(modelData.kind)
                     }
                 }
                 Component {
@@ -255,6 +224,21 @@ Kirigami.Page {
         onActivated: MailController.setFlagged(MailController.currentMessageAccount, MailController.currentUid, !MailController.messageFlagged)
     }
     // Single-key shortcuts; a focused text field takes the key instead.
+    Shortcut {
+        sequence: "R"
+        enabled: page.hasMessage && MailController.canCompose
+        onActivated: page.openCompose("reply")
+    }
+    Shortcut {
+        sequence: "Shift+R"
+        enabled: page.hasMessage && MailController.canCompose
+        onActivated: page.openCompose("replyAll")
+    }
+    Shortcut {
+        sequence: "Shift+F"
+        enabled: page.hasMessage && MailController.canCompose
+        onActivated: page.openCompose("forward")
+    }
     Shortcut {
         sequence: "U"
         enabled: page.hasMessage

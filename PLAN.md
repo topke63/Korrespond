@@ -2359,7 +2359,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   (the mail itself went out). Build without warnings; 16/16 tests.
 
 ### T114 — Toolbar: Reply, Reply All, Forward
-- status: todo
+- status: done
 - depends on: T112
 - parallel-safe with: T113
 - files: src/qml/MessagePage.qml
@@ -2367,7 +2367,11 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - output: the three buttons enabled (shortcuts R, Shift+R, Shift+F), each opens the compose window
   prefilled.
 - verify: offscreen start prints no new QML warnings.
-- notes:
+- notes: First version (cbb7f80) imported ComposeWindow.qml as a module (fails), called open(),
+  set the prefill after Component.onCompleted and had no shortcuts. Fixed: one `openCompose(kind)`
+  helper using `Qt.createComponent("PlasmaMail", "ComposeWindow")` + `createObject(..., {initial*})`
+  + `show()`; Shortcuts R / Shift+R / Shift+F. Build ok, ctest 16/16, offscreen start: no warnings
+  from MessagePage. Click path is checked live in T115.
 
 ### T115 — Manual check: send, reply, forward
 - status: todo

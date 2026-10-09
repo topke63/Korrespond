@@ -86,3 +86,10 @@ ecm_add_test(
     TEST_NAME oauthsettingstest
     LINK_LIBRARIES plasmamail_engine Qt6::Test
 )
+
+# Test for NewMailTracker
+ecm_add_test(
+    newmailtrackertest.cpp
+    TEST_NAME newmailtrackertest
+    LINK_LIBRARIES plasmamail_engine Qt6::Test
+)

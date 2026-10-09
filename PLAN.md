@@ -2476,7 +2476,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   Full build has no warnings; 13/13 tests pass.
 
 ### T124 — `NewMailChecker`: find new messages
-- status: todo
+- status: done
 - depends on: T83
 - parallel-safe with: T122, T123
 - files: src/engine/newmailtracker.h, src/engine/newmailtracker.cpp, autotests/newmailtrackertest.cpp (+ CMake lines)
@@ -2486,7 +2486,16 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   uidValidity); a UIDVALIDITY change or the first run records without announcing; tests for first
   run, second run with 2 new, read mail ignored, old mail ignored, UIDVALIDITY reset, two accounts.
 - verify: `ctest --test-dir build -R newmailtrackertest --output-on-failure`
-- notes:
+- notes: Done 2026-10-09. `NewMailTracker` (not "Checker"; no separate `markSeenUpTo`):
+  `newMessages(account, folder, uidValidity, summaries, now)` + `forget(account)`; in-memory state
+  per (account, folder). First call, and the first call after a real UIDVALIDITY change, only
+  record. After that: uid above the highest seen, unread, not older than a day (a missing date
+  counts as recent), newest uid first; everything fetched is recorded, so a read or old message
+  is never announced later and a message that turns unread later isn't either. `uidValidity 0`
+  means unknown (never counts as a change) — T125 can pass 0 because `headersFetched` carries no
+  UIDVALIDITY. 10 tests (first run, 2 new newest-first and announced once, read mail, old mail and
+  missing date, UIDVALIDITY reset, unknown value, two accounts/folders, forget, empty inbox).
+  14/14 test executables pass.
 
 ### T125 — Background check every few minutes
 - status: todo

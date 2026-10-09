@@ -9,6 +9,7 @@ add_library(plasmamail_engine STATIC
     engine/imapclient.cpp
     engine/messagerenderer.cpp
     engine/messagestore.cpp
+    engine/newmailtracker.cpp
     engine/oauthclient.cpp
     engine/oauthsettings.cpp
     engine/retention.cpp

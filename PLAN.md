@@ -3608,6 +3608,125 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   Closed 2026-10-09: the user tried dragging files from Dolphin onto the compose window and said "works" (a general confirmation; the text-drop and over-25-MB cases were not reported separately).
 
 
+# Milestone 6 — IMAP IDLE (push mail) (user request 2026-10-09)
+
+- **Goal**: new mail shows up within seconds instead of at the next timer tick (today
+  `CheckMinutes`, 1 minute in the user's config). Works for Yahoo and Gmail, and falls back to the
+  timer wherever IDLE is not possible, so mail is never missed.
+- **How it works today**: `MailController` has a `QTimer` that calls `checkInbox(session)` for
+  each connected account (T125); `ImapClient::checkInbox` sends a fresh SELECT + SEARCH UNSEEN
+  and answers `inboxChecked`; `NewMailTracker` decides what is new; the tray, notification and the
+  open list react (T126–T127, `refreshInboxView`). IDLE only has to *trigger* that same path.
+- **Decisions** (made while planning; change only with the user):
+  - **A second connection per account** just for IDLE (KIMAP `IdleJob` occupies its session until
+    it is stopped, so the normal session cannot be shared). It logs in the same way as the main
+    session (password, or the OAuth token for Google), selects the INBOX read-only
+    (`EXAMINE`), runs `IdleJob`, and has no other job. One IDLE connection per account, never more.
+  - When the server pushes any change (new message, expunge, flags), the watcher only emits
+    `inboxChanged()`; the controller then runs the existing `checkInbox(session)`, coalescing
+    bursts (at most one check at a time and one more queued; a short delay of about 1 s to merge
+    several pushes). No mail data is read on the IDLE connection.
+  - IDLE is restarted every 20 minutes (servers drop it after about 29–30 minutes) and the
+    connection is re-made after a loss with a growing wait (30 s, 1 min, 2 min, 5 min, then stays
+    at 5 min), reset when it works for a while. No reconnect storm.
+  - No IDLE capability, a failed login, or a connection that keeps failing → the watcher reports
+    `Unavailable` / `Failed` and the polling timer keeps covering that account.
+  - **The timer stays** as a safety net: for an account whose watcher is idling, the timer
+    checks only every 15 minutes (a silent dead connection is found at the latest then); for the
+    others it uses `CheckMinutes` as now.
+  - A setting "Push mail (IDLE) when the server supports it", on by default, saved in
+    `plasmamailrc` next to the other notification settings. Off = polling only, as today.
+  - The IDLE connection is also closed when the account is removed, when the app quits, and when
+    the main session fails or is closed.
+  - Logs: states only ("push active for <account>"), never message data; the existing rule about
+    tokens in logs stays.
+- **Out of scope**: IDLE on folders other than the INBOX, NOTIFY (RFC 5465), push while the app
+  is not running, Gmail threads, a setting for the restart interval.
+
+### T169 — Idle policy: restart and reconnect timing
+- status: todo
+- depends on: T125
+- parallel-safe with: none
+- files: src/engine/idlepolicy.h, src/engine/idlepolicy.cpp, src/CMakeLists.txt (if sources are
+  listed), autotests/idlepolicytest.cpp, autotests/CMakeLists.txt
+- inputs: the decisions above.
+- output: a small pure class `IdlePolicy` (no Qt event loop needed): `restartInterval()` (20 min),
+  `nextReconnectDelay()` (30 s, 1 min, 2 min, 5 min, 5 min, …), `reportConnected()` /
+  `reportStable()` (reset after the connection worked for 2 minutes), `reportFailure()`;
+  `pollInterval(bool idling, int checkMinutes)` (15 min while idling, else `checkMinutes`).
+- verify: build succeeds; the test covers the delay sequence, the reset after stability, a
+  failure right after connecting (no reset), and `pollInterval`; `ctest --preset dev` passes.
+- notes:
+
+### T170 — Engine: `ImapIdleWatcher`
+- status: todo
+- depends on: T169
+- parallel-safe with: none
+- files: src/engine/imapidlewatcher.h, src/engine/imapidlewatcher.cpp, src/CMakeLists.txt
+- inputs: how `ImapClient::session()` creates and logs in a `KIMAP::Session` (password and
+  OAuth), `KIMAP::IdleJob`, `IdlePolicy`.
+- output: class `ImapIdleWatcher : QObject` with `start(const Account &, credentials)` / `stop()`,
+  states `Stopped, Connecting, Idling, Unavailable, Failed`, signals `stateChanged()` and
+  `inboxChanged()`. Behaviour as in the decisions: second session, login like the main session
+  (share the code if it can be done without a big refactor; otherwise a small duplicate that is
+  recorded in the notes), CAPABILITY check for IDLE (else `Unavailable`), EXAMINE INBOX, IdleJob
+  with a 20-minute restart, reconnect with `IdlePolicy` delays, every KIMAP job tied to a
+  generation counter like `ImapClient` so late answers of an old connection are ignored. The
+  watcher never reads messages.
+- verify: build succeeds; `ctest --preset dev` passes; a test for the parts that run without a
+  server (start with an unreachable host → `Failed` then retries with the delays using a fake
+  clock or a short override; `stop()` while connecting emits nothing afterwards); real IMAP is
+  checked in T174.
+- notes:
+
+### T171 — Controller: use the watcher, poll less
+- status: todo
+- depends on: T170
+- parallel-safe with: none
+- files: src/app/accountsession.h, src/app/accountsession.cpp, src/app/mailcontroller.h,
+  src/app/mailcontroller.cpp
+- inputs: T170; `AccountSession` (owns the client and connection state), the check timer and
+  `checkInbox(session)`.
+- output: each `AccountSession` owns a watcher that starts when the main session is connected and
+  its folders are listed (with the same credentials) and stops with the session; on
+  `inboxChanged()` the controller runs the existing `checkInbox(session)` with the coalescing
+  rule; the timer uses `IdlePolicy::pollInterval` per account (accounts with an idling watcher
+  every 15 minutes, others every `CheckMinutes`); the watcher is stopped when an account is
+  removed or the app quits and its states are logged without data.
+- verify: build succeeds; `ctest --preset dev` passes; offscreen start with a throw-away profile
+  and no account shows no new warnings; real lint stays at the baseline (2) if QML changed.
+- notes:
+
+### T172 — Setting and status: push on/off, push state in the chip tooltip
+- status: todo
+- depends on: T171
+- parallel-safe with: none
+- files: the app settings class (find it with grep; it holds `keepInTray` and `checkMinutes`),
+  src/app/mailcontroller.h, src/app/mailcontroller.cpp, src/qml/NotificationSettingsPage.qml,
+  src/qml/StatusBar.qml
+- inputs: T171; `AppSettings` with `saveAppSettings(bool keepInTray, int checkMinutes)`.
+- output: the setting "Use push (IDLE) when the server supports it" (default on) in
+  Settings → Notifications; turning it off stops all watchers at once and the timer goes back to
+  `CheckMinutes` for everyone; turning it on starts them. The account chip tooltip in the status
+  bar gets one more line: "Push: active / connecting / not supported by the server / off".
+- verify: build succeeds; real lint stays at the baseline (2); `ctest --preset dev` passes;
+  offscreen start with a throw-away profile shows no new warnings.
+- notes:
+
+### T173 — Manual check: push mail
+- status: todo
+- depends on: T172
+- parallel-safe with: none
+- files: none
+- inputs: the user's desktop; the Yahoo and Gmail accounts; a second way to send mail to
+  them (the other account, or webmail).
+- output: confirmed: the tooltip says "Push: active" for both accounts a few seconds after start;
+  a message sent from webmail shows up (list, notification, tray count) within about 10 seconds
+  although `CheckMinutes` is longer; turning the network off and on makes the chips recover and
+  push come back by itself; the setting off falls back to polling.
+- verify: manual, with the user.
+- notes:
+
 ## Execution Loop
 
 Execute the plan as a loop. Each iteration handles one task in a fresh context, then ends.

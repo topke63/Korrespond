@@ -3046,6 +3046,23 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   was running had been started before this rebuild, so it must be restarted to show the change.
   Closed 2026-10-09 by the user after hovering the toolbar buttons.
 
+### T147 — Google sign-in: "Could not start the local sign-in listener"
+- status: todo
+- depends on: T146
+- parallel-safe with: none
+- files: src/engine/oauthclient.cpp
+- inputs: the user's first live Google sign-in (2026-10-09): the toast "Could not start the local
+  sign-in listener." and, in the log, `QTcpServer::listen() called when already listening` (twice).
+  Cause (to confirm): `QOAuthHttpServerReplyHandler(this)` already starts listening in its
+  constructor, so the explicit `listen(QHostAddress::LocalHost, 0)` in `OAuthClient::signIn()`
+  fails.
+- output: `signIn()` uses the handler's own listening (or constructs it with `LocalHost` and port 0
+  and checks `isListening()`), fails with the same message only if it is not listening, and still
+  closes the handler in `finish()`. A second sign-in after a failed or cancelled one works.
+- verify: build succeeds; `ctest --preset dev` passes; the manual check is the user's sign-in
+  (T80/T95).
+- notes:
+
 ## Execution Loop
 
 Execute the plan as a loop. Each iteration handles one task in a fresh context, then ends.

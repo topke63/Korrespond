@@ -2003,7 +2003,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   same-uid rows only the opened one is highlighted. 12/12 tests pass. The one-argument `selectFolder` is gone too (internal calls pass an empty account for shared views).
 
 ### T96 — Settings → Accounts lists every account
-- status: todo
+- status: done
 - depends on: T90
 - parallel-safe with: T93, T94
 - files: src/qml/AccountSettingsPage.qml, src/qml/AccountDetailsPage.qml
@@ -2011,7 +2011,19 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - output: one row per account; "Add Account…" opens the setup page as a layer; the details
   page shows the chosen account and removes only it.
 - verify: offscreen start prints no new QML warnings; manual in T95.
-- notes:
+- notes: Done 2026-10-09 (user review pending). Settings → Accounts has a Repeater over
+  `MailController.accounts` (new model role `authMethod`); a row pushes the details page with that
+  row's values (`email`, `displayName`, `provider`, `server`, `authMethod` — the page no longer
+  reads the first account); "Remove Account" calls `removeAccount(email)` and pops the layer
+  (Main.qml still closes the settings when it was the last account). "Add Account…" is enabled and
+  pushes `AccountSetupPage` with `asLayer: true` (title "Add Account"; it pops itself on
+  `accountChanged`; leaving it calls `cancelSetup()`). Main.qml now rebuilds the page stack on
+  `accountChanged` only when having-an-account flips, so adding a second account keeps the open
+  mail view. Dev hook: `PLASMAMAIL_SCREENSHOT_SETTINGS=<module id>` opens a settings page before
+  the screenshot. Checked offscreen/offline with the made-up two-account copy: the Accounts page
+  lists both accounts and Add Account…, no new QML warnings. **Not run yet:** the details page, the
+  remove dialog and the Add Account layer (need clicks) — covered by T95. qmllint is unusable
+  here (it can't find the Kirigami imports).
 
 ### T97 — Setup page: Sign in with Google
 - status: todo

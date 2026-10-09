@@ -14,6 +14,7 @@ Kirigami.ApplicationWindow {
 
     // Shows account setup until an account exists, the mail view after.
     function showStartPage() {
+        hadAccount = MailController.hasAccount;
         pageStack.clear();
         if (MailController.hasAccount) {
             // Message list and message side by side; on narrow windows one at a time.
@@ -23,6 +24,14 @@ Kirigami.ApplicationWindow {
         } else {
             pageStack.push(setupPage);
         }
+    }
+
+    // Whether the start page was last built for "has an account"; see onAccountChanged.
+    property bool hadAccount: false
+
+    // Dev only: the PLASMAMAIL_SCREENSHOT_SETTINGS hook in main.cpp opens a settings module.
+    function openSettingsModule(moduleId: string) {
+        settings.open(moduleId);
     }
 
     title: KI18n.i18nc("@title:window", "Plasma Mail")
@@ -142,7 +151,11 @@ Kirigami.ApplicationWindow {
             window.showPassiveNotification(message);
         }
         function onAccountChanged() {
-            window.showStartPage();
+            // Adding a second account keeps the open mail view; only the first or the last one
+            // switches between setup and mail.
+            if (window.hadAccount !== MailController.hasAccount) {
+                window.showStartPage();
+            }
             // After removing the account there is nothing left to configure.
             if (!MailController.hasAccount && settings.configViewItem) {
                 if (typeof settings.configViewItem.close === "function") {

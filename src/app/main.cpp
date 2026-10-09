@@ -44,6 +44,16 @@ static void scheduleScreenshot(QQmlApplicationEngine &engine)
             controller->openMessage(model->index(0, 0).data(accountRole).toString(), model->index(0, 0).data(uidRole).toLongLong());
         });
     }
+    // PLASMAMAIL_SCREENSHOT_SETTINGS=<module id> (accounts, storage, about) opens that settings page
+    // a third of the way in.
+    const QString settingsModule = qEnvironmentVariable("PLASMAMAIL_SCREENSHOT_SETTINGS");
+    if (!settingsModule.isEmpty()) {
+        QTimer::singleShot(delay / 3, &engine, [&engine, settingsModule] {
+            if (!engine.rootObjects().isEmpty()) {
+                QMetaObject::invokeMethod(engine.rootObjects().constFirst(), "openSettingsModule", Q_ARG(QString, settingsModule));
+            }
+        });
+    }
     QTimer::singleShot(delay, &engine, [&engine, file] {
         // The window in front (e.g. the settings window), else the main window.
         auto window = qobject_cast<QQuickWindow *>(QGuiApplication::focusWindow());

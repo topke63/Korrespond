@@ -22,6 +22,7 @@ public:
         DisplayNameRole,
         ProviderRole, // readable, e.g. "Yahoo"
         ServerRole, // "host:port" of the IMAP server
+        AuthMethodRole, // "password" or "oauth"
         FolderModelRole, // the account's FolderModel, as QObject*
     };
 

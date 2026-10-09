@@ -13,7 +13,14 @@ import PlasmaMail
 FormCard.FormCardPage {
     id: page
 
-    title: MailController.accountDisplayName.length > 0 ? MailController.accountDisplayName : MailController.accountEmail
+    // The account shown (values of the accounts model's row).
+    property string email
+    property string displayName
+    property string provider
+    property string server
+    property string authMethod
+
+    title: displayName.length > 0 ? displayName : email
 
     FormCard.FormHeader {
         title: KI18n.i18nc("@title:group", "Account Details")
@@ -27,7 +34,7 @@ FormCard.FormCardPage {
 
                 SenderAvatar {
                     implicitWidth: Kirigami.Units.gridUnit * 2.5
-                    name: MailController.accountEmail
+                    name: page.email
                 }
                 ColumnLayout {
                     Layout.fillWidth: true
@@ -35,14 +42,13 @@ FormCard.FormCardPage {
 
                     QQC2.Label {
                         Layout.fillWidth: true
-                        text: MailController.accountDisplayName.length > 0 ? MailController.accountDisplayName
-                                                                           : MailController.accountEmail
+                        text: page.displayName.length > 0 ? page.displayName : page.email
                         font.weight: Font.DemiBold
                         elide: Text.ElideRight
                     }
                     QQC2.Label {
                         Layout.fillWidth: true
-                        text: MailController.accountEmail
+                        text: page.email
                         color: Kirigami.Theme.disabledTextColor
                         elide: Text.ElideRight
                     }
@@ -54,21 +60,22 @@ FormCard.FormCardPage {
 
         FormCard.FormTextDelegate {
             text: KI18n.i18nc("@label", "Provider")
-            description: MailController.accountProvider
+            description: page.provider
         }
 
         FormCard.FormDelegateSeparator {}
 
         FormCard.FormTextDelegate {
             text: KI18n.i18nc("@label", "Incoming mail server (IMAP, SSL/TLS)")
-            description: MailController.accountServer
+            description: page.server
         }
 
         FormCard.FormDelegateSeparator {}
 
         FormCard.FormTextDelegate {
-            text: KI18n.i18nc("@label", "Password")
-            description: KI18n.i18nc("@info", "Stored in the system wallet (KWallet)")
+            text: page.authMethod === "oauth" ? KI18n.i18nc("@label", "Sign-in") : KI18n.i18nc("@label", "Password")
+            description: page.authMethod === "oauth" ? KI18n.i18nc("@info", "Signed in with Google; only a sign-in token is stored in the system wallet (KWallet)")
+                                                      : KI18n.i18nc("@info", "Stored in the system wallet (KWallet)")
         }
     }
 
@@ -88,7 +95,7 @@ FormCard.FormCardPage {
 
         title: KI18n.i18nc("@title:dialog", "Remove Account?")
         subtitle: KI18n.i18nc("@info", "This removes %1 and its saved password from this computer. No mail is deleted on the server.",
-                              MailController.accountEmail)
+                              page.email)
         standardButtons: Kirigami.Dialog.NoButton
         customFooterActions: [
             Kirigami.Action {
@@ -96,7 +103,12 @@ FormCard.FormCardPage {
                 icon.name: "list-remove-user"
                 onTriggered: {
                     removeDialog.close();
-                    MailController.removeAccount(); // Main.qml then closes the settings
+                    MailController.removeAccount(page.email);
+                    // Main.qml closes the settings when it was the last account.
+                    const stack = page.QQC2.ApplicationWindow.window.pageStack;
+                    if (stack.layers.depth > 1) {
+                        stack.layers.pop();
+                    }
                 }
             },
             Kirigami.Action {

@@ -39,6 +39,8 @@ QVariant AccountListModel::data(const QModelIndex &index, int role) const
         return providerName(account.provider);
     case ServerRole:
         return u"%1:%2"_s.arg(account.imapHost).arg(account.imapPort);
+    case AuthMethodRole:
+        return account.authMethod;
     case FolderModelRole:
         return QVariant::fromValue<QObject *>(session->folderModel());
     }
@@ -52,6 +54,7 @@ QHash<int, QByteArray> AccountListModel::roleNames() const
         {DisplayNameRole, "displayName"},
         {ProviderRole, "provider"},
         {ServerRole, "server"},
+        {AuthMethodRole, "authMethod"},
         {FolderModelRole, "folderModel"},
     };
 }

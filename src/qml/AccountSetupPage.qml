@@ -11,6 +11,9 @@ import PlasmaMail
 Kirigami.ScrollablePage {
     id: page
 
+    // Shown from Settings → Accounts → Add Account: closes itself once the account is added.
+    property bool asLayer: false
+
     readonly property bool isCustom: providerCombo.currentValue === "custom"
     readonly property bool canConnect: emailField.text.trim().length > 0
         && passwordField.text.length > 0
@@ -29,7 +32,21 @@ Kirigami.ScrollablePage {
                                     isCustom ? hostField.text.trim() : "", portField.value);
     }
 
-    title: KI18n.i18nc("@title", "Set Up Account")
+    title: page.asLayer ? KI18n.i18nc("@title", "Add Account") : KI18n.i18nc("@title", "Set Up Account")
+
+    // Leaving while a login is still being checked gives it up.
+    Component.onDestruction: MailController.cancelSetup()
+
+    Connections {
+        target: MailController
+        enabled: page.asLayer
+        function onAccountChanged() {
+            const stack = page.QQC2.ApplicationWindow.window.pageStack;
+            if (stack.layers.depth > 1) {
+                stack.layers.pop();
+            }
+        }
+    }
 
     Kirigami.FormLayout {
         QQC2.ComboBox {

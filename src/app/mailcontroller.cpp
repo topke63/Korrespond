@@ -15,6 +15,7 @@
 #include "messagestore.h"
 #include "oauthsettings.h"
 #include "secretstore.h"
+#include "smtpclient.h"
 
 #include <KLocalizedString>
 #include <KMime/Message>
@@ -348,6 +349,63 @@ QVariantMap MailController::composeFor(const QString &kind) const
     map[u"inReplyTo"_s] = ids.inReplyTo;
     map[u"references"_s] = ids.references;
     return map;
+}
+
+bool MailController::sending() const
+{
+    return m_smtp != nullptr;
+}
+
+void MailController::sendMessage(const QVariantMap &message)
+{
+    if (m_smtp) {
+        Q_EMIT sendFailed(i18n("Another message is still being sent."));
+        return;
+    }
+    const AccountSession *session = sessionFor(message.value(u"account"_s).toString());
+    if (!session) {
+        Q_EMIT sendFailed(i18n("Please choose an account to send from."));
+        return;
+    }
+    // The login the account is using for IMAP: the password, or the current access token.
+    const QString secret = session->client()->secret();
+    if (secret.isEmpty()) {
+        Q_EMIT sendFailed(i18n("%1 is not connected yet. Please try again in a moment.", session->account().email));
+        return;
+    }
+    const Account &account = session->account();
+    OutgoingMessage outgoing;
+    outgoing.fromAddress = account.email;
+    outgoing.fromName = account.displayName == account.email ? QString() : account.displayName;
+    const auto field = [&message](const QString &key) {
+        const QString text = message.value(key).toString().trimmed();
+        return text.isEmpty() ? QStringList() : QStringList{text};
+    };
+    outgoing.to = field(u"to"_s);
+    outgoing.cc = field(u"cc"_s);
+    outgoing.bcc = field(u"bcc"_s);
+    outgoing.subject = message.value(u"subject"_s).toString();
+    outgoing.body = message.value(u"body"_s).toString();
+    outgoing.inReplyTo = message.value(u"inReplyTo"_s).toString();
+    outgoing.references = message.value(u"references"_s).toStringList();
+    if (outgoing.to.isEmpty() && outgoing.cc.isEmpty() && outgoing.bcc.isEmpty()) {
+        Q_EMIT sendFailed(i18n("Please enter a recipient."));
+        return;
+    }
+
+    m_smtp = new SmtpClient(this);
+    connect(m_smtp, &SmtpClient::sent, this, [this] {
+        std::exchange(m_smtp, nullptr)->deleteLater();
+        Q_EMIT sendingChanged();
+        Q_EMIT messageSent();
+    });
+    connect(m_smtp, &SmtpClient::failed, this, [this](const QString &error) {
+        std::exchange(m_smtp, nullptr)->deleteLater();
+        Q_EMIT sendingChanged();
+        Q_EMIT sendFailed(error);
+    });
+    Q_EMIT sendingChanged();
+    m_smtp->send(account, secret, outgoing);
 }
 
 bool MailController::canMove() const

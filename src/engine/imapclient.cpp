@@ -92,6 +92,11 @@ void ImapClient::disconnectFromServer()
     dropSession();
 }
 
+QString ImapClient::secret() const
+{
+    return m_password;
+}
+
 bool ImapClient::hasSession() const
 {
     return m_session != nullptr;

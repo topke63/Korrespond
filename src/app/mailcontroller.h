@@ -31,6 +31,7 @@ class FolderModel;
 class MessageListModel;
 class MessageStore;
 class SecretStore;
+class SmtpClient;
 
 // The only object the QML UI talks to. Owns one AccountSession per saved account. The QML API
 // below works on the first account (the one the UI shows); `accounts` lists all of them.
@@ -77,6 +78,8 @@ class MailController : public QObject
     Q_PROPERTY(bool canMove READ canMove NOTIFY currentMessageChanged)
     // Reply, Reply All and Forward can start from the open message (it has been loaded).
     Q_PROPERTY(bool canCompose READ canCompose NOTIFY currentMessageChanged)
+    // A message is being sent (one at a time).
+    Q_PROPERTY(bool sending READ sending NOTIFY sendingChanged)
     // The folders of the open message's account (for the Move to Folder menu).
     Q_PROPERTY(QAbstractListModel *messageFolderModel READ messageFolderModel NOTIFY currentMessageChanged)
     // Local storage settings. importSince is an ISO date ("yyyy-MM-dd"), empty = all mail; the
@@ -153,6 +156,7 @@ public:
     [[nodiscard]] bool canDelete() const;
     [[nodiscard]] bool canMove() const;
     [[nodiscard]] bool canCompose() const;
+    [[nodiscard]] bool sending() const;
     [[nodiscard]] QAbstractListModel *messageFolderModel() const;
     [[nodiscard]] bool storageEnabled() const;
     [[nodiscard]] QString importSince() const;
@@ -243,6 +247,10 @@ public:
     // (comma separated), subject, body (the cursor goes above the quoted text), inReplyTo, references
     // (a list), kind. Empty when no message is open or loaded.
     Q_INVOKABLE QVariantMap composeFor(const QString &kind) const;
+    // Sends a message through the SMTP server of message["account"]. Keys: account, to, cc, bcc,
+    // subject, body (plain text), inReplyTo, references (a list). Answers with messageSent() or
+    // sendFailed(text); the caller keeps the text until then. One message at a time.
+    Q_INVOKABLE void sendMessage(const QVariantMap &message);
     Q_INVOKABLE void archiveMessage();
     Q_INVOKABLE void deleteMessage();
     Q_INVOKABLE void moveMessage(const QString &folderPath);
@@ -273,6 +281,9 @@ Q_SIGNALS:
     void unreadCountChanged();
     void appSettingsChanged();
     void activityChanged();
+    void sendingChanged();
+    void messageSent();
+    void sendFailed(const QString &message);
     void panelWidthsChanged();
     void showMessageRequested();
     // New mail found by a background check. With count == 1, sender ("Name <address>") and
@@ -348,6 +359,7 @@ private:
     // The open shared view: each account's part of the merged list, and the accounts already asked.
     std::map<QString, QList<MessageSummary>> m_sharedParts;
     std::set<AccountSession *> m_sharedRequested;
+    SmtpClient *m_smtp = nullptr; // the running send, if any
     AppSettings m_app;
     QString m_activityText;
     QDateTime m_lastCheckedAt;

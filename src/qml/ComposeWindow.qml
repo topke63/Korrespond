@@ -8,13 +8,26 @@ import org.kde.ki18n
 import org.kde.kirigami as Kirigami
 import PlasmaMail
 
-// New Message window. Sending arrives in a later milestone, so Send is disabled for now.
+// The message window: a new message, or a reply / forward when the initial* values are given
+// (see MailController.composeFor()).
 Kirigami.ApplicationWindow {
     id: composer
 
-    readonly property bool hasContent: toField.text.length > 0 || ccField.text.length > 0
-        || subjectField.text.length > 0 || bodyArea.text.length > 0
+    // What the fields start with; closing asks before discarding only when they were changed.
+    property string initialAccount
+    property string initialTo
+    property string initialCc
+    property string initialSubject
+    property string initialBody
+    property string initialInReplyTo
+    property var initialReferences: []
+
+    readonly property bool hasContent: toField.text !== initialTo || ccField.text !== initialCc || bccField.text.length > 0
+        || subjectField.text !== initialSubject || bodyArea.text !== initialBody
     property bool discardConfirmed: false
+    // True from pressing Send until the server has answered.
+    property bool waiting: false
+    property string errorText
 
     title: subjectField.text.length > 0 ? subjectField.text : KI18n.i18nc("@title:window", "New Message")
     width: Kirigami.Units.gridUnit * 38
@@ -22,6 +35,51 @@ Kirigami.ApplicationWindow {
     minimumWidth: Kirigami.Units.gridUnit * 22
     minimumHeight: Kirigami.Units.gridUnit * 16
     pageStack.globalToolBar.style: Kirigami.ApplicationHeaderStyle.None
+
+    function send() {
+        errorText = "";
+        waiting = true;
+        MailController.sendMessage({
+            account: fromBox.currentValue,
+            to: toField.text,
+            cc: ccField.text,
+            bcc: bccField.text,
+            subject: subjectField.text,
+            body: bodyArea.text,
+            inReplyTo: initialInReplyTo,
+            references: initialReferences
+        });
+    }
+
+    Component.onCompleted: {
+        toField.text = initialTo;
+        ccField.text = initialCc;
+        subjectField.text = initialSubject;
+        bodyArea.text = initialBody;
+        const index = fromBox.indexOfValue(initialAccount);
+        fromBox.currentIndex = index >= 0 ? index : 0;
+        // A reply starts with the cursor above the quoted text.
+        if (initialTo.length > 0) {
+            bodyArea.forceActiveFocus();
+            bodyArea.cursorPosition = 0;
+        }
+    }
+
+    // The answer to Send; only this window's own send counts.
+    Connections {
+        target: MailController
+        enabled: composer.waiting
+
+        function onMessageSent() {
+            composer.waiting = false;
+            composer.discardConfirmed = true;
+            composer.close();
+        }
+        function onSendFailed(message: string) {
+            composer.waiting = false;
+            composer.errorText = message;
+        }
+    }
 
     // Closing with typed text asks first, like Discard.
     onClosing: close => {
@@ -55,15 +113,26 @@ Kirigami.ApplicationWindow {
                     text: KI18n.i18nc("@label", "From:")
                     color: Kirigami.Theme.disabledTextColor
                 }
-                QQC2.Label {
+                QQC2.ComboBox {
+                    id: fromBox
+
                     Layout.fillWidth: true
-                    Layout.topMargin: Kirigami.Units.smallSpacing
-                    Layout.bottomMargin: Kirigami.Units.smallSpacing
-                    text: MailController.accountDisplayName.length > 0 && MailController.accountDisplayName !== MailController.accountEmail
-                        ? MailController.accountDisplayName + " <" + MailController.accountEmail + ">"
-                        : MailController.accountEmail
-                    textFormat: Text.PlainText
-                    elide: Text.ElideRight
+                    model: MailController.accounts
+                    valueRole: "email"
+                    // "Name <address>", or just the address.
+                    textRole: "email"
+                    enabled: !composer.waiting
+                    delegate: QQC2.ItemDelegate {
+                        required property var model
+
+                        width: fromBox.width
+                        text: model.displayName.length > 0 && model.displayName !== model.email ? model.displayName + " <" + model.email + ">" : model.email
+                        highlighted: fromBox.highlightedIndex === model.index
+                    }
+                    displayText: {
+                        const row = currentIndex;
+                        return currentValue ? currentValue : "";
+                    }
                 }
 
                 QQC2.Label {
@@ -78,6 +147,7 @@ Kirigami.ApplicationWindow {
                     placeholderText: KI18n.i18nc("@info:placeholder", "name@example.com, …")
                     inputMethodHints: Qt.ImhEmailCharactersOnly | Qt.ImhNoAutoUppercase
                     focus: true
+                    enabled: !composer.waiting
                 }
 
                 QQC2.Label {
@@ -90,6 +160,20 @@ Kirigami.ApplicationWindow {
 
                     Layout.fillWidth: true
                     inputMethodHints: Qt.ImhEmailCharactersOnly | Qt.ImhNoAutoUppercase
+                    enabled: !composer.waiting
+                }
+
+                QQC2.Label {
+                    Layout.alignment: Qt.AlignRight
+                    text: KI18n.i18nc("@label", "Bcc:")
+                    color: Kirigami.Theme.disabledTextColor
+                }
+                QQC2.TextField {
+                    id: bccField
+
+                    Layout.fillWidth: true
+                    inputMethodHints: Qt.ImhEmailCharactersOnly | Qt.ImhNoAutoUppercase
+                    enabled: !composer.waiting
                 }
 
                 QQC2.Label {
@@ -101,6 +185,7 @@ Kirigami.ApplicationWindow {
                     id: subjectField
 
                     Layout.fillWidth: true
+                    enabled: !composer.waiting
                 }
             }
 
@@ -123,6 +208,7 @@ Kirigami.ApplicationWindow {
                     rightPadding: Kirigami.Units.gridUnit
                     topPadding: Kirigami.Units.largeSpacing
                     background: null
+                    readOnly: composer.waiting
                 }
             }
 
@@ -136,22 +222,34 @@ Kirigami.ApplicationWindow {
                 Layout.leftMargin: Kirigami.Units.gridUnit
                 spacing: Kirigami.Units.smallSpacing
 
+                // Progress or the reason the last try failed; the text stays in the window.
                 QQC2.Label {
                     Layout.fillWidth: true
-                    text: KI18n.i18nc("@info", "Sending mail comes in a later version.")
-                    color: Kirigami.Theme.disabledTextColor
+                    text: composer.waiting ? KI18n.i18nc("@info:status", "Sending…") : composer.errorText
+                    color: composer.waiting ? Kirigami.Theme.disabledTextColor : Kirigami.Theme.negativeTextColor
                     font: Kirigami.Theme.smallFont
+                    wrapMode: Text.Wrap
+                    maximumLineCount: 2
                     elide: Text.ElideRight
+                }
+                QQC2.BusyIndicator {
+                    visible: composer.waiting
+                    running: visible
+                    Layout.preferredHeight: Kirigami.Units.iconSizes.smallMedium
+                    Layout.preferredWidth: Kirigami.Units.iconSizes.smallMedium
                 }
                 QQC2.Button {
                     text: KI18n.i18nc("@action:button", "Discard")
                     icon.name: "edit-delete"
+                    enabled: !composer.waiting
                     onClicked: composer.close()
                 }
                 QQC2.Button {
                     text: KI18n.i18nc("@action:button", "Send")
                     icon.name: "document-send"
-                    enabled: false // sending is a later milestone
+                    enabled: !composer.waiting && !MailController.sending && fromBox.currentValue !== undefined
+                        && (toField.text.trim().length > 0 || ccField.text.trim().length > 0 || bccField.text.trim().length > 0)
+                    onClicked: composer.send()
                 }
             }
         }

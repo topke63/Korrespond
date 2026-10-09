@@ -2320,7 +2320,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   open and loaded) for the buttons (T114). Build; 16/16 tests; not used by QML yet (T112/T114).
 
 ### T112 — Compose window: Send, prefilled
-- status: todo
+- status: done
 - depends on: T109, T111
 - parallel-safe with: none
 - files: src/qml/ComposeWindow.qml, src/app/mailcontroller.h, src/app/mailcontroller.cpp
@@ -2329,7 +2329,19 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   recipient and sends through the controller; shows progress, closes on success, keeps the text
   and shows the error on failure.
 - verify: offscreen start prints no new QML warnings.
-- notes:
+- notes: Done 2026-10-09 (no mail sent yet; live check T115). Controller: `sendMessage(map)`
+  (account, to, cc, bcc, subject, body, inReplyTo, references) → signals `messageSent()` /
+  `sendFailed(text)`, property `sending`; it uses the account's current IMAP secret (the
+  password, or the access token — new `ImapClient::secret()`), so an account that is not
+  connected yet answers "not connected yet, try again"; one send at a time; a missing recipient
+  is reported before anything is built. `ComposeWindow.qml`: a From box (the accounts), To, Cc,
+  **Bcc** (new), Subject, body; `initialAccount/To/Cc/Subject/Body/InReplyTo/References` properties
+  for T114; the cursor goes above the quoted text on a reply; Send is enabled with a recipient,
+  while sending the fields lock and "Sending…" with a busy indicator shows, success closes the
+  window, failure shows the text in red and keeps everything; closing asks only when the fields
+  differ from the starting values. Dev hook `PLASMAMAIL_SCREENSHOT_COMPOSE=new|reply`. Checked
+  offscreen: the reply window looks right (From, To, Re: subject, cursor on top, quoted text);
+  build without warnings; 16/16 tests.
 
 ### T113 — Copy of sent mail into the Sent folder
 - status: todo

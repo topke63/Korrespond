@@ -61,9 +61,22 @@ static void scheduleScreenshot(QQmlApplicationEngine &engine)
             }
         });
     }
-    QTimer::singleShot(delay, &engine, [&engine, file] {
+    // PLASMAMAIL_SCREENSHOT_COMPOSE=new|reply opens the message window (empty, or filled like a
+    // reply) and screenshots that one.
+    const QString compose = qEnvironmentVariable("PLASMAMAIL_SCREENSHOT_COMPOSE");
+    QQuickWindow *composer = nullptr;
+    if (!compose.isEmpty()) {
+        if (compose == "reply"_L1) {
+            engine.setInitialProperties({{u"initialTo"_s, u"Alice <alice@example.org>"_s},
+                                         {u"initialSubject"_s, u"Re: Lunch"_s},
+                                         {u"initialBody"_s, u"\n\nOn 8. 10. 2026, Alice wrote:\n> Hello Bob,\n>\n> lunch?\n"_s}});
+        }
+        engine.loadFromModule("PlasmaMail", "ComposeWindow");
+        composer = qobject_cast<QQuickWindow *>(engine.rootObjects().constLast());
+    }
+    QTimer::singleShot(delay, &engine, [&engine, file, composer] {
         // The window in front (e.g. the settings window), else the main window.
-        auto window = qobject_cast<QQuickWindow *>(QGuiApplication::focusWindow());
+        auto window = composer ? composer : qobject_cast<QQuickWindow *>(QGuiApplication::focusWindow());
         if (!window && !engine.rootObjects().isEmpty()) {
             window = qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
         }

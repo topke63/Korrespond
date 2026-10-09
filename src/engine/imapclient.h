@@ -56,6 +56,8 @@ public:
     void disconnectFromServer();
     // A session exists (after a fatal error, the connection is gone until the next request).
     [[nodiscard]] bool hasSession() const;
+    // The password, or for an "oauth" account the current access token, the client logs in with.
+    [[nodiscard]] QString secret() const;
 
     // Which messages fetchHeaders() returns.
     enum HeaderFilter {

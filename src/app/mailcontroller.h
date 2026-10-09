@@ -14,6 +14,7 @@
 #include <QQmlEngine>
 #include <QVariantMap>
 
+#include <map>
 #include <memory>
 #include <set>
 
@@ -194,8 +195,10 @@ private:
     // Shows the uiSession()'s folder list: keeps the current folder if it still exists, else
     // opens All Inboxes.
     void applyFolderList();
-    // The IMAP folder and filter behind a folder or shared-view path. With one account the
-    // shared views all read its inbox.
+    void fetchSharedPart(AccountSession *session);
+    void mergeSharedParts();
+    // The IMAP folder and filter behind a folder or shared-view path. A shared view reads each
+    // account's own inbox.
     [[nodiscard]] static QString imapFolderFor(const AccountSession *session, const QString &path);
     [[nodiscard]] static ImapClient::HeaderFilter filterFor(const QString &path);
     [[nodiscard]] static bool isSharedView(const QString &path);
@@ -216,6 +219,9 @@ private:
     QList<AccountSession *> m_sessions; // saved accounts, in order
     AccountSession *m_pending = nullptr; // being verified by setupAccount()
     QString m_pendingPassword;
+    // The open shared view: each account's part of the merged list, and the accounts already asked.
+    std::map<QString, QList<MessageSummary>> m_sharedParts;
+    std::set<AccountSession *> m_sharedRequested;
     std::set<AccountSession *> m_awaitingFolders; // sessions with a folder-list request in flight (counted as busy)
     AccountListModel *m_accounts;
     FolderModel *m_noFolders; // shown when there is no session

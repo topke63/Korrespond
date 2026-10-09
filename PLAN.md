@@ -1893,7 +1893,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   offline run on a copy of the user's data (list, stored message opens, toolbar as before).
 
 ### T89 — `MailController`: shared views merge every account
-- status: todo
+- status: done
 - depends on: T88
 - parallel-safe with: none
 - files: src/app/mailcontroller.cpp
@@ -1902,7 +1902,16 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   merge newest date first, keep the newest `messageLimit`; a late answer from one account
   re-merges without dropping the other's rows.
 - verify: build succeeds; manual in T95.
-- notes:
+- notes: Done 2026-10-09. Shared views keep one part per account (`m_sharedParts`); each answer
+  (stored copies first, then the server's) replaces only its account's part, then the parts are
+  merged (newest first, undated last, `messageLimit` rows). An account joins the view when its
+  folder list arrives (`fetchSharedPart`, once per selection); refresh on a shared view re-lists
+  every account's folders and each answer re-asks. Accounts that are not connected yet are
+  skipped (their `folders()` is empty). Checked offline on a copy of the user's data with a
+  made-up second account whose store is a copy of Yahoo's: both stores merged into one list.
+  **Known until T94:** the list highlight and `openMessage(uid)` use the uid only, so in a merged
+  list two accounts' messages with the same uid both look selected and the one-argument
+  `openMessage` opens the first account's copy. T94 passes the row's account.
 
 ### T90 — `MailController`: add and remove accounts
 - status: todo

@@ -143,6 +143,7 @@ bool MailController::isKnown(const AccountSession *session) const
 
 void MailController::discardSession(AccountSession *session, bool deleteStore)
 {
+    m_sharedRequested.erase(session);
     if (m_awaitingFolders.erase(session) > 0) {
         endRequest();
     }
@@ -348,12 +349,18 @@ void MailController::cleanUpNow()
 
 void MailController::showStoredMail()
 {
-    AccountSession *session = uiSession();
-    if (!session || !session->showStoredFolders()) {
+    bool any = false;
+    for (AccountSession *session : std::as_const(m_sessions)) {
+        any = session->showStoredFolders() || any;
+    }
+    if (!any) {
         return;
     }
     m_currentFolder = QLatin1StringView(allInboxesPath);
-    m_messageModel->setMessages(storedMessages(session, m_currentFolder));
+    for (const AccountSession *session : std::as_const(m_sessions)) {
+        m_sharedParts.insert_or_assign(session->account().email, storedMessages(session, m_currentFolder));
+    }
+    mergeSharedParts();
     m_showingStored = true;
     Q_EMIT currentFolderChanged();
 }
@@ -412,19 +419,68 @@ void MailController::selectFolder(const QString &account, const QString &path)
     if (path != m_currentFolder || newAccount != m_currentAccount) {
         m_currentAccount = newAccount;
         m_currentFolder = path;
+        m_sharedParts.clear();
         m_messageModel->clear();
         clearMessage(true); // the open message belongs to the folder being left
         Q_EMIT currentFolderChanged();
     }
-    const QString folder = imapFolderFor(session, path);
-    if (folder.isEmpty()) {
-        return; // a shared view before the folders (and so the inbox) are known
+    if (isSharedView(path)) {
+        // Every account's inbox, merged; the accounts whose folders are not known yet join
+        // when their folder list arrives (onSessionFolders).
+        m_sharedRequested.clear();
+        for (AccountSession *each : std::as_const(m_sessions)) {
+            fetchSharedPart(each);
+        }
+        return;
     }
     if (session->storageActive() && m_messageModel->rowCount() == 0) {
         m_messageModel->setMessages(storedMessages(session, path));
     }
     beginRequest();
-    session->client()->fetchHeaders(folder, messageLimit, filterFor(path));
+    session->client()->fetchHeaders(path, messageLimit, filterFor(path));
+}
+
+// Asks one account for its part of the open shared view, once per selection.
+void MailController::fetchSharedPart(AccountSession *session)
+{
+    // Folders arrive from the server only once the account is connected.
+    if (session->folders().isEmpty() || !m_sharedRequested.insert(session).second) {
+        return;
+    }
+    const QString folder = imapFolderFor(session, m_currentFolder);
+    if (folder.isEmpty()) {
+        return;
+    }
+    const QString email = session->account().email;
+    if (session->storageActive() && !m_sharedParts.contains(email)) {
+        m_sharedParts.insert_or_assign(email, storedMessages(session, m_currentFolder));
+        mergeSharedParts();
+    }
+    beginRequest();
+    session->client()->fetchHeaders(folder, messageLimit, filterFor(m_currentFolder));
+}
+
+// Shows the newest messageLimit messages of all accounts' parts, newest first.
+void MailController::mergeSharedParts()
+{
+    QList<MessageSummary> merged;
+    for (const AccountSession *session : std::as_const(m_sessions)) {
+        const auto it = m_sharedParts.find(session->account().email);
+        if (it != m_sharedParts.end()) {
+            merged.append(it->second);
+        }
+    }
+    // Undated messages (e.g. Yahoo mail without a Date header) come last.
+    std::stable_sort(merged.begin(), merged.end(), [](const MessageSummary &a, const MessageSummary &b) {
+        if (a.date.isValid() != b.date.isValid()) {
+            return a.date.isValid();
+        }
+        return a.date > b.date;
+    });
+    if (merged.size() > messageLimit) {
+        merged.resize(messageLimit);
+    }
+    m_messageModel->setMessages(merged);
 }
 
 bool MailController::storageActive() const
@@ -455,6 +511,17 @@ QList<MessageSummary> MailController::storedMessages(const AccountSession *sessi
 
 void MailController::refresh()
 {
+    if (isSharedView(m_currentFolder)) {
+        // Every account lists its folders again; each answer then asks for that account's part.
+        m_sharedRequested.clear();
+        for (AccountSession *session : std::as_const(m_sessions)) {
+            if (!session->folders().isEmpty() && m_awaitingFolders.insert(session).second) {
+                beginRequest();
+                session->client()->listFolders();
+            }
+        }
+        return;
+    }
     AccountSession *session = currentSession();
     if (!session) {
         return;
@@ -471,20 +538,26 @@ void MailController::refresh()
 void MailController::onHeadersFetched(AccountSession *session, const QString &folder, ImapClient::HeaderFilter filter, const QList<MessageSummary> &messages)
 {
     endRequest();
-    if (!isKnown(session) || session != currentSession() || folder != imapFolderFor(session, m_currentFolder) || filter != filterFor(m_currentFolder)) {
+    const bool shared = isSharedView(m_currentFolder);
+    if (!isKnown(session) || (!shared && session != currentSession()) || folder != imapFolderFor(session, m_currentFolder)
+        || filter != filterFor(m_currentFolder)) {
         return; // the user switched folders while this was loading
     }
-    if (!session->storageActive()) {
-        m_messageModel->setMessages(messages);
+    QList<MessageSummary> shown = messages;
+    if (session->storageActive()) {
+        // The server sends no body text; previews come from the local copies.
+        const QHash<qint64, QString> previews = session->store()->previews(folder);
+        for (MessageSummary &message : shown) {
+            message.preview = previews.value(message.uid);
+        }
+    }
+    if (!shared) {
+        m_messageModel->setMessages(shown);
         return;
     }
-    // The server sends no body text; previews come from the local copies.
-    const QHash<qint64, QString> previews = session->store()->previews(folder);
-    QList<MessageSummary> withPreviews = messages;
-    for (MessageSummary &message : withPreviews) {
-        message.preview = previews.value(message.uid);
-    }
-    m_messageModel->setMessages(withPreviews);
+    // One account's answer replaces only that account's part of the merged list.
+    m_sharedParts.insert_or_assign(session->account().email, shown);
+    mergeSharedParts();
 }
 
 void MailController::openMessage(qint64 uid)
@@ -664,6 +737,7 @@ void MailController::removeAccount()
     m_accounts->setSessions(m_sessions);
     m_showingStored = false;
     m_currentAccount.clear();
+    m_sharedParts.clear();
     m_messageModel->clear();
     clearMessage(true);
     if (!m_currentFolder.isEmpty()) {
@@ -747,6 +821,9 @@ void MailController::onSessionFolders(AccountSession *session)
         if (session == currentSession()) {
             applyFolderList();
         }
+        if (isSharedView(m_currentFolder)) {
+            fetchSharedPart(session); // its inbox is known now (a no-op if already asked)
+        }
         return;
     }
 
@@ -780,6 +857,7 @@ void MailController::onSessionFolders(AccountSession *session)
             m_accounts->setSessions(m_sessions);
             m_showingStored = false;
             m_currentAccount.clear();
+            m_sharedParts.clear();
             m_currentFolder.clear();
             m_messageModel->clear();
             clearMessage(true);

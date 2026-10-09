@@ -29,6 +29,20 @@ public:
     AccountSession(const Account &account, const QString &storeDir, const StorageSettings &storage, QObject *parent = nullptr);
     ~AccountSession() override;
 
+    // Where the connection to the server stands: Idle until a connect starts, Connecting while the
+    // login / sign-in runs, Connected once the server has answered, Failed after a fatal error
+    // (lastError() has the text; "connection lost" is one) until a later answer arrives.
+    enum ConnectionState {
+        Idle,
+        Connecting,
+        Connected,
+        Failed
+    };
+    [[nodiscard]] ConnectionState connectionState() const;
+    [[nodiscard]] QString lastError() const; // of the last Failed state, else empty
+    // "idle", "connecting", "connected" or "failed".
+    [[nodiscard]] static QString stateName(ConnectionState state);
+
     [[nodiscard]] const Account &account() const;
     [[nodiscard]] ImapClient *client() const;
     [[nodiscard]] MessageStore *store() const;
@@ -72,10 +86,13 @@ Q_SIGNALS:
     void inboxChecked(const QString &folder, int unreadTotal, const QList<MessageSummary> &newestUnread);
     void errorOccurred(const QString &message);
     void syncingChanged();
+    void connectionStateChanged();
     void storageUsageChanged();
 
 private:
     void onFoldersListed(const QList<FolderInfo> &folders);
+    void setConnectionState(ConnectionState state, const QString &error = {});
+    void markConnected(); // the server answered
     OAuthClient *oauth();
     void onAccessToken(const QString &accessToken);
     void updateStorageUsage();
@@ -84,6 +101,8 @@ private:
     Account m_account;
     OAuthClient *m_oauth = nullptr; // created for Google accounts
     QString m_refreshToken;
+    ConnectionState m_connectionState = Idle;
+    QString m_lastError;
     bool m_loggedIn = false; // the first access token has been used to connect
     ImapClient *m_client;
     FolderModel *m_folderModel;

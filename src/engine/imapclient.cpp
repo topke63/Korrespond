@@ -92,6 +92,11 @@ void ImapClient::disconnectFromServer()
     dropSession();
 }
 
+bool ImapClient::hasSession() const
+{
+    return m_session != nullptr;
+}
+
 void ImapClient::dropSession()
 {
     if (m_session) {

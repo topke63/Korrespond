@@ -2775,7 +2775,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - **Out of scope**: a progress bar, per-folder status, bandwidth numbers, a log viewer.
 
 ### T136 — `AccountSession`: connection state
-- status: todo
+- status: done
 - depends on: none
 - parallel-safe with: none
 - files: src/app/accountsession.h, src/app/accountsession.cpp
@@ -2785,7 +2785,14 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   when folders/headers/messages arrive, Failed (with the text) on `errorOccurred`; `Idle` before
   the first connect.
 - verify: build succeeds; all tests pass.
-- notes:
+- notes: Done 2026-10-09. `AccountSession::ConnectionState { Idle, Connecting, Connected, Failed }`,
+  `connectionState()`, `lastError()`, `stateName()` ("idle"/"connecting"/"connected"/"failed")
+  and signal `connectionStateChanged()`. Connecting when `connectWithSecret`, `signInWithGoogle` or
+  `connectWithRefreshToken` start; Connected (from Connecting or Failed only) when headers, a
+  message, a move or an inbox check come back, or the folder list arrives; Failed with the text
+  when the client reports an error **and has no session left** (new `ImapClient::hasSession()` —
+  a refused command like a missing folder keeps the session, so it doesn't turn the chip red) or
+  the OAuth client fails. Build; 14/14 tests; no UI uses it yet (T138).
 
 ### T137 — `AccountSession`: sync progress text
 - status: todo

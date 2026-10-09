@@ -28,6 +28,17 @@ AccountSession::AccountSession(const Account &account, const QString &storeDir, 
     connect(m_client, &ImapClient::messageMoved, this, &AccountSession::messageMoved);
     connect(m_client, &ImapClient::inboxChecked, this, &AccountSession::inboxChecked);
     connect(m_client, &ImapClient::errorOccurred, this, &AccountSession::errorOccurred);
+    // Any answer from the server means the connection works; a fatal error (the session is gone)
+    // means it does not. A refused command (e.g. no such folder) leaves the session, and so the state.
+    connect(m_client, &ImapClient::headersFetched, this, &AccountSession::markConnected);
+    connect(m_client, &ImapClient::messageFetched, this, &AccountSession::markConnected);
+    connect(m_client, &ImapClient::messageMoved, this, &AccountSession::markConnected);
+    connect(m_client, &ImapClient::inboxChecked, this, &AccountSession::markConnected);
+    connect(m_client, &ImapClient::errorOccurred, this, [this](const QString &message) {
+        if (!m_client->hasSession()) {
+            setConnectionState(Failed, message);
+        }
+    });
 
     // Store errors are logged, not shown: the mail itself still works from the server.
     connect(m_sync, &SyncManager::progress, this, &AccountSession::updateStorageUsage);
@@ -57,6 +68,49 @@ AccountSession::AccountSession(const Account &account, const QString &storeDir, 
 AccountSession::~AccountSession()
 {
     delete m_sync;
+}
+
+AccountSession::ConnectionState AccountSession::connectionState() const
+{
+    return m_connectionState;
+}
+
+QString AccountSession::lastError() const
+{
+    return m_lastError;
+}
+
+QString AccountSession::stateName(ConnectionState state)
+{
+    switch (state) {
+    case Connecting:
+        return QStringLiteral("connecting");
+    case Connected:
+        return QStringLiteral("connected");
+    case Failed:
+        return QStringLiteral("failed");
+    case Idle:
+        break;
+    }
+    return QStringLiteral("idle");
+}
+
+void AccountSession::setConnectionState(ConnectionState state, const QString &error)
+{
+    if (state == m_connectionState && error == m_lastError) {
+        return;
+    }
+    m_connectionState = state;
+    m_lastError = state == Failed ? error : QString();
+    Q_EMIT connectionStateChanged();
+}
+
+void AccountSession::markConnected()
+{
+    // Answers that arrive while idle (stored mail, a stale answer) say nothing about the connection.
+    if (m_connectionState == Connecting || m_connectionState == Failed) {
+        setConnectionState(Connected);
+    }
 }
 
 const Account &AccountSession::account() const
@@ -114,6 +168,9 @@ OAuthClient *AccountSession::oauth()
         });
         connect(m_oauth, &OAuthClient::accessTokenChanged, this, &AccountSession::onAccessToken);
         connect(m_oauth, &OAuthClient::failed, this, &AccountSession::errorOccurred);
+        connect(m_oauth, &OAuthClient::failed, this, [this](const QString &message) {
+            setConnectionState(Failed, message);
+        });
     }
     return m_oauth;
 }
@@ -132,12 +189,14 @@ void AccountSession::onAccessToken(const QString &accessToken)
 void AccountSession::signInWithGoogle()
 {
     m_loggedIn = false;
+    setConnectionState(Connecting);
     oauth()->signIn(m_account.email);
 }
 
 void AccountSession::connectWithRefreshToken(const QString &refreshToken)
 {
     m_loggedIn = false;
+    setConnectionState(Connecting);
     m_refreshToken = refreshToken;
     oauth()->refresh(refreshToken);
 }
@@ -149,6 +208,7 @@ QString AccountSession::refreshToken() const
 
 void AccountSession::connectWithSecret(const QString &secret)
 {
+    setConnectionState(Connecting);
     // setAccount() disconnects, which a running sync would never hear about.
     m_sync->stop();
     setSyncing(false);
@@ -172,6 +232,7 @@ bool AccountSession::showStoredFolders()
 
 void AccountSession::onFoldersListed(const QList<FolderInfo> &folders)
 {
+    markConnected();
     m_folders = folders;
     m_folderModel->setFolders(folders);
     if (storageActive() && !m_store->setFolders(folders)) {

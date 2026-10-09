@@ -54,6 +54,8 @@ public:
     // Replaces the secret used by future sessions; a session already logged in stays up.
     void setAccessToken(const QString &accessToken);
     void disconnectFromServer();
+    // A session exists (after a fatal error, the connection is gone until the next request).
+    [[nodiscard]] bool hasSession() const;
 
     // Which messages fetchHeaders() returns.
     enum HeaderFilter {

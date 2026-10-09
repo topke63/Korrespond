@@ -239,6 +239,17 @@ ImapClient::HeaderFilter MailController::filterFor(const QString &path)
     return ImapClient::AllMessages;
 }
 
+QString MailController::currentMessageFolder() const
+{
+    return m_messageFolder;
+}
+
+QAbstractListModel *MailController::messageFolderModel() const
+{
+    const AccountSession *session = sessionFor(m_messageAccount);
+    return session ? static_cast<QAbstractListModel *>(session->folderModel()) : m_noFolders;
+}
+
 QString MailController::currentMessageAccount() const
 {
     return m_messageAccount;
@@ -287,6 +298,12 @@ bool MailController::messageFlagged() const
 bool MailController::messageUnread() const
 {
     return m_messageUnread;
+}
+
+bool MailController::canMove() const
+{
+    const AccountSession *session = sessionFor(m_messageAccount);
+    return session && m_currentUid > 0 && !session->folders().isEmpty() && !m_moving.contains(moveKey(m_messageAccount, m_messageFolder, m_currentUid));
 }
 
 bool MailController::canArchive() const

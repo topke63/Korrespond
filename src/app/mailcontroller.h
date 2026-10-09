@@ -69,6 +69,11 @@ class MailController : public QObject
     // All Mail) / Trash folder, the message is not in it already, and it is not being moved.
     Q_PROPERTY(bool canArchive READ canArchive NOTIFY currentMessageChanged)
     Q_PROPERTY(bool canDelete READ canDelete NOTIFY currentMessageChanged)
+    // The open message can be moved to another folder: its account is connected and it is not
+    // being moved.
+    Q_PROPERTY(bool canMove READ canMove NOTIFY currentMessageChanged)
+    // The folders of the open message's account (for the Move to Folder menu).
+    Q_PROPERTY(QAbstractListModel *messageFolderModel READ messageFolderModel NOTIFY currentMessageChanged)
     // Local storage settings. importSince is an ISO date ("yyyy-MM-dd"), empty = all mail; the
     // units are StorageSettings::KeepUnit / SizeUnit as ints.
     Q_PROPERTY(bool storageEnabled READ storageEnabled NOTIFY storageSettingsChanged)
@@ -104,6 +109,9 @@ public:
     [[nodiscard]] QString currentFolderName() const;
     [[nodiscard]] QVariantList sharedFolders() const;
     [[nodiscard]] QString currentMessageAccount() const;
+    // The path of the folder the open message is in.
+    Q_PROPERTY(QString currentMessageFolder READ currentMessageFolder NOTIFY currentMessageChanged)
+    [[nodiscard]] QString currentMessageFolder() const;
     [[nodiscard]] qint64 currentUid() const;
     [[nodiscard]] QString messageSubject() const;
     [[nodiscard]] QString messageFrom() const;
@@ -115,6 +123,8 @@ public:
     [[nodiscard]] bool messageUnread() const;
     [[nodiscard]] bool canArchive() const;
     [[nodiscard]] bool canDelete() const;
+    [[nodiscard]] bool canMove() const;
+    [[nodiscard]] QAbstractListModel *messageFolderModel() const;
     [[nodiscard]] bool storageEnabled() const;
     [[nodiscard]] QString importSince() const;
     [[nodiscard]] int keepValue() const;

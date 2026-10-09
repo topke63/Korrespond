@@ -2200,7 +2200,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   right after a move. Build and 12/12 tests pass.
 
 ### T105 — Toolbar: Archive, Delete, Move to Folder
-- status: todo
+- status: done
 - depends on: T104
 - parallel-safe with: T100
 - files: src/qml/MessagePage.qml
@@ -2208,7 +2208,13 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - output: Archive and Delete enabled (shortcuts E and Delete, tooltips), disabled with a reason
   when `canArchive`/`canDelete` is false; Move to Folder opens a menu of the account's folders.
 - verify: offscreen start prints no new QML warnings.
-- notes:
+- notes: Done 2026-10-09 (user review pending). Archive and Delete are real buttons bound to
+  `canArchive`/`canDelete` with tooltips that say why they are unavailable (Delete says "Move to
+  Trash" when enabled); Move to Folder opens a menu of the open message's account's folders
+  (indented by depth, the current folder greyed) via new controller properties
+  `messageFolderModel`, `currentMessageFolder`, `canMove`. Offline (no server folder list) all
+  three are disabled, as seen in an offscreen/offline screenshot (stored folders don't count).
+  No new QML warnings; clicking them needs a server (T107). Shortcuts come in T106.
 
 ### T106 — Toolbar: keyboard shortcuts and message-list context
 - status: todo

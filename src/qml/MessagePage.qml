@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 import QtQuick
+import QtQml
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import QtWebEngine
@@ -34,19 +35,19 @@ Kirigami.Page {
 
     // The subject is shown large in the page itself; the title bar holds the message actions.
     title: ""
-    // Mimestream-style action bar. Milestone 1 only reads mail, so the actions are shown for the
-    // look and stay disabled until later milestones implement them.
+    // Mimestream-style action bar. Reply, Reply All, Forward and Label are still shown for the
+    // look only and stay disabled until their tasks are done.
     titleDelegate: RowLayout {
         Layout.fillWidth: true
         spacing: 0
 
         Repeater {
             model: [
-                { icon: "archive-insert", text: KI18n.i18nc("@action:button", "Archive") },
-                { icon: "edit-delete", text: KI18n.i18nc("@action:button", "Delete") },
+                { move: "archive" },
+                { move: "delete" },
                 { unread: true },
                 { flag: true },
-                { icon: "folder", text: KI18n.i18nc("@action:button", "Move to Folder") },
+                { move: "folder" },
                 { icon: "tag", text: KI18n.i18nc("@action:button", "Label") },
                 { separator: true },
                 { icon: "mail-reply-sender", text: KI18n.i18nc("@action:button", "Reply") },
@@ -60,7 +61,10 @@ Kirigami.Page {
                 visible: page.hasMessage
                 sourceComponent: modelData.separator ? separatorComponent
                                : modelData.flag ? flagComponent
-                               : modelData.unread ? unreadComponent : buttonComponent
+                               : modelData.unread ? unreadComponent
+                               : modelData.move === "archive" ? archiveComponent
+                               : modelData.move === "delete" ? deleteComponent
+                               : modelData.move === "folder" ? moveComponent : buttonComponent
 
                 // Flag / unflag the open message.
                 Component {
@@ -94,6 +98,78 @@ Kirigami.Page {
                         QQC2.ToolTip.text: text
                         QQC2.ToolTip.visible: hovered
                         QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
+                    }
+                }
+
+                // Archive and Delete move the open message on the server (never for good).
+                Component {
+                    id: archiveComponent
+
+                    QQC2.ToolButton {
+                        icon.name: "archive-insert"
+                        text: KI18n.i18nc("@action:button", "Archive")
+                        display: QQC2.AbstractButton.IconOnly
+                        enabled: MailController.canArchive
+                        onClicked: MailController.archiveMessage()
+
+                        QQC2.ToolTip.text: enabled ? text : KI18n.i18nc("@info:tooltip", "Archive is not available: this account has no archive folder, or the message is already there.")
+                        QQC2.ToolTip.visible: hovered
+                        QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
+                    }
+                }
+
+                Component {
+                    id: deleteComponent
+
+                    QQC2.ToolButton {
+                        icon.name: "edit-delete"
+                        text: KI18n.i18nc("@action:button", "Delete")
+                        display: QQC2.AbstractButton.IconOnly
+                        enabled: MailController.canDelete
+                        onClicked: MailController.deleteMessage()
+
+                        QQC2.ToolTip.text: enabled ? KI18n.i18nc("@info:tooltip", "Move to Trash") : KI18n.i18nc("@info:tooltip", "Delete is not available: this account has no Trash folder, or the message is already there.")
+                        QQC2.ToolTip.visible: hovered
+                        QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
+                    }
+                }
+
+                // A menu of the account's folders; picking one moves the open message there.
+                Component {
+                    id: moveComponent
+
+                    QQC2.ToolButton {
+                        id: moveButton
+
+                        icon.name: "folder"
+                        text: KI18n.i18nc("@action:button", "Move to Folder")
+                        display: QQC2.AbstractButton.IconOnly
+                        enabled: MailController.canMove
+                        down: moveMenu.visible
+                        onClicked: moveMenu.popup(this, 0, height)
+
+                        QQC2.ToolTip.text: text
+                        QQC2.ToolTip.visible: hovered && !moveMenu.visible
+                        QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
+
+                        QQC2.Menu {
+                            id: moveMenu
+
+                            Instantiator {
+                                model: MailController.messageFolderModel
+
+                                delegate: QQC2.MenuItem {
+                                    required property var model
+
+                                    text: " ".repeat(model.depth * 2) + model.name
+                                    icon.name: model.iconName
+                                    enabled: model.path !== MailController.currentMessageFolder
+                                    onTriggered: MailController.moveMessage(model.path)
+                                }
+                                onObjectAdded: (index, object) => moveMenu.insertItem(index, object)
+                                onObjectRemoved: (index, object) => moveMenu.removeItem(object)
+                            }
+                        }
                     }
                 }
 

@@ -30,9 +30,28 @@ Kirigami.ScrollablePage {
         leftPadding: Kirigami.Units.largeSpacing
     }
     // A fixed list column, like Geary's; the message column takes the rest.
-    Kirigami.ColumnView.minimumWidth: Kirigami.Units.gridUnit * 20
-    Kirigami.ColumnView.preferredWidth: Kirigami.Units.gridUnit * 28
-    Kirigami.ColumnView.maximumWidth: Kirigami.Units.gridUnit * 40
+    // The width the user chose (live while dragging the divider on the right edge); the message
+    // column takes the rest.
+    Kirigami.ColumnView.minimumWidth: MailController.listMinWidth
+    Kirigami.ColumnView.preferredWidth: resizer.dragging ? resizer.liveWidth : MailController.listWidth
+    Kirigami.ColumnView.maximumWidth: MailController.listMaxWidth
+
+    // On the page's overlay, so it does not scroll with the list. Not in a narrow window, where
+    // one column is shown at a time.
+    PanelResizer {
+        id: resizer
+
+        parent: page.overlay
+        visible: applicationWindow().wideScreen
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        panelWidth: MailController.listWidth
+        minimum: MailController.listMinWidth
+        maximum: MailController.listMaxWidth
+        onResized: width => MailController.savePanelWidths(MailController.sidebarWidth, width)
+        onResetRequested: MailController.savePanelWidths(MailController.sidebarWidth, MailController.listDefaultWidth)
+    }
 
     actions: [
         Kirigami.Action {

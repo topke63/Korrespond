@@ -2709,7 +2709,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   the sidebar and list look identical to before at the default, no new QML warnings; 14/14 tests.
 
 ### T134 — Message list: resizable
-- status: todo
+- status: done
 - depends on: T131, T132
 - parallel-safe with: none
 - files: src/qml/MessageListPage.qml
@@ -2718,7 +2718,13 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   / `maximumWidth` from the clamp; a handle on the list's right edge when the window is wide
   enough for two columns; release saves; double-click resets; the message column fills the rest.
 - verify: offscreen start prints no new QML warnings; the list looks unchanged at the default.
-- notes:
+- notes: Done 2026-10-09 (drag not tried yet — T135). `MessageListPage.qml`: the
+  `Kirigami.ColumnView` min/max/preferred widths now come from `MailController`
+  (`listMinWidth`/`listMaxWidth`; preferred = `listWidth`, or the resizer's `liveWidth` while
+  dragging); a `PanelResizer` on the page's `overlay` (so it does not scroll with the list) on the
+  right edge, only when `applicationWindow().wideScreen`; release → `savePanelWidths(sidebarWidth,
+  width)`; double-click → `listDefaultWidth`. Checked offscreen/offline at the defaults with a
+  message open: the layout looks the same as before, no new QML warnings; 14/14 tests.
 
 ### T135 — Manual check: resizing panels
 - status: todo

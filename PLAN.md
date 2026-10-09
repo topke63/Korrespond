@@ -2242,7 +2242,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   and the menu need the desktop / a server (T107).
 
 ### T107 — Manual check: Mark as Unread, Archive, Delete, Move
-- status: todo
+- status: done
 - depends on: T100, T105
 - parallel-safe with: none
 - files: none (record results; new tasks for bugs)
@@ -2251,6 +2251,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   the store; failures leave the message where it was.
 - verify: manual, with the user.
 - notes:
+  Closed 2026-10-09: the user tried Mark as Unread, Archive, Move to Folder and Delete on test messages (build with T145) and said "all worked". The app log of that session had no errors.
 
 ### T108 — Link KSMTP
 - status: done

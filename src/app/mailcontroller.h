@@ -15,6 +15,7 @@
 #include <QVariantMap>
 
 #include <memory>
+#include <set>
 
 namespace KMime
 {
@@ -46,6 +47,8 @@ class MailController : public QObject
     // The folders of the first account; empty without an account.
     Q_PROPERTY(QAbstractListModel *folderModel READ folderModel NOTIFY accountChanged)
     Q_PROPERTY(QAbstractListModel *messageModel READ messageModel CONSTANT)
+    // Email of the account whose folder is open; empty for the shared views.
+    Q_PROPERTY(QString currentAccount READ currentAccount NOTIFY currentFolderChanged)
     Q_PROPERTY(QString currentFolder READ currentFolder NOTIFY currentFolderChanged)
     Q_PROPERTY(QString currentFolderName READ currentFolderName NOTIFY currentFolderChanged)
     // Views over every account's inbox, shown above the accounts: list of {path, name, iconName}.
@@ -86,6 +89,7 @@ public:
     [[nodiscard]] QAbstractListModel *accounts() const;
     [[nodiscard]] QAbstractListModel *folderModel() const;
     [[nodiscard]] QAbstractListModel *messageModel() const;
+    [[nodiscard]] QString currentAccount() const;
     [[nodiscard]] QString currentFolder() const;
     [[nodiscard]] QString currentFolderName() const;
     [[nodiscard]] QVariantList sharedFolders() const;
@@ -124,15 +128,22 @@ public:
     Q_INVOKABLE void removeAccount();
     // Shows the newest messages of `path` (clears the list first). With storage on, the stored
     // copies show at once and the server's list replaces them when it arrives.
+    Q_INVOKABLE void selectFolder(const QString &account, const QString &path);
+    // The same for the account that is open now (a shared view for the shared paths). Kept
+    // until the sidebar passes the account (T93).
     Q_INVOKABLE void selectFolder(const QString &path);
     // Reloads the folder list and the current folder's messages.
     Q_INVOKABLE void refresh();
     // Shows message `uid` of the current folder, from its local copy when there is one, else
     // fetched from the server; marks it read if it was unread (on the server and locally).
     // The message properties stay empty until it has arrived.
+    Q_INVOKABLE void openMessage(const QString &account, qint64 uid);
+    // For the open account; removed with T94.
     Q_INVOKABLE void openMessage(qint64 uid);
     // Flags or unflags message `uid` of the current list (or the open message): updates the list
     // and the open message at once, then stores the flag on the server.
+    Q_INVOKABLE void setFlagged(const QString &account, qint64 uid, bool flagged);
+    // For the open account; removed with T94.
     Q_INVOKABLE void setFlagged(qint64 uid, bool flagged);
     // Saves the local storage settings (arguments as the properties), applies them to the local
     // copies at once (turning storage off deletes them) and starts a sync when storage is on.
@@ -164,9 +175,10 @@ private:
     // The session the UI shows: the first saved account, or while the very first account is
     // being verified, that one. nullptr without either.
     [[nodiscard]] AccountSession *uiSession() const;
-    [[nodiscard]] ImapClient *uiClient() const;
-    [[nodiscard]] QString uiEmail() const; // empty without a session
-    [[nodiscard]] MessageStore *uiStore() const; // the open store of uiSession(), or nullptr
+    [[nodiscard]] AccountSession *sessionFor(const QString &account) const; // saved accounts only
+    // The session of the open folder's account; the UI session for the shared views.
+    [[nodiscard]] AccountSession *currentSession() const;
+    [[nodiscard]] QString currentEmail() const; // empty without a session
     AccountSession *createSession(const Account &account);
     // Stops a session and deletes it; with deleteStore also its local copies and folder.
     void discardSession(AccountSession *session, bool deleteStore);
@@ -184,15 +196,15 @@ private:
     void applyFolderList();
     // The IMAP folder and filter behind a folder or shared-view path. With one account the
     // shared views all read its inbox.
-    [[nodiscard]] QString imapFolderFor(const QString &path) const;
+    [[nodiscard]] static QString imapFolderFor(const AccountSession *session, const QString &path);
     [[nodiscard]] static ImapClient::HeaderFilter filterFor(const QString &path);
     [[nodiscard]] static bool isSharedView(const QString &path);
-    void onHeadersFetched(const QString &folder, ImapClient::HeaderFilter filter, const QList<MessageSummary> &messages);
-    void onMessageFetched(const QString &folder, qint64 uid, const std::shared_ptr<KMime::Message> &message);
-    void showMessage(const QString &folder, qint64 uid, const KMime::Message &message);
+    void onHeadersFetched(AccountSession *session, const QString &folder, ImapClient::HeaderFilter filter, const QList<MessageSummary> &messages);
+    void onMessageFetched(AccountSession *session, const QString &folder, qint64 uid, const std::shared_ptr<KMime::Message> &message);
+    void showMessage(AccountSession *session, const QString &folder, qint64 uid, const KMime::Message &message);
     // The stored messages for a folder or shared-view path, filtered like the server's list.
-    [[nodiscard]] QList<MessageSummary> storedMessages(const QString &path) const;
-    [[nodiscard]] bool storageActive() const; // storage on and the UI session's store open
+    [[nodiscard]] QList<MessageSummary> storedMessages(const AccountSession *session, const QString &path) const;
+    [[nodiscard]] bool storageActive() const; // storage on and the open account's store open
     // Empties the message properties; with clearUid also forgets which message is open.
     void clearMessage(bool clearUid);
     // With storage on: shows the stored folder list and All Inboxes before connecting.
@@ -204,12 +216,15 @@ private:
     QList<AccountSession *> m_sessions; // saved accounts, in order
     AccountSession *m_pending = nullptr; // being verified by setupAccount()
     QString m_pendingPassword;
+    std::set<AccountSession *> m_awaitingFolders; // sessions with a folder-list request in flight (counted as busy)
     AccountListModel *m_accounts;
     FolderModel *m_noFolders; // shown when there is no session
     SecretStore *m_secrets;
     MessageListModel *m_messageModel;
+    QString m_currentAccount; // email of the open folder's account; empty for a shared view
     QString m_currentFolder; // an IMAP folder path or a shared-view path
     qint64 m_currentUid = 0; // 0 when no message is open
+    QString m_messageAccount; // account of the open message
     QString m_messageFolder; // folder of the open message
     QString m_messageSubject;
     QString m_messageFrom;

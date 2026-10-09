@@ -87,22 +87,30 @@ AccountSession *MailController::uiSession() const
     return !m_sessions.isEmpty() ? m_sessions.first() : m_pending;
 }
 
-ImapClient *MailController::uiClient() const
+AccountSession *MailController::sessionFor(const QString &account) const
 {
-    const AccountSession *session = uiSession();
-    return session ? session->client() : nullptr;
+    const auto it = std::find_if(m_sessions.cbegin(), m_sessions.cend(), [&account](const AccountSession *session) {
+        return session->account().email.compare(account, Qt::CaseInsensitive) == 0;
+    });
+    return it == m_sessions.cend() ? nullptr : *it;
 }
 
-MessageStore *MailController::uiStore() const
+// The account whose folder is open; the first one while a shared view is open (T89 merges them).
+AccountSession *MailController::currentSession() const
 {
-    const AccountSession *session = uiSession();
-    return session && session->storageActive() ? session->store() : nullptr;
+    AccountSession *session = sessionFor(m_currentAccount);
+    return session ? session : uiSession();
 }
 
-QString MailController::uiEmail() const
+QString MailController::currentEmail() const
 {
-    const AccountSession *session = uiSession();
+    const AccountSession *session = currentSession();
     return session ? session->account().email : QString();
+}
+
+QString MailController::currentAccount() const
+{
+    return m_currentAccount;
 }
 
 AccountSession *MailController::createSession(const Account &account)
@@ -115,14 +123,10 @@ AccountSession *MailController::createSession(const Account &account)
             &AccountSession::headersFetched,
             this,
             [this, session](const QString &folder, ImapClient::HeaderFilter filter, const QList<MessageSummary> &messages) {
-                if (session == uiSession()) {
-                    onHeadersFetched(folder, filter, messages);
-                }
+                onHeadersFetched(session, folder, filter, messages);
             });
     connect(session, &AccountSession::messageFetched, this, [this, session](const QString &folder, qint64 uid, const std::shared_ptr<KMime::Message> &message) {
-        if (session == uiSession()) {
-            onMessageFetched(folder, uid, message);
-        }
+        onMessageFetched(session, folder, uid, message);
     });
     connect(session, &AccountSession::errorOccurred, this, [this, session](const QString &message) {
         onSessionError(session, message);
@@ -139,6 +143,9 @@ bool MailController::isKnown(const AccountSession *session) const
 
 void MailController::discardSession(AccountSession *session, bool deleteStore)
 {
+    if (m_awaitingFolders.erase(session) > 0) {
+        endRequest();
+    }
     session->client()->disconnectFromServer();
     if (deleteStore) {
         session->clearStore();
@@ -188,7 +195,8 @@ QString MailController::currentFolderName() const
     if (m_currentFolder == QLatin1StringView(flaggedPath)) {
         return i18nc("@title shared folder", "Flagged");
     }
-    return m_currentFolder.isEmpty() ? QString() : qobject_cast<FolderModel *>(folderModel())->displayName(m_currentFolder);
+    const AccountSession *session = currentSession();
+    return m_currentFolder.isEmpty() || !session ? QString() : session->folderModel()->displayName(m_currentFolder);
 }
 
 QVariantList MailController::sharedFolders() const
@@ -208,9 +216,9 @@ bool MailController::isSharedView(const QString &path)
     return path == QLatin1StringView(allInboxesPath) || path == QLatin1StringView(unreadPath) || path == QLatin1StringView(flaggedPath);
 }
 
-QString MailController::imapFolderFor(const QString &path) const
+QString MailController::imapFolderFor(const AccountSession *session, const QString &path)
 {
-    return isSharedView(path) ? qobject_cast<FolderModel *>(folderModel())->inboxPath() : path;
+    return isSharedView(path) ? (session ? session->folderModel()->inboxPath() : QString()) : path;
 }
 
 ImapClient::HeaderFilter MailController::filterFor(const QString &path)
@@ -345,7 +353,7 @@ void MailController::showStoredMail()
         return;
     }
     m_currentFolder = QLatin1StringView(allInboxesPath);
-    m_messageModel->setMessages(storedMessages(m_currentFolder));
+    m_messageModel->setMessages(storedMessages(session, m_currentFolder));
     m_showingStored = true;
     Q_EMIT currentFolderChanged();
 }
@@ -387,47 +395,55 @@ QVariantMap MailController::defaultStorageSettings() const
 
 void MailController::selectFolder(const QString &path)
 {
+    // Shared views belong to no account; a folder path belongs to the open account.
+    selectFolder(isSharedView(path) ? QString() : (m_currentAccount.isEmpty() ? accountEmail() : m_currentAccount), path);
+}
+
+void MailController::selectFolder(const QString &account, const QString &path)
+{
     if (path.isEmpty()) {
         return;
     }
-    ImapClient *client = uiClient();
-    if (!client) {
+    AccountSession *session = isSharedView(path) ? uiSession() : sessionFor(account);
+    if (!session) {
         return;
     }
-    if (path != m_currentFolder) {
+    const QString newAccount = isSharedView(path) ? QString() : session->account().email;
+    if (path != m_currentFolder || newAccount != m_currentAccount) {
+        m_currentAccount = newAccount;
         m_currentFolder = path;
         m_messageModel->clear();
         clearMessage(true); // the open message belongs to the folder being left
         Q_EMIT currentFolderChanged();
     }
-    const QString folder = imapFolderFor(path);
+    const QString folder = imapFolderFor(session, path);
     if (folder.isEmpty()) {
         return; // a shared view before the folders (and so the inbox) are known
     }
-    if (storageActive() && m_messageModel->rowCount() == 0) {
-        m_messageModel->setMessages(storedMessages(path));
+    if (session->storageActive() && m_messageModel->rowCount() == 0) {
+        m_messageModel->setMessages(storedMessages(session, path));
     }
     beginRequest();
-    client->fetchHeaders(folder, messageLimit, filterFor(path));
+    session->client()->fetchHeaders(folder, messageLimit, filterFor(path));
 }
 
 bool MailController::storageActive() const
 {
-    return uiStore() != nullptr;
+    const AccountSession *session = currentSession();
+    return session && session->storageActive();
 }
 
-QList<MessageSummary> MailController::storedMessages(const QString &path) const
+QList<MessageSummary> MailController::storedMessages(const AccountSession *session, const QString &path) const
 {
-    const MessageStore *store = uiStore();
-    if (!store) {
+    if (!session || !session->storageActive()) {
         return {};
     }
-    const QString folder = imapFolderFor(path);
+    const QString folder = imapFolderFor(session, path);
     const ImapClient::HeaderFilter filter = filterFor(path);
     QList<MessageSummary> result;
-    for (MessageSummary message : store->messages(folder, filter == ImapClient::AllMessages ? messageLimit : -1)) {
+    for (MessageSummary message : session->store()->messages(folder, filter == ImapClient::AllMessages ? messageLimit : -1)) {
         if (filter == ImapClient::AllMessages || (filter == ImapClient::Unread ? message.unread : message.flagged)) {
-            message.account = uiEmail(); // the store of one account doesn't know whose it is
+            message.account = session->account().email; // the store of one account doesn't know whose it is
             result.append(message);
             if (result.size() == messageLimit) {
                 break;
@@ -439,29 +455,31 @@ QList<MessageSummary> MailController::storedMessages(const QString &path) const
 
 void MailController::refresh()
 {
-    ImapClient *client = uiClient();
-    if (!client) {
+    AccountSession *session = currentSession();
+    if (!session) {
         return;
     }
-    beginRequest();
-    client->listFolders();
+    if (m_awaitingFolders.insert(session).second) {
+        beginRequest();
+    }
+    session->client()->listFolders();
     if (!m_currentFolder.isEmpty()) {
-        selectFolder(m_currentFolder);
+        selectFolder(m_currentAccount, m_currentFolder);
     }
 }
 
-void MailController::onHeadersFetched(const QString &folder, ImapClient::HeaderFilter filter, const QList<MessageSummary> &messages)
+void MailController::onHeadersFetched(AccountSession *session, const QString &folder, ImapClient::HeaderFilter filter, const QList<MessageSummary> &messages)
 {
     endRequest();
-    if (folder != imapFolderFor(m_currentFolder) || filter != filterFor(m_currentFolder)) {
+    if (!isKnown(session) || session != currentSession() || folder != imapFolderFor(session, m_currentFolder) || filter != filterFor(m_currentFolder)) {
         return; // the user switched folders while this was loading
     }
-    if (!storageActive()) {
+    if (!session->storageActive()) {
         m_messageModel->setMessages(messages);
         return;
     }
     // The server sends no body text; previews come from the local copies.
-    const QHash<qint64, QString> previews = uiStore()->previews(folder);
+    const QHash<qint64, QString> previews = session->store()->previews(folder);
     QList<MessageSummary> withPreviews = messages;
     for (MessageSummary &message : withPreviews) {
         message.preview = previews.value(message.uid);
@@ -471,58 +489,70 @@ void MailController::onHeadersFetched(const QString &folder, ImapClient::HeaderF
 
 void MailController::openMessage(qint64 uid)
 {
-    ImapClient *client = uiClient();
-    if (uid <= 0 || m_currentFolder.isEmpty() || !client) {
+    openMessage(currentEmail(), uid);
+}
+
+void MailController::openMessage(const QString &account, qint64 uid)
+{
+    AccountSession *session = sessionFor(account);
+    if (uid <= 0 || m_currentFolder.isEmpty() || !session) {
         return;
     }
     m_currentUid = uid;
-    m_messageFolder = imapFolderFor(m_currentFolder);
+    m_messageAccount = session->account().email;
+    m_messageFolder = imapFolderFor(session, m_currentFolder);
     clearMessage(false);
-    m_messageFlagged = m_messageModel->message(uiEmail(), uid).flagged; // the parsed message carries no IMAP flags
+    m_messageFlagged = m_messageModel->message(m_messageAccount, uid).flagged; // the parsed message carries no IMAP flags
     Q_EMIT currentMessageChanged(); // the flag shows while the message is still loading
-    if (storageActive()) {
-        if (const QByteArray raw = uiStore()->rawMessage(m_messageFolder, uid); !raw.isEmpty()) {
+    if (session->storageActive()) {
+        if (const QByteArray raw = session->store()->rawMessage(m_messageFolder, uid); !raw.isEmpty()) {
             // Parsed like KIMAP does with fetched messages.
             KMime::Message message;
             message.setContent(KMime::CRLFtoLF(raw));
             message.parse();
-            showMessage(m_messageFolder, uid, message);
+            showMessage(session, m_messageFolder, uid, message);
             return;
         }
     }
     beginRequest();
-    client->fetchMessage(m_messageFolder, uid);
+    session->client()->fetchMessage(m_messageFolder, uid);
 }
 
 void MailController::setFlagged(qint64 uid, bool flagged)
 {
-    ImapClient *client = uiClient();
-    if (uid <= 0 || !client) {
+    setFlagged(currentEmail(), uid, flagged);
+}
+
+void MailController::setFlagged(const QString &account, qint64 uid, bool flagged)
+{
+    AccountSession *session = sessionFor(account);
+    if (uid <= 0 || !session) {
         return;
     }
+    const bool isOpenMessage = uid == m_currentUid && session->account().email == m_messageAccount;
     // The open message may belong to a folder the list no longer shows.
-    const QString folder = uid == m_currentUid ? m_messageFolder : imapFolderFor(m_currentFolder);
+    const QString folder = isOpenMessage ? m_messageFolder : imapFolderFor(session, m_currentFolder);
     if (folder.isEmpty()) {
         return;
     }
-    m_messageModel->setFlagged(uiEmail(), uid, flagged);
-    if (uid == m_currentUid && m_messageFlagged != flagged) {
+    m_messageModel->setFlagged(session->account().email, uid, flagged);
+    if (isOpenMessage && m_messageFlagged != flagged) {
         m_messageFlagged = flagged;
         Q_EMIT currentMessageChanged();
     }
-    client->setFlagged(folder, uid, flagged);
+    session->client()->setFlagged(folder, uid, flagged);
 }
 
-void MailController::onMessageFetched(const QString &folder, qint64 uid, const std::shared_ptr<KMime::Message> &message)
+void MailController::onMessageFetched(AccountSession *session, const QString &folder, qint64 uid, const std::shared_ptr<KMime::Message> &message)
 {
     endRequest();
-    if (uid != m_currentUid || folder != m_messageFolder || !message) {
+    if (!isKnown(session) || uid != m_currentUid || folder != m_messageFolder || session->account().email != m_messageAccount || !message) {
         return; // another message was opened while this one was loading
     }
-    showMessage(folder, uid, *message);
+    showMessage(session, folder, uid, *message);
 }
 
-void MailController::showMessage(const QString &folder, qint64 uid, const KMime::Message &msg)
+void MailController::showMessage(AccountSession *session, const QString &folder, qint64 uid, const KMime::Message &msg)
 {
     // The const getters return nullptr for missing headers instead of creating empty ones.
     m_messageSubject = msg.subject() ? msg.subject()->asUnicodeString() : QString();
@@ -534,11 +564,12 @@ void MailController::showMessage(const QString &folder, qint64 uid, const KMime:
     m_messageAttachments = attachmentNames(msg);
     Q_EMIT currentMessageChanged();
 
-    if (folder == imapFolderFor(m_currentFolder) && m_messageModel->message(uiEmail(), uid).unread) {
-        uiClient()->markSeen(folder, uid);
-        m_messageModel->setUnread(uiEmail(), uid, false);
-        if (MessageStore *store = uiStore(); store && store->contains(folder, uid)) {
-            store->setUnread(folder, uid, false);
+    const QString email = session->account().email;
+    if (folder == imapFolderFor(session, m_currentFolder) && m_messageModel->message(email, uid).unread) {
+        session->client()->markSeen(folder, uid);
+        m_messageModel->setUnread(email, uid, false);
+        if (session->storageActive() && session->store()->contains(folder, uid)) {
+            session->store()->setUnread(folder, uid, false);
         }
     }
 }
@@ -547,6 +578,7 @@ void MailController::clearMessage(bool clearUid)
 {
     if (clearUid) {
         m_currentUid = 0;
+        m_messageAccount.clear();
         m_messageFolder.clear();
     }
     m_messageSubject.clear();
@@ -593,6 +625,7 @@ void MailController::setupAccount(const QString &provider,
     }
     m_pendingPassword = password;
     m_pending = createSession(account);
+    m_awaitingFolders.insert(m_pending);
     beginRequest();
     m_pending->connectWithSecret(password);
 }
@@ -630,6 +663,7 @@ void MailController::removeAccount()
     discardSession(session, true);
     m_accounts->setSessions(m_sessions);
     m_showingStored = false;
+    m_currentAccount.clear();
     m_messageModel->clear();
     clearMessage(true);
     if (!m_currentFolder.isEmpty()) {
@@ -646,11 +680,12 @@ void MailController::removeAccount()
 
 void MailController::connectSavedAccounts()
 {
-    for (const AccountSession *session : std::as_const(m_sessions)) {
+    for (AccountSession *session : std::as_const(m_sessions)) {
         if (session->account().authMethod == "oauth"_L1) {
             continue; // Google accounts connect through the OAuth client (T92)
         }
         if (session == uiSession()) {
+            m_awaitingFolders.insert(session);
             beginRequest(); // ends when its folders arrive or it fails
         }
         beginRequest(); // ends with the keychain answer
@@ -668,7 +703,7 @@ void MailController::onSecretRead(const QString &key, const QString &password, c
         return; // the account was removed meanwhile
     }
     if (!error.isEmpty()) {
-        if (*it == uiSession()) {
+        if (m_awaitingFolders.erase(*it) > 0) {
             endRequest(); // its folders will not arrive
         }
         Q_EMIT errorOccurred(i18n("Could not read the password for %1 from the keychain: %2", key, error));
@@ -706,8 +741,10 @@ void MailController::onSessionFolders(AccountSession *session)
         return;
     }
     if (session != m_pending) {
-        if (session == uiSession()) {
+        if (m_awaitingFolders.erase(session) > 0) {
             endRequest();
+        }
+        if (session == currentSession()) {
             applyFolderList();
         }
         return;
@@ -715,7 +752,9 @@ void MailController::onSessionFolders(AccountSession *session)
 
     // The login worked: now store the new account. It replaces the saved one (T90 will add
     // accounts instead); the replaced account's password is removed from the keychain.
-    endRequest();
+    if (m_awaitingFolders.erase(session) > 0) {
+        endRequest();
+    }
     m_pending = nullptr;
     const Account account = session->account();
     const QString password = std::exchange(m_pendingPassword, QString());
@@ -740,6 +779,7 @@ void MailController::onSessionFolders(AccountSession *session)
             Account::saveAll({account});
             m_accounts->setSessions(m_sessions);
             m_showingStored = false;
+            m_currentAccount.clear();
             m_currentFolder.clear();
             m_messageModel->clear();
             clearMessage(true);
@@ -754,7 +794,7 @@ void MailController::onSessionFolders(AccountSession *session)
 
 void MailController::applyFolderList()
 {
-    const AccountSession *session = uiSession();
+    const AccountSession *session = currentSession();
     if (!session) {
         return;
     }

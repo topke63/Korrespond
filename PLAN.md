@@ -1872,7 +1872,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   unknown account changes nothing); the role-name test checks "account".
 
 ### T88 — `MailController`: folders and messages per account
-- status: todo
+- status: done
 - depends on: T85, T86
 - parallel-safe with: none
 - files: src/app/mailcontroller.h, src/app/mailcontroller.cpp
@@ -1881,7 +1881,16 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   `setFlagged(account, uid, flagged)`; every request goes to that account's session; summaries
   get `account` set. Old one-argument versions removed (QML updated in T93/T94).
 - verify: `cmake --build build --target plasma-mail` succeeds.
-- notes:
+- notes: Done 2026-10-09. New: `currentAccount` property (empty for a shared view, which still
+  reads the first account until T89), `selectFolder(account, path)`, `openMessage(account, uid)`,
+  `setFlagged(account, uid, flagged)`; each goes to that account's session, and the answers
+  (`headersFetched`, `messageFetched`) are matched to the session they came from. **Deviation:**
+  the old one-argument versions are kept as thin wrappers (they act on the open account) so the
+  current QML keeps working; T93/T94 switch QML to the new ones and remove the wrappers.
+  A set `m_awaitingFolders` tracks which sessions have a folder-list request in flight, so
+  `busy` can't stick when the user changes account meanwhile. `folderModel`/`accountEmail` etc.
+  still describe the first account (T93/T96 use `accounts`). Checked: build, 12/12 tests,
+  offline run on a copy of the user's data (list, stored message opens, toolbar as before).
 
 ### T89 — `MailController`: shared views merge every account
 - status: todo

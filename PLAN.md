@@ -2604,7 +2604,15 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   tray tooltip; closing hides to the tray when enabled; a new mail gives one notification within
   the check interval; clicking it opens the message; no notification for old mail at startup.
 - verify: manual, with the user.
-- notes:
+- notes: 2026-10-09 run with the user (app installed into ~/.local; interval 1 min). Found and
+  fixed two things: (1) the check could keep seeing an old snapshot of the selected inbox → a
+  check now always sends a fresh SELECT (`checkInbox`); (2) the background check only notified and
+  never reloaded the list that is open → `refreshInboxView()` reloads an open Inbox / shared view
+  when a check finds new mail or a changed unread count. Added an `Inbox check for <account>: N
+  unread, M new` info log (counts only). Confirmed by the user: tray icon and tooltip, the
+  notification, the new mail appearing in the open list on its own. Not confirmed yet: clicking the
+  notification to open the message, closing to the tray, "Configure Notifications…", and a sound
+  (the notifyrc has `Action=Popup` only — a sound is an open question for the user).
 
 # Milestone 3c — Resizable panels (user request 2026-10-09: "I need to resize panels")
 

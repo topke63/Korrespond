@@ -777,17 +777,37 @@ void MailController::onInboxChecked(AccountSession *session, const QString &fold
     }
     const QString email = session->account().email;
     const int before = unreadCount();
+    // Not the first check of this account: something changed in the inbox since the last one.
+    const auto known = m_unreadByAccount.find(email);
+    const bool unreadChanged = known != m_unreadByAccount.end() && known->second != unreadTotal;
     m_unreadByAccount[email] = unreadTotal;
     if (unreadCount() != before) {
         Q_EMIT unreadCountChanged();
     }
     // UIDVALIDITY is not known here (0); a rebuilt inbox is picked up once its uids pass the old ones.
     const QList<MessageSummary> fresh = m_newMail.newMessages(email, folder, 0, newestUnread, QDateTime::currentDateTimeUtc());
+    // Counts only, never message content.
+    qInfo("Inbox check for %s: %d unread, %d new", qPrintable(email), unreadTotal, int(fresh.size()));
+    // New mail should show up in the list that is open, not only in a notification.
+    if (unreadChanged || !fresh.isEmpty()) {
+        refreshInboxView(session, folder);
+    }
     if (fresh.isEmpty()) {
         return;
     }
     const MessageSummary &newest = fresh.constFirst();
     Q_EMIT newMailArrived(email, int(fresh.size()), fresh.size() == 1 ? newest.from : QString(), fresh.size() == 1 ? newest.subject : QString(), newest.uid);
+}
+
+// Loads the inbox again if the open view shows it (the inbox itself, or a shared view).
+void MailController::refreshInboxView(AccountSession *session, const QString &inbox)
+{
+    if (isSharedView(m_currentFolder)) {
+        m_sharedRequested.erase(session);
+        fetchSharedPart(session);
+    } else if (m_currentFolder == inbox && m_currentAccount == session->account().email) {
+        selectFolder(m_currentAccount, m_currentFolder);
+    }
 }
 
 void MailController::adjustUnread(const AccountSession *session, const QString &folder, int delta)

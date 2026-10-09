@@ -264,6 +264,8 @@ private:
     void checkForNewMail();
     void onInboxChecked(AccountSession *session, const QString &folder, int unreadTotal, const QList<MessageSummary> &newestUnread);
     // Keeps unreadCount in step with what happens here: delta for a message of `folder`.
+    // Loads the inbox again if the open view shows it, so new mail appears in the list.
+    void refreshInboxView(AccountSession *session, const QString &inbox);
     void adjustUnread(const AccountSession *session, const QString &folder, int delta);
     void moveOpenMessage(const QString &target);
     [[nodiscard]] static QString moveKey(const QString &account, const QString &folder, qint64 uid);

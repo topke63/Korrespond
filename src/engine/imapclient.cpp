@@ -349,6 +349,9 @@ void ImapClient::checkInbox(const QString &folder, int limit)
 {
     session();
     const quint64 generation = m_generation;
+    // A folder that stays selected may keep showing the mail it had when it was selected, so the
+    // check always selects it again (some servers only report new mail that way).
+    m_selectedFolder.clear();
     queueSelect(folder, generation);
     auto search = new KIMAP::SearchJob(session());
     search->setUidBased(true);

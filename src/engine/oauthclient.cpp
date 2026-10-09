@@ -96,10 +96,11 @@ void OAuthClient::signIn(const QString &email)
         return;
     }
 
-    m_replyHandler = new QOAuthHttpServerReplyHandler(this);
+    m_replyHandler = new QOAuthHttpServerReplyHandler(QHostAddress::LocalHost, 0, this);
     m_replyHandler->setCallbackHost(u"127.0.0.1"_s);
     m_replyHandler->setCallbackText(i18n("Plasma Mail received Google's answer. You can close this page and go back to the app."));
-    if (!m_replyHandler->listen(QHostAddress::LocalHost, 0)) {
+    // The constructor with an address already listens (loopback only, free port).
+    if (!m_replyHandler->isListening()) {
         finish();
         Q_EMIT failed(i18n("Could not start the local sign-in listener."));
         return;

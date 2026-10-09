@@ -3047,7 +3047,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   Closed 2026-10-09 by the user after hovering the toolbar buttons.
 
 ### T147 — Google sign-in: "Could not start the local sign-in listener"
-- status: todo
+- status: done
 - depends on: T146
 - parallel-safe with: none
 - files: src/engine/oauthclient.cpp
@@ -3061,7 +3061,11 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   closes the handler in `finish()`. A second sign-in after a failed or cancelled one works.
 - verify: build succeeds; `ctest --preset dev` passes; the manual check is the user's sign-in
   (T80/T95).
-- notes:
+- notes: Done 2026-10-09. Cause confirmed with a probe (Qt 6.12.0): the `(QObject*)` constructor
+  already listens, so the extra `listen()` failed. Now `QOAuthHttpServerReplyHandler(QHostAddress::
+  LocalHost, 0, this)` (loopback only) and a check of `isListening()`. Probe: two construct/close/
+  deleteLater cycles both listen; callback() is http://127.0.0.1:<port>/. `m_replyHandler` is a
+  QPointer, so a second sign-in is safe. Build ok, ctest 16/16. Live sign-in: T80/T95 (user).
 
 ## Execution Loop
 

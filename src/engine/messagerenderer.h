@@ -33,6 +33,12 @@ bool htmlHasRemoteImages(const QString &html);
 // True when the message's HTML part refers to remote images; false for plain-text-only mail.
 bool messageHasRemoteImages(const KMime::Message &msg);
 
+// Length of the leading DOCTYPE token of a mail's HTML, counted from the start of the string
+// (including an optional BOM and ASCII whitespace before it); 0 if the HTML does not start with
+// exactly such a token: `<!DOCTYPE html ...>` with no '<' or '>' inside. Anything else in front
+// (comment, tag, text, NUL) gives 0. Only then does messageBodyHtml() emit its own DOCTYPE first.
+int leadingDoctypeLength(const QString &html);
+
 QString messageBodyHtml(const KMime::Message &msg, const QColor &text, const QColor &background, const QColor &link, bool allowRemoteImages = false);
 
 // True if the HTML sets its own text or background colours: a CSS color / background /

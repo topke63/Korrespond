@@ -3418,10 +3418,11 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   Closed 2026-10-09: the user checked the reply and a newsletter in the dark theme and said they are readable.
 
 ### T163 — HTML mail renders in quirks mode (found in T161)
-- status: todo
+- status: done
 - depends on: T161
 - parallel-safe with: none
-- files: src/engine/messagerenderer.cpp, autotests/messagerenderertest.cpp
+- files: src/engine/messagerenderer.cpp, autotests/messagerenderertest.cpp (+ messagerenderer.h for
+  the helper)
 - inputs: T161 tester: the CSP meta is emitted before the mail's markup, so a mail's
   `<!DOCTYPE html>` comes after the first token and is ignored; every HTML mail renders in quirks
   mode (seen: body bgcolor fills the viewport for a mail with a DOCTYPE).
@@ -3431,7 +3432,16 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - verify: build; ctest; a render of a DOCTYPE mail is in standards mode (`document.compatMode` ==
   "CSS1Compat", or the bgcolor no longer fills the viewport).
 - notes: needs the user's OK: it changes the "CSP meta first" rule slightly (still before any markup
-  that could load something).
+  that could load something). User approved 2026-10-09.
+  Done 2026-10-09. `leadingDoctypeLength(html)`: one optional U+FEFF + ASCII whitespace, then
+  `^<!DOCTYPE\s+html\b[^<>]*>` (anchored, linear: 1 MB inputs < 35 ms). When it matches, the output is
+  our literal `<!DOCTYPE html>` + CSP meta + style + the rest (mail's doctype stripped, never copied);
+  otherwise unchanged. Nothing from the mail can precede the CSP meta (the prefix is fixed, the regex
+  only decides the strip). testDoctypeHoisting: 16 rows incl. comment/script/img/hostile CSP meta/text
+  before the doctype, `<` inside it, double doctype, svg doctype, NUL, quoted `>`, 1 MB inputs; each
+  with and without remote images. Render check (offscreen, seeded, no network): the DOCTYPE newsletter
+  no longer fills the viewport grey (pixel 244 → 255); a 100%-height table: red only at the top with
+  DOCTYPE, full height without. ctest 17/17.
 
 # Milestone 3g — Load remote images on request (user request 2026-10-09)
 

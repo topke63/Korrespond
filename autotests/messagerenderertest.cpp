@@ -113,6 +113,61 @@ private Q_SLOTS:
         QVERIFY(html.indexOf(cspMeta()) < html.indexOf(u"<body"_s) || !html.contains(u"<body"_s));
     }
 
+    void testDoctypeHoisting_data()
+    {
+        QTest::addColumn<QByteArray>("body");
+        QTest::addColumn<bool>("hoisted");
+        QTest::addColumn<QString>("after"); // must appear after the policy
+        const QString xhtml = QString::fromUtf8(
+            "\xEF\xBB\xBF  \n<!doctype HTML PUBLIC \"-//W3C//DTD XHTML 1.0 Transitional//EN\" "
+            "\"http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd\"><html><p>x</p></html>");
+        QTest::newRow("plain doctype") << QByteArray("<!DOCTYPE html><p>x</p>") << true << u"<p>x</p>"_s;
+        QTest::newRow("bom, space, xhtml doctype") << xhtml.toUtf8() << true << u"<html>"_s;
+        QTest::newRow("comment first") << QByteArray("<!-- c --><!DOCTYPE html><p>x</p>") << false << u"<!-- c -->"_s;
+        QTest::newRow("script first") << QByteArray("<script>alert(1)</script><!DOCTYPE html>") << false << u"<script"_s;
+        QTest::newRow("img first") << QByteArray("<img src=https://x.invalid/a.png><!DOCTYPE html>") << false << u"<img"_s;
+        QTest::newRow("meta first") << QByteArray("<meta http-equiv=\"Content-Security-Policy\" content=\"default-src *\"><!DOCTYPE html>") << false
+                                    << u"<meta http-equiv=\"Content-Security-Policy\" content=\"default-src *\">"_s;
+        QTest::newRow("text first") << QByteArray("x<!DOCTYPE html>") << false << u"x<!DOCTYPE"_s;
+        QTest::newRow("lt inside doctype") << QByteArray("<!DOCTYPE html<img src=x>>") << false << u"<img"_s;
+        QTest::newRow("second doctype") << QByteArray("<!DOCTYPE html><!DOCTYPE html><img src=x>") << true << u"<img"_s;
+        QTest::newRow("not html doctype") << QByteArray("<!DOCTYPE svg><p>x</p>") << false << u"<!DOCTYPE svg>"_s;
+        QTest::newRow("nul first") << QByteArray("\0<!DOCTYPE html><img src=x>", 27) << false << u"<img"_s;
+        QTest::newRow("quoted gt in doctype") << QByteArray("<!DOCTYPE html PUBLIC \"a>b\"><img src=x>") << true << u"b\"><img"_s;
+        QTest::newRow("cr, ff, tab, space first") << QByteArray("\r\f\n\t <!DOCTYPE html><p>x</p>") << true << u"<p>x</p>"_s;
+        QTest::newRow("nul inside doctype") << QByteArray("<!DOCTYPE html\0><img src=x>", 28) << true << u"<img"_s;
+        QTest::newRow("unterminated doctype, long") << QByteArray("<!DOCTYPE html ") + QByteArray(1000000, 'x') + QByteArray("<p>x</p>") << false
+                                                    << u"<p>x</p>"_s;
+        QTest::newRow("long whitespace before doctype") << QByteArray(1000000, ' ') + QByteArray("<!DOCTYPE html><p>x</p>") << true << u"<p>x</p>"_s;
+    }
+
+    void testDoctypeHoisting()
+    {
+        QFETCH(QByteArray, body);
+        QFETCH(bool, hoisted);
+        QFETCH(QString, after);
+        const QString prefix = u"<!DOCTYPE html>"_s;
+        for (const bool remote : {false, true}) {
+            KMime::Message msg;
+            msg.setContent("Subject: a\nContent-Type: text/html; charset=utf-8\n\n" + body);
+            msg.parse();
+            const QString out = messageBodyHtml(msg, Qt::black, Qt::white, Qt::blue, remote);
+            const QString csp = cspMeta(remote);
+            const qsizetype cspAt = out.indexOf(csp);
+            QVERIFY2(cspAt == (hoisted ? prefix.size() : 0), qPrintable(out));
+            if (hoisted) {
+                QVERIFY2(out.startsWith(prefix + csp), qPrintable(out));
+                // The mail's own doctype text is not copied; only ours precedes the policy.
+                QCOMPARE(out.left(cspAt), prefix);
+            }
+            QVERIFY2(out.indexOf(after, cspAt + csp.size()) >= 0, qPrintable(out));
+            // Nothing active from the mail precedes the policy.
+            const QString before = out.left(cspAt);
+            QVERIFY(!before.contains(u"<script"_s) && !before.contains(u"<img"_s) && !before.contains(u"<meta"_s));
+            QCOMPARE(out.count(csp), 1);
+        }
+    }
+
     void testCspBlocksRemoteContent()
     {
         const QString policy = messageContentSecurityPolicy();

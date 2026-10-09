@@ -123,6 +123,24 @@ bool messageHasRemoteImages(const KMime::Message &msg)
     return html && html->contentType() && html->contentType()->isHTMLText() && htmlHasRemoteImages(html->decodedText());
 }
 
+int leadingDoctypeLength(const QString &html)
+{
+    qsizetype pos = 0;
+    if (!html.isEmpty() && html.at(0) == QChar(0xFEFF)) {
+        pos = 1;
+    }
+    while (pos < html.size()) {
+        const char16_t c = html.at(pos).unicode();
+        if (c != ' ' && c != '\t' && c != '\n' && c != '\r' && c != '\f') {
+            break;
+        }
+        ++pos;
+    }
+    static const QRegularExpression re(u"^<!DOCTYPE\\s+html\\b[^<>]*>"_s, QRegularExpression::CaseInsensitiveOption);
+    const QRegularExpressionMatch m = re.match(QStringView(html).mid(pos));
+    return m.hasMatch() ? int(pos + m.capturedLength(0)) : 0;
+}
+
 QString messageBodyHtml(const KMime::Message &msg, const QColor &text, const QColor &background, const QColor &link, bool allowRemoteImages)
 {
     const KMime::Content *html = msg.mainBodyPart("text/html");
@@ -130,7 +148,15 @@ QString messageBodyHtml(const KMime::Message &msg, const QColor &text, const QCo
         // A <meta> before the mail's own markup is placed into <head> by the HTML parser,
         // so the policy applies before any of the mail's resources are requested.
         // The style goes before the mail's markup so the mail's own rules still win.
-        const QString body = html->decodedText();
+        QString body = html->decodedText();
+        // A DOCTYPE only counts as the very first token. If the mail starts with a plain one, we emit
+        // our own normalized one before the policy (the mail's text is dropped, never copied); nothing
+        // else from the mail may precede the policy.
+        QString doctype;
+        if (const int doctypeLength = leadingDoctypeLength(body); doctypeLength > 0) {
+            doctype = u"<!DOCTYPE html>"_s;
+            body.remove(0, doctypeLength);
+        }
         QString style;
         if (htmlHasOwnColours(body)) {
             style = u"<style>html{background:#fff;color:#000}</style>"_s;
@@ -142,7 +168,7 @@ QString messageBodyHtml(const KMime::Message &msg, const QColor &text, const QCo
             style = u"<style>html,body{background:"_s + bg + u";color:"_s + fg + u"}a{color:"_s + readableLinkColour(link, background).name(QColor::HexRgb)
                 + u"}blockquote{border-left:2px solid "_s + mix.name(QColor::HexRgb) + u";margin-left:0;padding-left:8px;color:"_s + fg + u"}</style>"_s;
         }
-        return cspMeta(allowRemoteImages) + style + body;
+        return doctype + cspMeta(allowRemoteImages) + style + body;
     }
 
     const KMime::Content *plain = msg.mainBodyPart("text/plain");

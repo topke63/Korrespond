@@ -18,6 +18,7 @@ include(FeatureSummary)
 include(ECMAddTests)
 # ECM_ENABLE_SANITIZERS="address;undefined" (set by the asan preset) builds with sanitizers.
 include(ECMEnableSanitizers)
+include(ECMInstallIcons)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -33,6 +34,10 @@ add_definitions(-DTRANSLATION_DOMAIN=\"plasma-mail\")
 # Only build the main library for now
 add_subdirectory(src)
 add_subdirectory(tools)
+
+# The app icon (file name sc-apps-<name>.svg → hicolor/scalable/apps) and the launcher entry.
+ecm_install_icons(ICONS data/icons/sc-apps-plasma-mail.svg DESTINATION ${KDE_INSTALL_ICONDIR} THEME hicolor)
+install(FILES data/plasma-mail.desktop DESTINATION ${KDE_INSTALL_APPDIR})
 
 # Only build tests if they exist and BUILD_TESTING is enabled
 if(BUILD_TESTING)

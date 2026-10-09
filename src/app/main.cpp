@@ -9,6 +9,7 @@
 
 #include <QAbstractItemModel>
 #include <QGuiApplication>
+#include <QIcon>
 #include <QQmlApplicationEngine>
 #include <QQuickStyle>
 #include <QQuickWindow>
@@ -87,6 +88,10 @@ int main(int argc, char *argv[])
     // Not "org.kde.…" (the default), so the About page shows no KDE donate/get-involved links.
     about.setDesktopFileName(u"plasma-mail"_s);
     about.setLicense(KAboutLicense::GPL_V2, KAboutLicense::OrLaterVersions); // matches the SPDX headers
+    // The installed themed icon, else the copy inside the executable.
+    const QIcon appIcon = QIcon::fromTheme(u"plasma-mail"_s, QIcon(u":/icons/sc-apps-plasma-mail.svg"_s));
+    QGuiApplication::setWindowIcon(appIcon);
+    about.setProgramLogo(appIcon); // the About page
     KAboutData::setApplicationData(about);
 
     // Breeze look by default; QT_QUICK_CONTROLS_STYLE still wins when set.

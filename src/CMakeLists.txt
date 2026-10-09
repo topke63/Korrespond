@@ -66,6 +66,10 @@ qt_add_qml_module(plasma-mail
         qml/AccountDetailsPage.qml
         qml/ComposeWindow.qml
 )
+# The icon also lives in the executable, for runs from the build folder where the themed icon
+# is not installed.
+qt_add_resources(plasma-mail app_icon PREFIX "/icons" BASE ${CMAKE_SOURCE_DIR}/data/icons FILES ${CMAKE_SOURCE_DIR}/data/icons/sc-apps-plasma-mail.svg)
+install(TARGETS plasma-mail ${KDE_INSTALL_TARGETS_DEFAULT_ARGS})
 # The generated QML type registration includes headers by file name.
 target_include_directories(plasma-mail PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
 target_link_libraries(plasma-mail PRIVATE

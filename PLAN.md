@@ -2421,7 +2421,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   `plasma-mail-unread` tray variant with the dot (add to its files).
 
 ### T121 — Install the icon and desktop file
-- status: todo
+- status: done
 - depends on: T120
 - parallel-safe with: T122
 - files: CMakeLists.txt, src/CMakeLists.txt, data/plasma-mail.desktop (new)
@@ -2433,7 +2433,17 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   resource).
 - verify: `cmake --install build --prefix <a fresh scratch folder>` installs the icon, desktop
   file and binary; `desktop-file-validate` (if installed) passes; offscreen start prints no new warnings.
-- notes:
+- notes: Done 2026-10-09. Root CMake: `ECMInstallIcons` → `ecm_install_icons` puts the SVG at
+  `share/icons/hicolor/scalable/apps/plasma-mail.svg`; `data/plasma-mail.desktop` (Name, Comment,
+  Exec, Icon, Categories=Qt;KDE;Network;Email;, Keywords) → `share/applications`; `install(TARGETS
+  plasma-mail)` in src. The SVG is also a Qt resource (`:/icons/…`) so runs from `build/` show it:
+  `main.cpp` sets the window icon and `KAboutData::setProgramLogo` from
+  `QIcon::fromTheme("plasma-mail", resource)`. Checked: `cmake --install` into a scratch prefix
+  installs the binary, icon and desktop file; `desktop-file-validate` passes; the About page
+  (offscreen screenshot) shows the logo; 12/12 tests pass. To see it in the launcher / task
+  manager the user must install (e.g. `cmake --install build --prefix ~/.local`); the "App info
+  not found for 'plasma-mail'" portal notice should then go away. An unexplained `""` line
+  appeared in the stderr of the About-page run (not seen with other pages).
 
 ### T122 — Settings: Keep running in the tray (storage of the option)
 - status: todo

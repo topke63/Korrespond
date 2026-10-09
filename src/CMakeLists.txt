@@ -53,6 +53,7 @@ qt_add_qml_module(plasma-mail
     VERSION 1.0
     SOURCES
         app/accountsession.cpp app/accountsession.h
+        app/trayicon.cpp app/trayicon.h
         models/accountlistmodel.cpp models/accountlistmodel.h
         app/mailcontroller.cpp app/mailcontroller.h
     QML_FILES
@@ -70,7 +71,7 @@ qt_add_qml_module(plasma-mail
 )
 # The icon also lives in the executable, for runs from the build folder where the themed icon
 # is not installed.
-qt_add_resources(plasma-mail app_icon PREFIX "/icons" BASE ${CMAKE_SOURCE_DIR}/data/icons FILES ${CMAKE_SOURCE_DIR}/data/icons/sc-apps-plasma-mail.svg)
+qt_add_resources(plasma-mail app_icon PREFIX "/icons" BASE ${CMAKE_SOURCE_DIR}/data/icons FILES ${CMAKE_SOURCE_DIR}/data/icons/sc-apps-plasma-mail.svg ${CMAKE_SOURCE_DIR}/data/icons/sc-apps-plasma-mail-unread.svg)
 install(TARGETS plasma-mail ${KDE_INSTALL_TARGETS_DEFAULT_ARGS})
 # The generated QML type registration includes headers by file name.
 target_include_directories(plasma-mail PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
@@ -80,6 +81,7 @@ target_link_libraries(plasma-mail PRIVATE
     Qt6::WebEngineQuick
     Qt6::Quick
     Qt6::QuickControls2
+    Qt6::Widgets
     KF6::I18n
     KF6::I18nQml
     KF6::CoreAddons

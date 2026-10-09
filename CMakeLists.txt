@@ -24,7 +24,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-find_package(Qt6 ${QT_MIN_VERSION} REQUIRED COMPONENTS Core Gui Network Sql Qml Quick QuickControls2 WebEngineQuick NetworkAuth Test)
+find_package(Qt6 ${QT_MIN_VERSION} REQUIRED COMPONENTS Core Gui Widgets Network Sql Qml Quick QuickControls2 WebEngineQuick NetworkAuth Test)
 find_package(KF6 ${KF_MIN_VERSION} REQUIRED COMPONENTS Kirigami I18n CoreAddons Config Mime Notifications StatusNotifierItem)
 find_package(KPim6IMAP REQUIRED)
 find_package(Qt6Keychain REQUIRED)
@@ -36,7 +36,7 @@ add_subdirectory(src)
 add_subdirectory(tools)
 
 # The app icon (file name sc-apps-<name>.svg → hicolor/scalable/apps) and the launcher entry.
-ecm_install_icons(ICONS data/icons/sc-apps-plasma-mail.svg DESTINATION ${KDE_INSTALL_ICONDIR} THEME hicolor)
+ecm_install_icons(ICONS data/icons/sc-apps-plasma-mail.svg data/icons/sc-apps-plasma-mail-unread.svg DESTINATION ${KDE_INSTALL_ICONDIR} THEME hicolor)
 install(FILES data/plasma-mail.desktop DESTINATION ${KDE_INSTALL_APPDIR})
 
 # Only build tests if they exist and BUILD_TESTING is enabled

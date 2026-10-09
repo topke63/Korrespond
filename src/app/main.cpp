@@ -5,9 +5,12 @@
 #include <KLocalizedQmlContext>
 #include <KLocalizedString>
 
+#include "appsettings.h"
 #include "mailcontroller.h"
+#include "trayicon.h"
 
 #include <QAbstractItemModel>
+#include <QApplication>
 #include <QGuiApplication>
 #include <QIcon>
 #include <QQmlApplicationEngine>
@@ -15,6 +18,8 @@
 #include <QQuickWindow>
 #include <QTimer>
 #include <QtWebEngineQuick>
+
+#include <memory>
 
 using namespace Qt::StringLiterals;
 
@@ -73,7 +78,8 @@ int main(int argc, char *argv[])
 {
     // QtWebEngine must be set up before the application object exists.
     QtWebEngineQuick::initialize();
-    QGuiApplication app(argc, argv);
+    // QApplication (not QGuiApplication): the tray icon's menu is a QMenu.
+    QApplication app(argc, argv);
 
     KLocalizedString::setApplicationDomain("plasma-mail");
     KAboutData about(u"plasma-mail"_s,
@@ -111,6 +117,16 @@ int main(int argc, char *argv[])
         Qt::QueuedConnection);
     engine.loadFromModule("PlasmaMail", "Main");
     scheduleScreenshot(engine);
+
+    // The tray icon; not in the screenshot runs (they must not put icons on the desktop), unless
+    // PLASMAMAIL_SCREENSHOT_TRAY=1.
+    std::unique_ptr<TrayIcon> tray;
+    const bool screenshotRun = !qEnvironmentVariableIsEmpty("PLASMAMAIL_SCREENSHOT") && qEnvironmentVariableIntValue("PLASMAMAIL_SCREENSHOT_TRAY") != 1;
+    auto controller = engine.singletonInstance<MailController *>("PlasmaMail", "MailController");
+    if (!screenshotRun && controller && !engine.rootObjects().isEmpty()) {
+        tray = std::make_unique<TrayIcon>(controller, qobject_cast<QWindow *>(engine.rootObjects().constFirst()));
+        tray->setKeepInTray(AppSettings::load().keepInTray);
+    }
 
     return app.exec();
 }

@@ -2524,7 +2524,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   without warnings; 14/14 tests pass; offline start unchanged; not run against a server (T129).
 
 ### T126 — Tray icon
-- status: todo
+- status: done
 - depends on: T121, T122, T123
 - parallel-safe with: T125
 - files: src/app/trayicon.h, src/app/trayicon.cpp, src/app/main.cpp, data/icons/sc-apps-plasma-mail-unread.svg (new, logo + orange dot) (+ CMake line)
@@ -2534,7 +2534,18 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   Mail (`MailController.refresh()`), Quit. With `keepInTray` the window's close hides it instead
   of quitting (`Window.onClosing`); otherwise unchanged.
 - verify: build; offscreen start prints no new warnings; manual in T129.
-- notes:
+- notes: Done 2026-10-09 (user review pending). `TrayIcon` (src/app/trayicon.*) wraps a
+  `KStatusNotifierItem`: logo icon, `plasma-mail-unread` (logo + orange dot, new
+  `data/icons/sc-apps-plasma-mail-unread.svg`, installed and also a Qt resource) as the attention
+  icon while `unreadCount > 0`, tooltip "N unread messages" / "No unread mail", the main window
+  associated (a click shows/hides it), menu "Check for Mail" above the standard Restore/Quit.
+  Before the app is installed the icons are sent as pictures from the resources. **Big change:**
+  KStatusNotifierItem's menu is a QMenu, so `main.cpp` now uses `QApplication` and links
+  `Qt6::Widgets`. `setKeepInTray(bool)` sets `quitOnLastWindowClosed` (read from `AppSettings` at
+  startup; T128 makes it live). Screenshot runs skip the tray (`PLASMAMAIL_SCREENSHOT_TRAY=1`
+  keeps it). Checked: build, 14/14 tests, the app starts with the tray without a D-Bus session
+  (no crash), the window looks unchanged, the unread icon looked right at 16/22/32/128 px. The
+  tray itself, the click behaviour and the menu need the desktop (T129).
 
 ### T127 — New-mail notification
 - status: todo

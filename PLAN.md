@@ -2957,7 +2957,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - **Out of scope**: a history list, clicking the label, saving it to disk.
 
 ### T142 — Controller: `lastAction` property
-- status: todo
+- status: done
 - depends on: T104, T113, T127
 - parallel-safe with: none
 - files: src/app/mailcontroller.h, src/app/mailcontroller.cpp
@@ -2970,7 +2970,11 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - verify: build succeeds; `ctest --preset dev` passes; a unit test is not needed (the controller
   has none) but the signal must be declared, since an earlier attempt had a property with no
   `NOTIFY` signal (rejected).
-- notes:
+- notes: Done 2026-10-09. setLastAction("%1 · HH:mm") hooks: sendMessage SMTP sent/failed lambdas
+  (validation refusals record nothing), onInboxChecked (count + account email), archive/delete/move
+  pass done/failed texts via moveOpenMessage into `m_moveTexts` (keyed by moveKey); success in
+  onMessageMoved, failure in onSessionError; removeAccount now also clears that account's
+  m_moving/m_moveTexts and releases the requests. Build ok, ctest 16/16, offscreen clean.
 
 ### T143 — Status bar: show the last action
 - status: todo
@@ -2996,6 +3000,21 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   (sender, subject) appears.
 - verify: manual, with the user.
 - notes:
+
+### T145 — Moves dropped on reconnect / over-broad move failures (found in T142)
+- status: todo
+- depends on: T142
+- parallel-safe with: none
+- files: src/engine/imapclient.h, src/engine/imapclient.cpp, src/app/mailcontroller.cpp
+- inputs: tester notes of T142.
+- output: (a) when `ImapClient::setAccount()`/`disconnectFromServer()` bump the generation, moves
+  in flight are reported (e.g. a `jobsDropped()` signal) so MailController clears `m_moving`,
+  `m_moveTexts` and the busy count instead of showing "Moving message…" forever; (b) a non-move
+  error on an account no longer marks every in-flight move as failed ("Moving failed" shown for a
+  move that the server completed).
+- verify: build; `ctest --preset dev`; offscreen start clean.
+- notes: pre-existing; not part of the user's request. Same family as T117's note (a non-fatal
+  error clears the search FIFO; m_requests can leak).
 
 ## Execution Loop
 

@@ -107,6 +107,9 @@ class MailController : public QObject
     // What the app is doing right now, for the status bar: "Connecting…", "Moving message…", an
     // account's sync progress, "Checking for new mail…" or "Loading…"; empty when idle.
     Q_PROPERTY(QString activityText READ activityText NOTIFY activityChanged)
+    // The last thing that happened, for the status bar: "Message sent · 17:05". Event and time
+    // only, never message content; empty until something happened (not stored).
+    Q_PROPERTY(QString lastActionText READ lastActionText NOTIFY lastActionChanged)
     // When a background check last finished (any account); invalid before the first one.
     Q_PROPERTY(QDateTime lastCheckedAt READ lastCheckedAt NOTIFY activityChanged)
     // General options (see AppSettings): hide to the tray when the window is closed, and the
@@ -179,6 +182,7 @@ public:
     [[nodiscard]] bool googleConfigured() const;
     [[nodiscard]] int unreadCount() const;
     [[nodiscard]] QString activityText() const;
+    [[nodiscard]] QString lastActionText() const;
     [[nodiscard]] QDateTime lastCheckedAt() const;
     [[nodiscard]] bool keepInTray() const;
     [[nodiscard]] int checkMinutes() const;
@@ -282,6 +286,7 @@ public:
     static constexpr int searchLimit = 200;
 
 Q_SIGNALS:
+    void lastActionChanged();
     void accountChanged();
     void busyChanged();
     void currentFolderChanged();
@@ -331,7 +336,7 @@ private:
     // Loads the inbox again if the open view shows it, so new mail appears in the list.
     void refreshInboxView(AccountSession *session, const QString &inbox);
     void adjustUnread(const AccountSession *session, const QString &folder, int delta);
-    void moveOpenMessage(const QString &target);
+    void moveOpenMessage(const QString &target, const QString &doneText, const QString &failedText);
     [[nodiscard]] static QString moveKey(const QString &account, const QString &folder, qint64 uid);
     void onSessionFolders(AccountSession *session);
     void beginRequest();
@@ -367,6 +372,8 @@ private:
     void updateSyncing();
     // Recomputes activityText(); emits activityChanged() when it or lastCheckedAt changed.
     void updateActivity();
+    // Remembers what happened last, with the time; emits lastActionChanged() when the text changed.
+    void setLastAction(const QString &text);
 
     QString m_dataDir; // AppDataLocation
     QList<AccountSession *> m_sessions; // saved accounts, in order
@@ -381,6 +388,8 @@ private:
     SmtpClient *m_smtp = nullptr; // the running send, if any
     AppSettings m_app;
     QString m_activityText;
+    QString m_lastAction;
+    std::map<QString, QPair<QString, QString>> m_moveTexts; // moveKey() -> status texts for success, failure
     QDateTime m_lastCheckedAt;
     NewMailTracker m_newMail;
     QTimer *m_checkTimer;

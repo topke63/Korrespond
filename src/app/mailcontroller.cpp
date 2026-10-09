@@ -25,6 +25,7 @@
 #include <QGuiApplication>
 #include <QPalette>
 #include <QStandardPaths>
+#include <QTime>
 
 #include <algorithm>
 
@@ -414,11 +415,13 @@ void MailController::sendMessage(const QVariantMap &message)
         std::exchange(m_smtp, nullptr)->deleteLater();
         Q_EMIT sendingChanged();
         saveSentCopy(email, provider, data);
+        setLastAction(i18n("Message sent"));
         Q_EMIT messageSent();
     });
     connect(m_smtp, &SmtpClient::failed, this, [this](const QString &error) {
         std::exchange(m_smtp, nullptr)->deleteLater();
         Q_EMIT sendingChanged();
+        setLastAction(i18n("Sending failed"));
         Q_EMIT sendFailed(error);
     });
     Q_EMIT sendingChanged();
@@ -634,6 +637,20 @@ QString MailController::activityText() const
 QDateTime MailController::lastCheckedAt() const
 {
     return m_lastCheckedAt;
+}
+
+QString MailController::lastActionText() const
+{
+    return m_lastAction;
+}
+
+void MailController::setLastAction(const QString &text)
+{
+    const QString full = i18nc("@info:status last action, %1 event, %2 time", "%1 · %2", text, QTime::currentTime().toString(u"HH:mm"_s));
+    if (full != m_lastAction) {
+        m_lastAction = full;
+        Q_EMIT lastActionChanged();
+    }
 }
 
 void MailController::updateActivity()
@@ -1129,6 +1146,7 @@ void MailController::onInboxChecked(AccountSession *session, const QString &fold
         return;
     }
     const MessageSummary &newest = fresh.constFirst();
+    setLastAction(i18np("1 new message in %2", "%1 new messages in %2", int(fresh.size()), email)); // counts only
     Q_EMIT newMailArrived(email, int(fresh.size()), fresh.size() == 1 ? newest.from : QString(), fresh.size() == 1 ? newest.subject : QString(), newest.uid);
 }
 
@@ -1178,14 +1196,14 @@ void MailController::openNewMail(const QString &account, qint64 uid)
 void MailController::archiveMessage()
 {
     if (const AccountSession *session = sessionFor(m_messageAccount); session && canArchive()) {
-        moveOpenMessage(archiveTarget(session->folders()));
+        moveOpenMessage(archiveTarget(session->folders()), i18n("Message archived"), i18n("Archiving failed"));
     }
 }
 
 void MailController::deleteMessage()
 {
     if (const AccountSession *session = sessionFor(m_messageAccount); session && canDelete()) {
-        moveOpenMessage(folderForRole(session->folders(), u"trash"_s));
+        moveOpenMessage(folderForRole(session->folders(), u"trash"_s), i18n("Message deleted"), i18n("Deleting failed"));
     }
 }
 
@@ -1201,18 +1219,23 @@ void MailController::moveMessage(const QString &folderPath)
         })) {
         return; // not a folder of this account
     }
-    moveOpenMessage(folderPath);
+    const auto target = std::find_if(folders.cbegin(), folders.cend(), [&folderPath](const FolderInfo &folder) {
+        return folder.path == folderPath;
+    });
+    moveOpenMessage(folderPath, i18n("Message moved to %1", target->name), i18n("Moving failed"));
 }
 
-void MailController::moveOpenMessage(const QString &target)
+void MailController::moveOpenMessage(const QString &target, const QString &doneText, const QString &failedText)
 {
     AccountSession *session = sessionFor(m_messageAccount);
     if (!session || m_currentUid <= 0 || target.isEmpty() || target == m_messageFolder) {
         return;
     }
-    if (!m_moving.insert(moveKey(m_messageAccount, m_messageFolder, m_currentUid)).second) {
+    const QString key = moveKey(m_messageAccount, m_messageFolder, m_currentUid);
+    if (!m_moving.insert(key).second) {
         return; // already on its way
     }
+    m_moveTexts[key] = {doneText, failedText};
     beginRequest();
     updateActivity();
     session->client()->moveMessage(m_messageFolder, m_currentUid, target);
@@ -1223,8 +1246,14 @@ void MailController::onMessageMoved(AccountSession *session, const QString &from
 {
     Q_UNUSED(to)
     const QString email = session->account().email;
-    if (m_moving.erase(moveKey(email, from, uid)) == 0 || !isKnown(session)) {
+    const QString key = moveKey(email, from, uid);
+    if (m_moving.erase(key) == 0 || !isKnown(session)) {
+        m_moveTexts.erase(key);
         return;
+    }
+    if (const auto texts = m_moveTexts.find(key); texts != m_moveTexts.end()) {
+        setLastAction(texts->second.first);
+        m_moveTexts.erase(texts);
     }
     updateActivity();
     endRequest();
@@ -1431,6 +1460,18 @@ void MailController::removeAccount(const QString &account)
     saveAccounts();
     // The local copies belong to the removed account.
     discardSession(session, true);
+    // Moves still on their way die with the session; nothing reports them any more.
+    const QString movePrefix = email + u'\n';
+    for (auto it = m_moving.begin(); it != m_moving.end();) {
+        if (it->startsWith(movePrefix)) {
+            m_moveTexts.erase(*it);
+            it = m_moving.erase(it);
+            endRequest();
+        } else {
+            ++it;
+        }
+    }
+    updateActivity();
     m_accounts->setSessions(m_sessions);
     m_sharedParts.erase(email);
     if (m_messageAccount == email) {
@@ -1523,6 +1564,10 @@ void MailController::onSessionError(AccountSession *session, const QString &mess
     const size_t movesBefore = m_moving.size();
     for (auto it = m_moving.begin(); it != m_moving.end();) {
         if (it->startsWith(movePrefix)) {
+            if (const auto texts = m_moveTexts.find(*it); texts != m_moveTexts.end()) {
+                setLastAction(texts->second.second);
+                m_moveTexts.erase(texts);
+            }
             it = m_moving.erase(it);
             endRequest();
         } else {

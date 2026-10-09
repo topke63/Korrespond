@@ -2107,14 +2107,16 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
     tooltip. Needed by T118.
 
 ### T99 — `ImapClient`: mark a message unread
-- status: todo
+- status: done
 - depends on: none
 - parallel-safe with: T100–T102
 - files: src/engine/imapclient.h, src/engine/imapclient.cpp
 - inputs: `markSeen` (existing StoreJob usage).
 - output: `void setSeen(const QString &folder, qint64 uid, bool seen)`; `markSeen` calls it.
 - verify: `cmake --build build --target plasmamail_engine`.
-- notes:
+- notes: Done 2026-10-09. `setSeen(folder, uid, seen)` is the old `markSeen` body with
+  AppendFlags/RemoveFlags by `seen`; `markSeen` calls it with true. Builds without warnings,
+  12/12 tests pass; the live check is T107.
 
 ### T100 — Mark as Unread / Read in the controller and toolbar
 - status: todo

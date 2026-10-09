@@ -65,6 +65,8 @@ public:
     // Fetches headers of the newest `limit` messages in `folder` that match `filter`.
     void fetchHeaders(const QString &folder, int limit, HeaderFilter filter = AllMessages);
     void fetchMessage(const QString &folder, qint64 uid);
+    // Sets or clears \Seen (read / unread). markSeen() is setSeen(…, true).
+    void setSeen(const QString &folder, qint64 uid, bool seen);
     void markSeen(const QString &folder, qint64 uid);
     // Sets or clears \Flagged (shown as a star or flag by mail clients).
     void setFlagged(const QString &folder, qint64 uid, bool flagged);

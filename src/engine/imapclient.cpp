@@ -431,6 +431,11 @@ void ImapClient::fetchMessage(const QString &folder, qint64 uid)
 
 void ImapClient::markSeen(const QString &folder, qint64 uid)
 {
+    setSeen(folder, uid, true);
+}
+
+void ImapClient::setSeen(const QString &folder, qint64 uid, bool seen)
+{
     session();
     const quint64 generation = m_generation;
     queueSelect(folder, generation);
@@ -439,7 +444,7 @@ void ImapClient::markSeen(const QString &folder, qint64 uid)
     store->setUidBased(true);
     store->setSequenceSet(KIMAP::ImapSet(uid));
     store->setFlags({"\\Seen"});
-    store->setMode(KIMAP::StoreJob::AppendFlags);
+    store->setMode(seen ? KIMAP::StoreJob::AppendFlags : KIMAP::StoreJob::RemoveFlags);
     connect(store, &KJob::result, this, [this, generation](KJob *job) {
         checkJob(job, generation);
     });

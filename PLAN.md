@@ -2646,7 +2646,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   `SidebarWidth` / `ListWidth`, clamped to 160–420 and 280–800 on load and save; constants for the
   bounds and defaults; tests: defaults, round trip, clamping on load and save, other options kept.
 - verify: `ctest --test-dir build -R appsettingstest --output-on-failure`
-- notes: Done 2026-10-09. `AppSettings::sidebarWidth` (252, 160–420) and `listWidth` (504,
+- notes: Done 2026-10-09. `AppSettings::sidebarWidth` (252, 160–420) and `listWidth` (360,
   280–800), keys `SidebarWidth` / `ListWidth` in `[General]`, clamped on load and on save; the
   default/min/max values are public constants for QML (T131). 3 new tests (clamp on load, clamp on
   save, garbage → defaults) and the defaults/round-trip tests now cover the widths. **Watch out
@@ -2725,6 +2725,17 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   right edge, only when `applicationWindow().wideScreen`; release → `savePanelWidths(sidebarWidth,
   width)`; double-click → `listDefaultWidth`. Checked offscreen/offline at the defaults with a
   message open: the layout looks the same as before, no new QML warnings; 14/14 tests.
+  **Fix after the user's try (2026-10-09):** dragging the list divider saved a width but changed
+  nothing — in a wide window the page row's default `FixedColumns` mode ignores the per-page
+  `ColumnView` width hints (every non-fill column is `defaultColumnWidth`, 360 px), and the first
+  repair (driving `defaultColumnWidth`) breaks `wideMode` (`width >= 2 × defaultColumnWidth`). Now
+  `Main.qml` binds the row's `columnView.columnResizeMode` to `DynamicColumns` (wide) /
+  `SingleColumn` (narrow), where the list's min/preferred/max hints count. The widths are capped so
+  the message column keeps 30 grid units (540 px, room for its toolbar): the list's maximum is
+  `window − sidebar − 540`, the sidebar's `window − list minimum − 540` (a width saved on a bigger
+  window shrinks to fit). The list's default is now **360 px** (today's real width; the 504 I
+  planned was never applied by Kirigami). Checked offscreen/offline with the user's saved
+  287/800: sidebar 287, list 523, message 540 with its whole toolbar; 14/14 tests.
 
 ### T135 — Manual check: resizing panels
 - status: todo

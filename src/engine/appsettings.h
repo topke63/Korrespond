@@ -11,7 +11,7 @@ struct AppSettings {
     static constexpr int defaultSidebarWidth = 252;
     static constexpr int minSidebarWidth = 160;
     static constexpr int maxSidebarWidth = 420;
-    static constexpr int defaultListWidth = 504;
+    static constexpr int defaultListWidth = 360;
     static constexpr int minListWidth = 280;
     static constexpr int maxListWidth = 800;
 

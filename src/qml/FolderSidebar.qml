@@ -40,7 +40,11 @@ Kirigami.OverlayDrawer {
 
     edge: Qt.application.layoutDirection === Qt.RightToLeft ? Qt.RightEdge : Qt.LeftEdge
     // Docked: the width the user chose (live while dragging). Sliding over a narrow window: fixed.
-    width: modal ? Kirigami.Units.gridUnit * 14 : (resizer.dragging ? resizer.liveWidth : MailController.sidebarWidth)
+    width: modal ? Kirigami.Units.gridUnit * 14 : Math.min(maxDockedWidth, resizer.dragging ? resizer.liveWidth : MailController.sidebarWidth)
+    // The most it may take: the list keeps its minimum and the message column 30 grid units.
+    readonly property int maxDockedWidth: Math.max(MailController.sidebarMinWidth,
+                                                   Math.min(MailController.sidebarMaxWidth,
+                                                            applicationWindow().width - MailController.listMinWidth - Kirigami.Units.gridUnit * 30))
     handleVisible: modal && enabled
     leftPadding: 0
     rightPadding: 0
@@ -219,7 +223,7 @@ Kirigami.OverlayDrawer {
             anchors.bottom: parent.bottom
             panelWidth: MailController.sidebarWidth
             minimum: MailController.sidebarMinWidth
-            maximum: MailController.sidebarMaxWidth
+            maximum: sidebar.maxDockedWidth
             onResized: width => MailController.savePanelWidths(width, MailController.listWidth)
             onResetRequested: MailController.savePanelWidths(MailController.sidebarDefaultWidth, MailController.listWidth)
         }

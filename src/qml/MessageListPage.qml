@@ -31,10 +31,16 @@ Kirigami.ScrollablePage {
     }
     // A fixed list column, like Geary's; the message column takes the rest.
     // The width the user chose (live while dragging the divider on the right edge); the message
-    // column takes the rest.
+    // column takes the rest. Main.qml puts the page row in the dynamic mode, where these count.
     Kirigami.ColumnView.minimumWidth: MailController.listMinWidth
-    Kirigami.ColumnView.preferredWidth: resizer.dragging ? resizer.liveWidth : MailController.listWidth
-    Kirigami.ColumnView.maximumWidth: MailController.listMaxWidth
+    Kirigami.ColumnView.preferredWidth: Math.min(maxWidth, resizer.dragging ? resizer.liveWidth : MailController.listWidth)
+    Kirigami.ColumnView.maximumWidth: maxWidth
+
+    // The most the list may take: the message column keeps at least 30 grid units (room for its toolbar), so a width
+    // saved on a bigger window (or a smaller window now) cannot push it off the screen.
+    readonly property int maxWidth: Math.max(MailController.listMinWidth,
+                                             Math.min(MailController.listMaxWidth,
+                                                      applicationWindow().width - MailController.sidebarWidth - Kirigami.Units.gridUnit * 30))
 
     // On the page's overlay, so it does not scroll with the list. Not in a narrow window, where
     // one column is shown at a time.
@@ -48,7 +54,7 @@ Kirigami.ScrollablePage {
         anchors.bottom: parent.bottom
         panelWidth: MailController.listWidth
         minimum: MailController.listMinWidth
-        maximum: MailController.listMaxWidth
+        maximum: page.maxWidth
         onResized: width => MailController.savePanelWidths(MailController.sidebarWidth, width)
         onResetRequested: MailController.savePanelWidths(MailController.sidebarWidth, MailController.listDefaultWidth)
     }

@@ -41,7 +41,7 @@ private Q_SLOTS:
         QVERIFY(!settings.keepInTray);
         QCOMPARE(settings.checkMinutes, 5);
         QCOMPARE(settings.sidebarWidth, 252);
-        QCOMPARE(settings.listWidth, 504);
+        QCOMPARE(settings.listWidth, 360);
     }
 
     void testRoundTrip()

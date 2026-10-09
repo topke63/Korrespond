@@ -64,6 +64,14 @@ Kirigami.ApplicationWindow {
     // Inside the page row, so the sidebar's header lines up with the pages' title bars.
     pageStack.leftSidebar: sidebar
 
+    // In a wide window the page row's default (fixed) mode gives every column the same width;
+    // the dynamic mode uses each page's own width hints, which the resizable list column needs.
+    Binding {
+        target: window.pageStack.columnView
+        property: "columnResizeMode"
+        value: window.pageStack.wideMode ? Kirigami.ColumnView.DynamicColumns : Kirigami.ColumnView.SingleColumn
+    }
+
     KirigamiSettings.ConfigurationView {
         id: settings
 
@@ -154,6 +162,8 @@ Kirigami.ApplicationWindow {
 
         MessagePage {
             Kirigami.ColumnView.fillWidth: true
+            // The message column always keeps room for its toolbar; the panel widths are capped to leave it.
+            Kirigami.ColumnView.minimumWidth: Kirigami.Units.gridUnit * 30
         }
     }
 

@@ -4,6 +4,7 @@
 #pragma once
 
 #include "account.h"
+#include "appsettings.h"
 #include "folderutils.h"
 #include "imapclient.h"
 #include "newmailtracker.h"
@@ -95,6 +96,12 @@ class MailController : public QObject
     // Unread messages in all accounts' inboxes (as of the last background check, kept up to date
     // as messages are read here); 0 until the first check.
     Q_PROPERTY(int unreadCount READ unreadCount NOTIFY unreadCountChanged)
+    // General options (see AppSettings): hide to the tray when the window is closed, and the
+    // background check interval in minutes.
+    Q_PROPERTY(bool keepInTray READ keepInTray NOTIFY appSettingsChanged)
+    Q_PROPERTY(int checkMinutes READ checkMinutes NOTIFY appSettingsChanged)
+    // KDE's notification settings for the app can be opened (the app's notifyrc is installed).
+    Q_PROPERTY(bool notificationsConfigurable READ notificationsConfigurable CONSTANT)
 
 public:
     explicit MailController(QObject *parent = nullptr);
@@ -141,6 +148,9 @@ public:
     [[nodiscard]] bool storageReady() const;
     [[nodiscard]] bool googleConfigured() const;
     [[nodiscard]] int unreadCount() const;
+    [[nodiscard]] bool keepInTray() const;
+    [[nodiscard]] int checkMinutes() const;
+    [[nodiscard]] bool notificationsConfigurable() const;
 
     // Checks the credentials by logging in and listing folders; only then stores the password
     // in the keychain and adds the account after the existing ones (an email that is already
@@ -191,6 +201,11 @@ public:
     // message opens once the inbox list has arrived; showMessageRequested() then asks the window
     // to show the message column.
     Q_INVOKABLE void openNewMail(const QString &account, qint64 uid);
+    // Saves the options at once: the check timer restarts with the new interval (1–60) and
+    // appSettingsChanged is emitted (the tray follows keepInTray).
+    Q_INVOKABLE void saveAppSettings(bool keepInTray, int checkMinutes);
+    // Opens KDE's dialog for the app's notification events.
+    Q_INVOKABLE void configureNotifications();
     Q_INVOKABLE void archiveMessage();
     Q_INVOKABLE void deleteMessage();
     Q_INVOKABLE void moveMessage(const QString &folderPath);
@@ -219,6 +234,7 @@ Q_SIGNALS:
     void storageUsageChanged();
     void syncingChanged();
     void unreadCountChanged();
+    void appSettingsChanged();
     void showMessageRequested();
     // New mail found by a background check. With count == 1, sender ("Name <address>") and
     // subject describe the message; uid is the newest new message of the account's inbox.
@@ -289,6 +305,7 @@ private:
     // The open shared view: each account's part of the merged list, and the accounts already asked.
     std::map<QString, QList<MessageSummary>> m_sharedParts;
     std::set<AccountSession *> m_sharedRequested;
+    AppSettings m_app;
     NewMailTracker m_newMail;
     QTimer *m_checkTimer;
     std::map<QString, int> m_unreadByAccount; // unread messages per account's inbox

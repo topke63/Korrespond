@@ -128,6 +128,10 @@ int main(int argc, char *argv[])
     if (!screenshotRun && controller && !engine.rootObjects().isEmpty()) {
         tray = std::make_unique<TrayIcon>(controller, qobject_cast<QWindow *>(engine.rootObjects().constFirst()));
         tray->setKeepInTray(AppSettings::load().keepInTray);
+        // The tray follows the "keep running in the tray" option as it is changed in Settings.
+        QObject::connect(controller, &MailController::appSettingsChanged, tray.get(), [controller, trayPtr = tray.get()] {
+            trayPtr->setKeepInTray(controller->keepInTray());
+        });
         notifier = std::make_unique<MailNotifier>(controller, qobject_cast<QWindow *>(engine.rootObjects().constFirst()));
     }
 

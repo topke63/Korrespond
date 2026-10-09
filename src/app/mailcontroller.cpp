@@ -17,6 +17,7 @@
 
 #include <KLocalizedString>
 #include <KMime/Message>
+#include <KNotifyConfigWidget>
 
 #include <QDir>
 #include <QGuiApplication>
@@ -39,7 +40,8 @@ MailController::MailController(QObject *parent)
     connect(m_secrets, &SecretStore::passwordRead, this, &MailController::onSecretRead);
     m_googleConfigured = GoogleOAuthSettings::load().isConfigured();
     connect(m_checkTimer, &QTimer::timeout, this, &MailController::checkForNewMail);
-    m_checkTimer->start(std::chrono::minutes(AppSettings::load().checkMinutes));
+    m_app = AppSettings::load();
+    m_checkTimer->start(std::chrono::minutes(m_app.checkMinutes));
 
     m_storage = StorageSettings::load();
     const QList<Account> accounts = Account::loadAll();
@@ -397,6 +399,40 @@ bool MailController::syncing() const
 bool MailController::googleConfigured() const
 {
     return m_googleConfigured;
+}
+
+bool MailController::keepInTray() const
+{
+    return m_app.keepInTray;
+}
+
+int MailController::checkMinutes() const
+{
+    return m_app.checkMinutes;
+}
+
+bool MailController::notificationsConfigurable() const
+{
+    return !QStandardPaths::locate(QStandardPaths::GenericDataLocation, u"knotifications6/plasma-mail.notifyrc"_s).isEmpty();
+}
+
+void MailController::saveAppSettings(bool keepInTray, int checkMinutes)
+{
+    AppSettings settings;
+    settings.keepInTray = keepInTray;
+    settings.checkMinutes = std::clamp(checkMinutes, AppSettings::minCheckMinutes, AppSettings::maxCheckMinutes);
+    if (settings == m_app) {
+        return;
+    }
+    settings.save();
+    m_app = settings;
+    m_checkTimer->start(std::chrono::minutes(m_app.checkMinutes));
+    Q_EMIT appSettingsChanged();
+}
+
+void MailController::configureNotifications()
+{
+    KNotifyConfigWidget::configure(nullptr, u"plasma-mail"_s);
 }
 
 int MailController::unreadCount() const

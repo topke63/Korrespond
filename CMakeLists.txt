@@ -25,7 +25,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 find_package(Qt6 ${QT_MIN_VERSION} REQUIRED COMPONENTS Core Gui Widgets Network Sql Qml Quick QuickControls2 WebEngineQuick NetworkAuth Test)
-find_package(KF6 ${KF_MIN_VERSION} REQUIRED COMPONENTS Kirigami I18n CoreAddons Config Mime Notifications StatusNotifierItem)
+find_package(KF6 ${KF_MIN_VERSION} REQUIRED COMPONENTS Kirigami I18n CoreAddons Config Mime Notifications NotifyConfig StatusNotifierItem)
 find_package(KPim6IMAP REQUIRED)
 find_package(Qt6Keychain REQUIRED)
 

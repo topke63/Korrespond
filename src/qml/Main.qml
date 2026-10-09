@@ -76,6 +76,12 @@ Kirigami.ApplicationWindow {
                 page: () => accountsPage
             },
             KirigamiSettings.ConfigurationModule {
+                moduleId: "notifications"
+                text: KI18n.i18nc("@action:button", "Notifications")
+                icon.name: "preferences-desktop-notification"
+                page: () => notificationsPage
+            },
+            KirigamiSettings.ConfigurationModule {
                 moduleId: "storage"
                 text: KI18n.i18nc("@action:button", "Local Storage")
                 icon.name: "drive-harddisk"
@@ -123,6 +129,12 @@ Kirigami.ApplicationWindow {
         id: accountsPage
 
         AccountSettingsPage {}
+    }
+
+    Component {
+        id: notificationsPage
+
+        NotificationSettingsPage {}
     }
 
     Component {

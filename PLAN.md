@@ -2570,7 +2570,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   unchanged. Not triggered: needs real new mail (T129).
 
 ### T128 — Settings: Notifications page
-- status: todo
+- status: done
 - depends on: T122, T126, T127
 - parallel-safe with: none
 - files: src/qml/NotificationSettingsPage.qml (new), src/qml/Main.qml, src/app/mailcontroller.h, src/app/mailcontroller.cpp
@@ -2581,7 +2581,17 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   running in the tray when the window is closed", and the button above.
 - verify: offscreen start with `PLASMAMAIL_SCREENSHOT_SETTINGS=notifications` prints no new
   warnings and shows the page.
-- notes:
+- notes: Done 2026-10-09 (user review pending). New Settings module "Notifications"
+  (`NotificationSettingsPage.qml`): a spin box "Check for new mail every (minutes)" 1–60, a switch
+  "Keep running in the tray when the window is closed", and "Configure Notifications…" which opens
+  KDE's `KNotifyConfigWidget` dialog for `plasma-mail` (links `KF6::NotifyConfig`; enabled only
+  when `knotifications6/plasma-mail.notifyrc` is found, i.e. after `cmake --install`, otherwise
+  greyed with a hint). Changes apply at once: `MailController::saveAppSettings()` saves
+  `AppSettings`, restarts the check timer and emits `appSettingsChanged`; `main.cpp` connects that
+  to `TrayIcon::setKeepInTray`. New controller properties `keepInTray`, `checkMinutes`,
+  `notificationsConfigurable`. Checked offscreen/offline: the page renders (5, switch off, button
+  greyed), no new QML warnings; build without warnings, 14/14 tests. Clicking the controls and the
+  KDE dialog need the desktop (T129).
 
 ### T129 — Manual check: icon, tray, notification
 - status: todo

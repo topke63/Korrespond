@@ -64,6 +64,7 @@ qt_add_qml_module(plasma-mail
         qml/MessagePage.qml
         qml/MoveFolderMenu.qml
         qml/StorageSettingsPage.qml
+        qml/NotificationSettingsPage.qml
         qml/FolderSidebar.qml
         qml/SenderAvatar.qml
         qml/AccountSettingsPage.qml
@@ -87,5 +88,6 @@ target_link_libraries(plasma-mail PRIVATE
     KF6::I18nQml
     KF6::CoreAddons
     KF6::Notifications
+    KF6::NotifyConfig
     KF6::StatusNotifierItem
 )

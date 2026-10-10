@@ -99,6 +99,77 @@ Log out and in, or run `kbuildsycoca6`, if the launcher entry does not show up a
 
 To update: `git pull`, rebuild and install again.
 
+## Build a package
+
+Install the build and runtime packages from [Requirements](#requirements) first.
+Packaging files live in `packaging/`; the AppStream file `data/org.topke.plasmamail.metainfo.xml`
+is installed by CMake into `share/metainfo`.
+
+### Arch / CachyOS / Manjaro
+
+```sh
+cd packaging/arch
+makepkg -si          # build and install; use -s alone to only build
+```
+
+`makepkg` clones the repository from GitHub, builds with `-DCMAKE_INSTALL_PREFIX=/usr` and
+produces `plasma-mail-git-<version>-x86_64.pkg.tar.zst` in the same folder. Install a built
+package later with `sudo pacman -U plasma-mail-git-*.pkg.tar.zst`.
+
+To package your local, committed checkout instead of the GitHub one, change the `source=` line
+in the `PKGBUILD` to `source=("$pkgname::git+file://$(realpath ../..)")`. Uncommitted changes
+are not included.
+
+### Any distribution: the three CMake steps
+
+Every package format wraps these commands; only the dependency names and the packaging files
+differ. Always use `/usr` as the prefix for a package, never `~/.local`.
+
+```sh
+cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DBUILD_TESTING=OFF
+cmake --build build
+DESTDIR="$PWD/pkgroot" cmake --install build     # the package builder's staging directory
+```
+
+### Debian / Ubuntu (`.deb`)
+
+1. Create a `debian/` folder with `control`, `rules`, `changelog`, `copyright` and `compat`.
+2. In `rules` use the standard debhelper CMake build: `dh $@ --buildsystem=cmake+ninja`, and set
+   `-DBUILD_TESTING=OFF` in `override_dh_auto_configure`.
+3. In `control`, list the `-dev` packages for the CMake packages in
+   [Requirements](#requirements) under `Build-Depends` (for example `extra-cmake-modules`,
+   `qt6-base-dev`, `qt6-declarative-dev`, `qt6-webengine-dev`, `qt6-networkauth-dev`,
+   `libkf6kirigami-dev`, `libkf6i18n-dev`, `libkf6mime-dev`, `libkpim6imap-dev`,
+   `libkpim6smtp-dev`, `libqt6keychain1-dev`), and the runtime ones, including the
+   `libkgapi` SASL plugin, under `Depends`.
+4. Build with `dpkg-buildpackage -us -uc -b`, or in a clean chroot with `sbuild`.
+
+### Fedora / openSUSE (`.rpm`)
+
+1. Write `plasma-mail.spec` using the `%cmake_kf6`, `%cmake_build` and `%cmake_install` macros
+   (Fedora) or `%cmake_kf6`, `%kf6_build`, `%kf6_install` (openSUSE).
+2. Use `BuildRequires: cmake(KPim6IMAP)` and so on, one line per CMake package in
+   [Requirements](#requirements); both distributions resolve `cmake(...)` names.
+3. Build with `rpmbuild -ba plasma-mail.spec`, or in a clean chroot with `mock`.
+
+### Flatpak
+
+Use the `org.kde.Platform` runtime for Qt and KDE Frameworks. Add `kimap`, `ksmtp`, `qtkeychain`
+and `libkgapi` as modules in the manifest, and the `io.qt.qtwebengine.BaseApp` base app for
+WebEngine. The desktop file is `plasma-mail.desktop` and the AppStream id is
+`org.topke.plasmamail`; the manifest's `app-id` must match the AppStream id.
+
+### Check the package
+
+```sh
+appstreamcli validate data/org.topke.plasmamail.metainfo.xml
+desktop-file-validate data/plasma-mail.desktop
+```
+
+Note for every format: `kimap` and `ksmtp` must be from KDE Gear 26.08 or newer, and the
+`libkgapi` SASL plugin (`/usr/lib/sasl2/libkdexoauth2.so`) is a runtime dependency; without it
+Gmail sign-in succeeds but the IMAP login fails.
+
 ## Set up accounts
 
 Start Plasma Mail and use **Settings → Accounts → Add Account…** (on first start the setup

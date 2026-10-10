@@ -3,6 +3,7 @@
 
 #include <KAboutData>
 #include <KColorSchemeManager>
+#include <KColorSchemeModel>
 #include <KLocalizedQmlContext>
 #include <KLocalizedString>
 
@@ -23,6 +24,8 @@
 #include <QtWebEngineQuick>
 
 #include <QFile>
+#include <QFileInfo>
+#include <QTextStream>
 #include <memory>
 
 using namespace Qt::StringLiterals;
@@ -136,26 +139,36 @@ int main(int argc, char *argv[])
         QQuickStyle::setStyle(u"org.kde.desktop"_s);
     }
 
-    // Dev only: PLASMAMAIL_COLOR_SCHEME=light|dark|<installed scheme name> forces the whole app into
-    // that KDE colour scheme (light/dark = Breeze Light/Dark; names match case-insensitively, e.g.
-    // "Breeze Classic"), which the Kirigami colour sets (sidebar, lists, headers, buttons, menus,
+    // Dev only: PLASMAMAIL_COLOR_SCHEME=light|dark|<installed scheme> forces the whole app into
+    // that KDE colour scheme (light/dark = Breeze Light/Dark). <installed scheme> is the display name
+    // ("Breeze Classic") or the scheme file id ("BreezeClassic", the .colors file name); both match
+    // case-insensitively. The Kirigami colour sets (sidebar, lists, headers, buttons, menus,
     // dialogs) follow. This process only: autosave is off, so nothing is written to the config.
     // Unset: system scheme.
     const QString wanted = qEnvironmentVariable("PLASMAMAIL_COLOR_SCHEME").trimmed();
     if (!wanted.isEmpty()) {
+        // Written to stderr directly: Qt's qWarning/qInfo go to the journal instead when the
+        // environment has JOURNAL_STREAM set, and the dev hook's messages must be seen.
+        QTextStream report(stderr);
         auto *manager = KColorSchemeManager::instance();
         manager->setAutosaveChanges(false);
-        const QString name = wanted.compare("light"_L1, Qt::CaseInsensitive) == 0 ? u"Breeze Light"_s
-            : wanted.compare("dark"_L1, Qt::CaseInsensitive) == 0                 ? u"Breeze Dark"_s
-                                                                                  : wanted;
+        QString name = wanted;
+        if (wanted.compare("light"_L1, Qt::CaseInsensitive) == 0) {
+            name = u"Breeze Light"_s;
+        } else if (wanted.compare("dark"_L1, Qt::CaseInsensitive) == 0) {
+            name = u"Breeze Dark"_s;
+        }
         QAbstractItemModel *model = manager->model();
         QModelIndex found;
         QStringList available;
         for (int row = 0; row < model->rowCount(); ++row) {
             const QModelIndex index = model->index(row, 0);
-            const QString schemeName = index.data(Qt::DisplayRole).toString();
-            available << schemeName;
-            if (!found.isValid() && schemeName.compare(name, Qt::CaseInsensitive) == 0) {
+            const QString schemeName = index.data(KColorSchemeModel::NameRole).toString();
+            // The scheme file id: "BreezeDark" for Breeze Dark.colors (the file's base name).
+            const QString schemeId = QFileInfo(index.data(KColorSchemeModel::PathRole).toString()).completeBaseName();
+            available << (schemeId.isEmpty() ? schemeName : u"%1 (%2)"_s.arg(schemeName, schemeId));
+            if (!found.isValid()
+                && (schemeName.compare(name, Qt::CaseInsensitive) == 0 || (!schemeId.isEmpty() && schemeId.compare(name, Qt::CaseInsensitive) == 0))) {
                 found = index;
             }
         }
@@ -164,9 +177,9 @@ int main(int argc, char *argv[])
             // Qt's own hint follows the scheme's window lightness (the KDE platform theme may ignore it).
             const bool light = QGuiApplication::palette().window().color().lightnessF() >= 0.5;
             QGuiApplication::styleHints()->setColorScheme(light ? Qt::ColorScheme::Light : Qt::ColorScheme::Dark);
-            qInfo().noquote() << "PLASMAMAIL_COLOR_SCHEME: activated" << manager->activeSchemeName() << (light ? "(light)" : "(dark)");
+            report << "PLASMAMAIL_COLOR_SCHEME: activated " << manager->activeSchemeName() << (light ? " (light)" : " (dark)") << Qt::endl;
         } else {
-            qWarning().noquote() << "PLASMAMAIL_COLOR_SCHEME: unknown scheme" << wanted << "- available:" << available.join(u", "_s);
+            report << "PLASMAMAIL_COLOR_SCHEME: unknown scheme " << wanted << " - available: " << available.join(u", "_s) << Qt::endl;
         }
     }
 

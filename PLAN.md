@@ -4168,8 +4168,13 @@ scripts/desktop3-run.sh or a visible window; never act on the user's real folder
   other actions still reach for a server: not covered. main.cpp: tray and notifier are not created
   while PLASMAMAIL_DEMO=1 or PLASMAMAIL_SCREENSHOT is set. How to run a check: `QT_QPA_PLATFORM=offscreen`
   + isolated XDG_* dirs + `PLASMAMAIL_DEMO=1 PLASMAMAIL_COLOR_SCHEME=dark|light
-  PLASMAMAIL_SCREENSHOT=<png>`; use the names `dark`/`light` (or "Breeze Dark" with the space):
-  `BreezeDark` is an unknown scheme and silently falls back to the system one.
+  PLASMAMAIL_SCREENSHOT=<png>`; `dark`/`light`, `BreezeDark`/`BreezeLight` and "Breeze Dark" all work
+  (see the 2026-10-10 line below; an unknown name warns on stderr and keeps the system scheme).
+  2026-10-10 (T195 fix): the scheme file id now matches too (`BreezeDark`/`BreezeLight`, any case),
+  and the unknown-scheme warning is written to stderr directly. Verified offscreen: `t205-dark.png`
+  (list bg (20,22,24)) and `t205-light.png` (list bg (255,255,255)) both show alice@ and bob@
+  example accounts, folder trees, unread dots and a flag; no StatusNotifierItem from the test pid;
+  nothing written under the scratchpad xdg data dir; kdeglobals and plasma-mailrc mtimes unchanged.
 
 
 ### T188 — Account trees: persisted collapse, Collapse all / Expand all

@@ -4946,6 +4946,29 @@ MessagePage.qml.
   (Lunch open, 3 unread), t230-after.png (gone from the list, next opened and read, 2 unread),
   t230-trash.png (Trash of alice lists it), t230-move.png (Receipts). ctest 19/19. strace not
   installed, so no connect() trace.
+- verification (2026-10-10, T230 verifier, offscreen, isolated XDG, timeout-bounded): build clean and
+  ctest 19/19 in build/ and the dev build. No code fix needed. Real-mode review of ce02412 line by line:
+  every new branch is gated on m_demo or on ImapClient's networkBlocked flag; setNetworkBlocked(demo)
+  sets false in real mode (the default); no early return on a real path; the real request, markSeen,
+  beginRequest/endRequest and signal order is unchanged; the main.cpp hooks sit inside the
+  PLASMAMAIL_DEMO == 1 block; private helpers (moveByCopy, fetchSummaries, queueSelect, checkMoveJob)
+  are reached only through guarded public calls. Real-mode smoke (no PLASMAMAIL_DEMO, empty XDG, empty
+  network namespace): starts, shows the account setup page, no demo or network lines.
+  Demo matrix, each run in the normal namespace and in an unprivileged network namespace
+  (`unshare --user --map-current-user --net`, only lo): archive, delete, mark_unread, flag, refresh
+  (logs "demo: refresh"), mark_read (disabled for the already-read opened message, as before) and
+  DEMO_MOVE=Receipts: rc 0, no Connection/HostNotFound/imap.example.com/smtp/"Network is unreachable"/
+  "blocked network" lines, and the two modes give identical logs (timestamps stripped). Detector check:
+  the pre-fix T211 logs for archive/move/refresh show 1-2 hits for the same markers, the post-fix logs 0.
+  Port check: /proc/<pid>/net/tcp lists every socket of the network namespace, not the process's own, so
+  the first poll picked up the sockets of the installed app; the check was then limited to the process's
+  socket inodes (/proc/<pid>/fd) and shows 0 connections to ports 993/143/465/587/25. The installed app
+  was not touched. Shots viewed: t230-before (Lunch open, 3 unread), t230-after (delete: toast "Message
+  deleted", 2 unread), t230-trash (Lunch listed in Trash), t230-move (Receipts lists Lunch, toast "Message
+  moved to Receipts", 2 unread). T207 demo runs, same isolation: SEND=1 queued in 10 s, handed off, "demo:
+  would send"; SEND=1 + UNDO=1 queued, undone, no hand-off; SEND=1 + QUIT_AFTER=3000 flushed, handed off,
+  "quit: all messages handed off", rc 0. Not covered: mark_read on an enabled demo message (the open
+  message is marked read on open, and the hooks trigger one action per run); strace.
 
 ### T212 — Views use the actions
 - status: todo

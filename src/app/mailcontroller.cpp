@@ -1970,6 +1970,11 @@ void MailController::removeAccount(const QString &account)
     updateActivity();
     m_accounts->setSessions(m_sessions);
     m_sharedParts.erase(email);
+    // A removed account must not come back folded if it is added again.
+    if (m_app.collapsedAccounts.removeAll(email) > 0) {
+        m_app.save();
+        Q_EMIT collapsedAccountsChanged();
+    }
     if (m_messageAccount == email) {
         clearMessage(true);
     }

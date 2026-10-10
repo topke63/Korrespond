@@ -4197,6 +4197,26 @@ scripts/desktop3-run.sh or a visible window; never act on the user's real folder
   Expand All needs a collapsed one). Screenshots (offscreen, demo, config pre-seeded with
   `CollapsedAccounts=bob@example.com` in $XDG_CONFIG_HOME/plasmamailrc): scratchpad
   t188-expanded-dark.png, t188-bob-collapsed-{dark,light}.png. ctest 19/19.
+- verification 2026-10-10 (tester): build up to date, no warnings; ctest 19/19 (before and after
+  the fix below). Offscreen demo shots, isolated XDG dirs, `PLASMAMAIL_DEMO=1`, no window:
+  scratchpad `t188v-expanded-dark.png` (both open, down arrows), `t188v-bob-dark.png` and
+  `t188v-bob-light.png` (bob folded: header only, right arrow; alice open; header text readable),
+  `t188v-all-light.png` (both folded, right arrows). Logs (`QT_FORCE_STDERR_LOGGING=1`) show no
+  QML warnings, binding loops or errors. Seeded `CollapsedAccounts` was read correctly.
+  Toggle save: not checked by a test. MailController is compiled only into the plasma-mail
+  executable (src/CMakeLists.txt), so no autotest can construct it without moving it into a library
+  (new code, not done). Reviewed instead: header click passes the current `expanded` as the new
+  collapsed flag; setAccountCollapsed / setAllAccountsCollapsed return early on no change, edit
+  `m_app.collapsedAccounts`, call `AppSettings::save()` (writes and syncs "CollapsedAccounts") and
+  emit collapsedAccountsChanged, which the sidebar binding follows. The save/load round trip with
+  commas and backslashes is covered by appsettingstest.
+  Collapse All is enabled with any account; Expand All only with a folded one (sensible; Collapse
+  All on an already folded set is a no-op).
+  Bug found and fixed: `removeAccount` did not drop the account from `CollapsedAccounts`, so a
+  removed-then-re-added account came back folded, and Expand All stayed enabled for a ghost entry.
+  Fix: `removeAccount` in src/app/mailcontroller.cpp removes the email and saves (5 lines).
+  Remaining: header contrast uses `disabledTextColor` (grey); readable in both shots but lower
+  contrast than folder rows. Not measured; left as is.
 
 ### T189 — Hidden folders: storage and controller
 - status: todo

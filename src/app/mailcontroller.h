@@ -476,6 +476,8 @@ private:
     void showStoredMail();
     // Dev hook PLASMAMAIL_DEMO: fictional accounts, folders and messages, in memory only.
     void loadDemo();
+    [[nodiscard]] QList<MessageSummary> demoFolder(const QString &account, const QString &folder) const;
+    [[nodiscard]] MessageSummary *demoEntry(const QString &account, const QString &folder, qint64 uid);
     void updateStorageUsage();
     void updateSyncing();
     // Recomputes activityText(); emits activityChanged() when it or lastCheckedAt changed.

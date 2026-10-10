@@ -4914,7 +4914,7 @@ MessagePage.qml.
   Kirigami shortcut editor, and the T213 default shortcuts (none set yet, so no ambiguity today).
 
 ### T230 — Fix: demo mode never touches the network for message actions
-- status: todo
+- status: done
 - depends on: T211
 - parallel-safe with: none
 - files: src/app/mailcontroller.cpp (+ src/app/accountsession.cpp if the guard fits better there)
@@ -4926,7 +4926,26 @@ MessagePage.qml.
   ImapClient/KIMAP session is created in demo mode at all (assert/log if one would be).
 - verify: build; ctest; demo runs with PLASMAMAIL_DEMO_OPEN + PLASMAMAIL_DEMO_TRIGGER for each
   action: no "Connection to server lost"/HostNotFound lines, list updates as expected.
-- notes:
+- notes: Done 2026-10-10. Guard in two layers. (1) ImapClient::setNetworkBlocked(): AccountSession
+  sets it in demo mode, and every ImapClient operation that would open a session (listFolders,
+  fetchHeaders, checkInbox, search, searchSince, fetchRawMessages, fetchMessage, setSeen/markSeen,
+  setFlagged, moveMessage, appendMessage) returns at once and logs "demo: blocked network access in
+  <function>" once per client; AccountSession::connectWithSecret / connectWithRefreshToken /
+  startWatcher do nothing in demo mode. (2) Explicit demo branches in MailController so nothing
+  reaches the blocked layer: openMessage renders a plain message built from the list entry (no
+  fetch); setFlagged/setUnread/showMessage's mark-as-read update m_demoMessages; moveOpenMessage
+  (archive -> Archive, delete -> Trash, move -> target) moves the entry between demo folders and
+  runs onMessageMoved (list row removed, next message opens, unread count, toast); refresh logs
+  "demo: refresh"; requestHeaders no-op, requestSearch filters demo data (subject/from/preview);
+  checkForNewMail, saveSentCopy, reconnect do nothing. Dev hooks added in main.cpp:
+  PLASMAMAIL_DEMO_MOVE=<folder path>@<ms> and PLASMAMAIL_DEMO_SELECT=<account>/<folder path>@<ms>.
+  Verified (offscreen, isolated XDG, timeout): PLASMAMAIL_DEMO_OPEN + TRIGGER archive, delete,
+  mark_unread, flag, refresh (mark_read is disabled for an already read message) and
+  DEMO_MOVE=Receipts: no "Connection to server lost"/HostNotFound/imap.example.com/smtp lines, no
+  "blocked network access" line (the controller never reaches the client). Shots t230-before.png
+  (Lunch open, 3 unread), t230-after.png (gone from the list, next opened and read, 2 unread),
+  t230-trash.png (Trash of alice lists it), t230-move.png (Receipts). ctest 19/19. strace not
+  installed, so no connect() trace.
 
 ### T212 — Views use the actions
 - status: todo

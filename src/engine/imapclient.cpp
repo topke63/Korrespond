@@ -87,6 +87,24 @@ void ImapClient::setAccount(const Account &account, const QString &password)
     m_password = password;
 }
 
+void ImapClient::setNetworkBlocked(bool blocked)
+{
+    m_networkBlocked = blocked;
+}
+
+// Demo mode: every operation that would open a session returns here instead; logged once.
+bool ImapClient::networkBlocked(const char *function)
+{
+    if (!m_networkBlocked) {
+        return false;
+    }
+    if (!m_blockedLogged) {
+        m_blockedLogged = true;
+        qInfo("demo: blocked network access in %s", function);
+    }
+    return true;
+}
+
 void ImapClient::setAccessToken(const QString &accessToken)
 {
     m_password = accessToken;
@@ -198,6 +216,9 @@ KIMAP::Session *ImapClient::session()
 
 void ImapClient::appendMessage(const QString &folder, const QByteArray &message, const QList<QByteArray> &flags)
 {
+    if (networkBlocked(__func__)) {
+        return;
+    }
     session();
     const quint64 generation = m_generation;
     auto append = new KIMAP::AppendJob(session());
@@ -215,6 +236,9 @@ void ImapClient::appendMessage(const QString &folder, const QByteArray &message,
 
 void ImapClient::moveMessage(const QString &from, qint64 uid, const QString &to)
 {
+    if (networkBlocked(__func__)) {
+        return;
+    }
     session();
     const quint64 generation = m_generation;
     m_pendingMoves.insert(from + u'\n' + QString::number(uid));
@@ -375,6 +399,9 @@ void ImapClient::queueSelect(const QString &folder, quint64 generation)
 
 void ImapClient::listFolders()
 {
+    if (networkBlocked(__func__)) {
+        return;
+    }
     auto job = new KIMAP::ListJob(session());
     const quint64 generation = m_generation;
     // Plain LIST: servers with SPECIAL-USE (RFC 6154) put \Sent, \Trash etc. in its answer.
@@ -418,6 +445,9 @@ void ImapClient::listFolders()
 
 void ImapClient::checkInbox(const QString &folder, int limit)
 {
+    if (networkBlocked(__func__)) {
+        return;
+    }
     session();
     const quint64 generation = m_generation;
     m_checkGeneration = generation;
@@ -452,6 +482,9 @@ void ImapClient::checkInbox(const QString &folder, int limit)
 
 void ImapClient::fetchHeaders(const QString &folder, int limit, HeaderFilter filter)
 {
+    if (networkBlocked(__func__)) {
+        return;
+    }
     if (filter != AllMessages) {
         // UID SEARCH in the folder, then the headers of the newest `limit` matches.
         session();
@@ -503,6 +536,9 @@ void ImapClient::fetchHeaders(const QString &folder, int limit, HeaderFilter fil
 
 void ImapClient::search(const QString &folder, const QString &text)
 {
+    if (networkBlocked(__func__)) {
+        return;
+    }
     // A blank term would match everything; treat it as "no results" without asking the server.
     if (text.trimmed().isEmpty()) {
         Q_EMIT headersFetched(folder, AllMessages, {});
@@ -537,6 +573,9 @@ void ImapClient::search(const QString &folder, const QString &text)
 
 void ImapClient::searchSince(const QString &folder, const QDate &since)
 {
+    if (networkBlocked(__func__)) {
+        return;
+    }
     // SELECT is issued directly here because we need its UIDVALIDITY.
     auto select = new KIMAP::SelectJob(session());
     const quint64 generation = m_generation;
@@ -576,6 +615,9 @@ void ImapClient::searchSince(const QString &folder, const QDate &since)
 
 void ImapClient::fetchRawMessages(const QString &folder, const QList<qint64> &uids)
 {
+    if (networkBlocked(__func__)) {
+        return;
+    }
     if (uids.isEmpty()) {
         Q_EMIT rawFetchFinished(folder);
         return;
@@ -650,6 +692,9 @@ void ImapClient::fetchSummaries(const KIMAP::ImapSet &set,
 
 void ImapClient::fetchMessage(const QString &folder, qint64 uid)
 {
+    if (networkBlocked(__func__)) {
+        return;
+    }
     session();
     const quint64 generation = m_generation;
     queueSelect(folder, generation);
@@ -687,6 +732,9 @@ void ImapClient::markSeen(const QString &folder, qint64 uid)
 
 void ImapClient::setSeen(const QString &folder, qint64 uid, bool seen)
 {
+    if (networkBlocked(__func__)) {
+        return;
+    }
     session();
     const quint64 generation = m_generation;
     queueSelect(folder, generation);
@@ -704,6 +752,9 @@ void ImapClient::setSeen(const QString &folder, qint64 uid, bool seen)
 
 void ImapClient::setFlagged(const QString &folder, qint64 uid, bool flagged)
 {
+    if (networkBlocked(__func__)) {
+        return;
+    }
     session();
     const quint64 generation = m_generation;
     queueSelect(folder, generation);

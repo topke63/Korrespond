@@ -55,6 +55,8 @@ public:
     // Replaces the secret used by future sessions; a session already logged in stays up.
     void setAccessToken(const QString &accessToken);
     void disconnectFromServer();
+    // Demo mode: no operation opens a session; each returns at once (logged once).
+    void setNetworkBlocked(bool blocked);
     // A session exists (after a fatal error, the connection is gone until the next request).
     [[nodiscard]] bool hasSession() const;
     // The password, or for an "oauth" account the current access token, the client logs in with.
@@ -131,6 +133,7 @@ private:
     // Returns the session, creating it (and queueing the login) if needed. Each new session
     // gets a new generation number; callbacks carry the number they were created for.
     KIMAP::Session *session();
+    [[nodiscard]] bool networkBlocked(const char *function);
     // One readable sentence for a failed LoginJob, without IMAP protocol text.
     [[nodiscard]] QString loginErrorMessage(const QString &jobError) const;
     // True while callbacks of `generation` should still be acted on: it is the current
@@ -163,6 +166,8 @@ private:
     QPointer<KIMAP::Session> m_session;
     QString m_selectedFolder; // folder of the last queued SELECT
     QStringList m_capabilities; // the server's, read after login; empty until asked
+    bool m_networkBlocked = false;
+    bool m_blockedLogged = false;
     quint64 m_generation = 0; // number of the current (or last) session
     quint64 m_failedGeneration = 0; // session whose failure was already reported
     quint64 m_checkGeneration = 0; // session of the checkInbox() still waiting for its answer, 0 = none

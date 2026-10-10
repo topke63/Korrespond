@@ -513,6 +513,9 @@ void MailController::saveSentCopy(const QString &account, const QString &provide
     if (!session || provider == "gmail"_L1) {
         return;
     }
+    if (m_demo) {
+        return; // never a server in demo mode
+    }
     const QString sent = folderForRole(session->folders(), u"sent"_s);
     if (sent.isEmpty()) {
         qWarning("No Sent folder to keep a copy of the message for %s", qPrintable(account));
@@ -1205,7 +1208,7 @@ void MailController::updateActivity()
 void MailController::reconnect(const QString &account)
 {
     const AccountSession *session = sessionFor(account);
-    if (!session) {
+    if (!session || m_demo) {
         return;
     }
     // The same road as at startup: the keychain answer (onSecretRead) starts the connection.
@@ -1252,6 +1255,27 @@ void MailController::showStoredMail()
     mergeSharedParts();
     m_showingStored = true;
     Q_EMIT currentFolderChanged();
+}
+
+// Demo data of one folder (empty when it has none).
+QList<MessageSummary> MailController::demoFolder(const QString &account, const QString &folder) const
+{
+    const auto byAccount = m_demoMessages.find(account);
+    if (byAccount == m_demoMessages.end()) {
+        return {};
+    }
+    const auto messages = byAccount->second.find(folder);
+    return messages == byAccount->second.end() ? QList<MessageSummary>() : messages->second;
+}
+
+// The demo message with this uid in that folder, or nullptr.
+MessageSummary *MailController::demoEntry(const QString &account, const QString &folder, qint64 uid)
+{
+    auto &messages = m_demoMessages[account][folder];
+    const auto it = std::find_if(messages.begin(), messages.end(), [uid](const MessageSummary &message) {
+        return message.uid == uid;
+    });
+    return it == messages.end() ? nullptr : &*it;
 }
 
 void MailController::loadDemo()
@@ -1483,6 +1507,9 @@ void MailController::selectFolder(const QString &account, const QString &path)
 
 void MailController::requestHeaders(AccountSession *session, const QString &folder, ImapClient::HeaderFilter filter)
 {
+    if (m_demo) {
+        return; // lists come from the demo data (selectFolder)
+    }
     beginRequest();
     m_inflight[session].push_back({false, 0});
     session->client()->fetchHeaders(folder, messageLimit, filter);
@@ -1490,6 +1517,23 @@ void MailController::requestHeaders(AccountSession *session, const QString &fold
 
 void MailController::requestSearch(AccountSession *session, const QString &folder)
 {
+    if (m_demo) {
+        // Matches in the demo data: subject, sender or preview, like a server's text search.
+        QList<MessageSummary> found;
+        for (const MessageSummary &message : demoFolder(session->account().email, folder)) {
+            if (message.subject.contains(m_searchText, Qt::CaseInsensitive) || message.from.contains(m_searchText, Qt::CaseInsensitive)
+                || message.preview.contains(m_searchText, Qt::CaseInsensitive)) {
+                found.append(message);
+            }
+        }
+        if (isSharedView(m_currentFolder)) {
+            m_sharedParts.insert_or_assign(session->account().email, found);
+            mergeSharedParts();
+        } else {
+            m_messageModel->setMessages(found);
+        }
+        return;
+    }
     beginRequest();
     m_inflight[session].push_back({true, m_searchGeneration});
     session->client()->search(folder, m_searchText);
@@ -1637,6 +1681,10 @@ QList<MessageSummary> MailController::storedMessages(const AccountSession *sessi
 
 void MailController::refresh()
 {
+    if (m_demo) {
+        qInfo("demo: refresh"); // the demo data is the whole mailbox; nothing to ask for
+        return;
+    }
     if (isSharedView(m_currentFolder)) {
         // Every account lists its folders again; each answer then asks for that account's part.
         m_sharedRequested.clear();
@@ -1738,6 +1786,19 @@ void MailController::openMessage(const QString &account, qint64 uid)
             return;
         }
     }
+    if (m_demo) {
+        // Rendered from the demo data: a plain message built from the list entry, no fetch.
+        if (const MessageSummary *entry = demoEntry(m_messageAccount, m_messageFolder, uid)) {
+            const QByteArray raw = "From: " + entry->from.toUtf8() + "\r\nTo: " + m_messageAccount.toUtf8() + "\r\nSubject: " + entry->subject.toUtf8()
+                + "\r\nDate: " + entry->date.toString(Qt::RFC2822Date).toUtf8() + "\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n"
+                + entry->preview.toUtf8() + "\r\n";
+            auto message = std::make_shared<KMime::Message>();
+            message->setContent(KMime::CRLFtoLF(raw));
+            message->parse();
+            showMessage(session, m_messageFolder, uid, message);
+        }
+        return;
+    }
     beginRequest();
     session->client()->fetchMessage(m_messageFolder, uid);
 }
@@ -1780,6 +1841,12 @@ void MailController::setFlagged(const QString &account, qint64 uid, bool flagged
         m_messageFlagged = flagged;
         Q_EMIT currentMessageChanged();
     }
+    if (m_demo) {
+        if (MessageSummary *entry = demoEntry(session->account().email, folder, uid)) {
+            entry->flagged = flagged;
+        }
+        return;
+    }
     session->client()->setFlagged(folder, uid, flagged);
 }
 
@@ -1806,12 +1873,21 @@ void MailController::setUnread(const QString &account, qint64 uid, bool unread)
         m_messageUnread = unread;
         Q_EMIT currentMessageChanged();
     }
+    if (m_demo) {
+        if (MessageSummary *entry = demoEntry(session->account().email, folder, uid)) {
+            entry->unread = unread;
+        }
+        return;
+    }
     session->client()->setSeen(folder, uid, !unread);
 }
 
 // The timer path: an account with a working watcher is only polled as a safety net.
 void MailController::checkForNewMail()
 {
+    if (m_demo) {
+        return;
+    }
     const auto now = std::chrono::steady_clock::now();
     for (AccountSession *session : std::as_const(m_sessions)) {
         const auto last = m_lastCheck.find(session);
@@ -2018,6 +2094,20 @@ void MailController::moveOpenMessage(const QString &target, const QString &doneT
     m_moveTexts[key] = {doneText, failedText};
     beginRequest();
     updateActivity();
+    if (m_demo) {
+        // The message changes folders in the demo data; the rest is the server's answer path.
+        auto &from = m_demoMessages[m_messageAccount][m_messageFolder];
+        const qint64 uid = m_currentUid;
+        const auto entry = std::find_if(from.begin(), from.end(), [uid](const MessageSummary &message) {
+            return message.uid == uid;
+        });
+        if (entry != from.end()) {
+            m_demoMessages[m_messageAccount][target].prepend(*entry);
+            from.erase(entry);
+        }
+        onMessageMoved(session, m_messageFolder, uid, target);
+        return;
+    }
     session->client()->moveMessage(m_messageFolder, m_currentUid, target);
     Q_EMIT currentMessageChanged(); // canArchive / canDelete are false while it moves
 }
@@ -2137,7 +2227,13 @@ void MailController::showMessage(AccountSession *session, const QString &folder,
 
     const QString email = session->account().email;
     if (folder == imapFolderFor(session, m_currentFolder) && m_messageModel->message(email, uid).unread) {
-        session->client()->markSeen(folder, uid);
+        if (m_demo) {
+            if (MessageSummary *entry = demoEntry(email, folder, uid)) {
+                entry->unread = false;
+            }
+        } else {
+            session->client()->markSeen(folder, uid);
+        }
         adjustUnread(session, folder, -1);
         m_messageModel->setUnread(email, uid, false);
         if (m_messageUnread) {

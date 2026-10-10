@@ -132,6 +132,7 @@ private:
     std::unique_ptr<MessageStore> m_store;
     SyncManager *m_sync;
     StorageSettings m_storage;
+    bool m_demo = false; // PLASMAMAIL_DEMO: never connects
     bool m_storeReady = false;
     QList<FolderInfo> m_folders;
     qint64 m_storageUsedBytes = 0;

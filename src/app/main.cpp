@@ -329,6 +329,22 @@ int main(int argc, char *argv[])
                 controller->openMessage(u"alice@example.com"_s, 1);
             });
         }
+        // PLASMAMAIL_DEMO_MOVE=<folder path>@<ms> moves the open message there; PLASMAMAIL_DEMO_SELECT=
+        // <account>/<folder path>@<ms> shows that folder (e.g. alice@example.com/Trash@3000).
+        const QStringList moveAt = qEnvironmentVariable("PLASMAMAIL_DEMO_MOVE").split(u'@');
+        if (moveAt.size() == 2 && moveAt.at(1).toInt() > 0) {
+            QTimer::singleShot(moveAt.at(1).toInt(), controller, [controller, path = moveAt.at(0)] {
+                controller->moveMessage(path);
+            });
+        }
+        const QString selectSpec = qEnvironmentVariable("PLASMAMAIL_DEMO_SELECT");
+        const int selectMs = selectSpec.section(u'@', -1).toInt(); // the account has an @ itself
+        if (selectMs > 0) {
+            const QString target = selectSpec.left(selectSpec.lastIndexOf(u'@'));
+            QTimer::singleShot(selectMs, controller, [controller, target] {
+                controller->selectFolder(target.section(u'/', 0, 0), target.section(u'/', 1));
+            });
+        }
         bool ok = false;
         const int quitAfter = qEnvironmentVariableIntValue("PLASMAMAIL_DEMO_QUIT_AFTER", &ok);
         if (ok && quitAfter > 0) {

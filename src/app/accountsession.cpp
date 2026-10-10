@@ -65,6 +65,8 @@ AccountSession::AccountSession(const Account &account, const QString &storeDir, 
         updateStorageUsage();
     });
 
+    m_demo = demo;
+    m_client->setNetworkBlocked(demo); // demo mode never connects, whatever calls the client
     m_sync->setSettings(m_storage);
     m_storeReady = !demo && m_store->open();
     if (!m_storeReady && !demo) {
@@ -221,6 +223,10 @@ void AccountSession::signInWithGoogle()
 
 void AccountSession::connectWithRefreshToken(const QString &refreshToken)
 {
+    if (m_demo) {
+        qInfo("demo: blocked network access in %s", __func__);
+        return;
+    }
     m_loggedIn = false;
     setConnectionState(Connecting);
     m_refreshToken = refreshToken;
@@ -234,6 +240,10 @@ QString AccountSession::refreshToken() const
 
 void AccountSession::connectWithSecret(const QString &secret)
 {
+    if (m_demo) {
+        qInfo("demo: blocked network access in %s", __func__);
+        return;
+    }
     setConnectionState(Connecting);
     // setAccount() disconnects, which a running sync would never hear about.
     m_sync->stop();
@@ -245,6 +255,9 @@ void AccountSession::connectWithSecret(const QString &secret)
 
 void AccountSession::startWatcher()
 {
+    if (m_demo) {
+        return; // no push connection in demo mode
+    }
     if (m_connectionState != Connected) {
         return;
     }

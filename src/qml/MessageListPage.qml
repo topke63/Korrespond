@@ -115,10 +115,29 @@ Kirigami.ScrollablePage {
         id: headerBand
 
         Rectangle {
-            // The Header set; the divider takes its text colour.
+            id: band
+
+            // The Header set; the divider takes its text colour. A scheme without Header colours
+            // gets Kirigami's dark fallback, so the Window set is used when its text would not read
+            // on the Header background.
+            readonly property bool useWindow: MimeTheme.contrast(Kirigami.Theme.backgroundColor, windowSet.Kirigami.Theme.textColor) < 4.5
             Kirigami.Theme.colorSet: Kirigami.Theme.Header
             Kirigami.Theme.inherit: false
-            color: Kirigami.Theme.backgroundColor
+            color: useWindow ? windowSet.Kirigami.Theme.backgroundColor : Kirigami.Theme.backgroundColor
+
+            Item {
+                id: windowSet
+                Kirigami.Theme.colorSet: Kirigami.Theme.Window
+                Kirigami.Theme.inherit: false
+            }
+
+            // The header's own contents (title, actions) take their colours from the toolbar's set.
+            Binding {
+                target: (page.QQC2.ApplicationWindow.window as Kirigami.ApplicationWindow).pageStack.globalToolBar
+                property: "colorSet"
+                value: Kirigami.Theme.Window
+                when: useWindow
+            }
 
             Rectangle {
                 visible: resizer.visible
@@ -126,7 +145,7 @@ Kirigami.ScrollablePage {
                 anchors.top: parent.top
                 anchors.bottom: parent.bottom
                 width: 1
-                color: Qt.alpha(Kirigami.Theme.textColor, MimeTheme.columnDividerAlpha)
+                color: Qt.alpha(band.useWindow ? windowSet.Kirigami.Theme.textColor : Kirigami.Theme.textColor, MimeTheme.columnDividerAlpha)
             }
         }
     }
@@ -256,7 +275,7 @@ Kirigami.ScrollablePage {
                     implicitWidth: 10
                     implicitHeight: 10
                     radius: width / 2
-                    color: activePalette.highlight
+                    color: MimeTheme.readableOn(activePalette.highlight, Kirigami.Theme.backgroundColor, 3)
                     opacity: row.unread ? 1 : 0
                 }
 

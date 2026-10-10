@@ -290,9 +290,28 @@ Kirigami.Page {
         id: headerBand
 
         Rectangle {
+            id: band
+
+            // A scheme without Header colours gets Kirigami's dark fallback, so the Window set is
+            // used when its text would not read on the Header background.
+            readonly property bool useWindow: MimeTheme.contrast(Kirigami.Theme.backgroundColor, windowSet.Kirigami.Theme.textColor) < 4.5
             Kirigami.Theme.colorSet: Kirigami.Theme.Header
             Kirigami.Theme.inherit: false
-            color: Kirigami.Theme.backgroundColor
+            color: useWindow ? windowSet.Kirigami.Theme.backgroundColor : Kirigami.Theme.backgroundColor
+
+            Item {
+                id: windowSet
+                Kirigami.Theme.colorSet: Kirigami.Theme.Window
+                Kirigami.Theme.inherit: false
+            }
+
+            // The header's own contents (title, actions) take their colours from the toolbar's set.
+            Binding {
+                target: (page.QQC2.ApplicationWindow.window as Kirigami.ApplicationWindow).pageStack.globalToolBar
+                property: "colorSet"
+                value: Kirigami.Theme.Window
+                when: useWindow
+            }
         }
     }
 

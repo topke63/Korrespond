@@ -4017,7 +4017,7 @@ known light look and derive it (macOS light: sidebar `#e8e6ee`-ish, band `#f3f1f
 - notes: reviewed and committed 2026-10-10 by the planner.
 
 ### T199 — Fix: unread dot contrast and title band on schemes without Header colours
-- status: todo
+- status: done
 - depends on: T196 (numeric part)
 - parallel-safe with: none
 - files: src/qml/MimeTheme.qml, src/qml/MessageListPage.qml, src/qml/MessagePage.qml
@@ -4031,7 +4031,15 @@ known light look and derive it (macOS light: sidebar `#e8e6ee`-ish, band `#f3f1f
   text < 4.5), then the Window set.
 - verify: build; ctest; offscreen screenshots (`QT_QPA_PLATFORM=offscreen`, no window) for
   dark, light and "Breeze Classic"; dot ≥ 3:1 sampled; Classic band light.
-- notes:
+- notes: MimeTheme gets luminance/contrast/readableOn (HSL lightness steps of 0.05, toward the side
+  away from the background). Dot: readableOn(active highlight, View background, 3). Bands: a
+  `useWindow` flag (Header bg vs Window text < 4.5) picks the Window set's background (and divider
+  colour); a Binding on `pageStack.globalToolBar.colorSet` also switches the header contents to the
+  Window set (a Binding on the header's own Theme was overridden by the toolbar's colorSet binding,
+  leaving white text on the light band). Offscreen: Classic band (239,240,241), dark (41,44,48),
+  light (222,224,226), unchanged; Classic title and icons now dark. No unread mail in the sample
+  list, so the dot was computed in Python from the .colors files: Breeze Light 2.49 -> 3.21:1,
+  Breeze Classic 2.43 -> 3.13:1 (25,152,218). Build, ctest 19/19. The real-window check stays with T196.
 
 # Milestone 3j — Sidebar control (user request 2026-10-10: "a collapse option for the left panel;
 # I don't need to see the whole tree of each account, I'd like to choose")

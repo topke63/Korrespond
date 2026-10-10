@@ -60,4 +60,36 @@ QtObject {
         const luminance = 0.299 * c.r + 0.587 * c.g + 0.114 * c.b;
         return luminance > 0.6 ? "#1c1b22" : "#ffffff";
     }
+
+    // WCAG 2 relative luminance of a colour.
+    function luminance(colour) {
+        const c = Qt.color(colour);
+        const lin = v => v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+        return 0.2126 * lin(c.r) + 0.7152 * lin(c.g) + 0.0722 * lin(c.b);
+    }
+
+    // WCAG 2 contrast ratio of two colours, 1 to 21.
+    function contrast(a, b) {
+        const la = luminance(a);
+        const lb = luminance(b);
+        return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05);
+    }
+
+    // `fg` moved in lightness (darker on a light background, lighter on a dark one) until it
+    // reaches `ratio` on `bg`; `fg` itself when it already does.
+    function readableOn(fg, bg, ratio) {
+        const c = Qt.color(fg);
+        if (contrast(c, bg) >= ratio) {
+            return c;
+        }
+        const lighter = luminance(bg) < 0.18;
+        for (let step = 1; step <= 20; ++step) {
+            const l = Math.min(1, Math.max(0, c.hslLightness + (lighter ? 1 : -1) * step * 0.05));
+            const moved = Qt.hsla(c.hslHue, c.hslSaturation, l, c.a);
+            if (contrast(moved, bg) >= ratio) {
+                return moved;
+            }
+        }
+        return lighter ? Qt.hsla(c.hslHue, c.hslSaturation, 1, c.a) : Qt.hsla(c.hslHue, c.hslSaturation, 0, c.a);
+    }
 }

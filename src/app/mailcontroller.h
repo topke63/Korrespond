@@ -16,6 +16,7 @@
 #include <QAbstractListModel>
 #include <QColor>
 #include <QDateTime>
+#include <QElapsedTimer>
 #include <QObject>
 #include <QQmlEngine>
 #include <QSet>
@@ -489,6 +490,9 @@ private:
     void connectSavedAccounts();
     void onSecretRead(const QString &key, const QString &password, const QString &error);
     void onSessionError(AccountSession *session, const QString &message);
+    // Shows a connection error unless the same text was shown a moment ago (a server that drops
+    // every new connection would otherwise stack one toast per attempt).
+    void reportConnectionError(const QString &text);
     void dropMoves(AccountSession *session, bool failed);
     void onMoveFailed(AccountSession *session, const QString &from, qint64 uid, const QString &message);
     void onMessageMoved(AccountSession *session, const QString &from, qint64 uid, const QString &to);
@@ -623,6 +627,8 @@ private:
     std::set<QString> m_moving; // moveKey()s of messages the server is moving
     QSet<QString> m_batchKeys; // the moves of one conversation still on their way
     bool m_batchWasOpen = false; // the open message was one of the batch
+    QString m_lastConnectionError;
+    QElapsedTimer m_lastConnectionErrorAge;
     std::set<AccountSession *> m_refreshRetry; // refreshed, no answer yet: a lost connection is retried once
     std::set<AccountSession *> m_awaitingFolders; // sessions with a folder-list request in flight (counted as busy)
     AccountListModel *m_accounts;

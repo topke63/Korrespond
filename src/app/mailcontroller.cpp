@@ -2948,13 +2948,24 @@ void MailController::onSessionError(AccountSession *session, const QString &mess
         // A failed connection or login fails every queued job, so nothing is in flight any more.
         resetRequests();
         if (!quiet) {
-            Q_EMIT errorOccurred(message);
+            reportConnectionError(message);
         }
         return;
     }
     if (!quiet) {
-        Q_EMIT errorOccurred(u"%1: %2"_s.arg(session->account().email, message));
+        reportConnectionError(u"%1: %2"_s.arg(session->account().email, message));
     }
+}
+
+void MailController::reportConnectionError(const QString &text)
+{
+    if (text == m_lastConnectionError && m_lastConnectionErrorAge.isValid() && m_lastConnectionErrorAge.elapsed() < 30000) {
+        qInfo("Same connection error again: %s", qPrintable(text));
+        return;
+    }
+    m_lastConnectionError = text;
+    m_lastConnectionErrorAge.start();
+    Q_EMIT errorOccurred(text);
 }
 
 void MailController::rememberAddresses(const QString &account, const QList<SeenAddress> &addresses, qint64 whenMs)

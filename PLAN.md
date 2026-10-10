@@ -3882,7 +3882,7 @@ known light look and derive it (macOS light: sidebar `#e8e6ee`-ish, band `#f3f1f
 - notes: done 2026-10-10. Section labels ("All Accounts") and account header rows (arrow, avatar kept, email) are small DemiBold `sectionText`; folder rows ~30 px (padding smallSpacing+3), text `MimeTheme.text` normal weight even when selected, icons monochrome (role/shared colours and roleColor/sharedColor removed) `iconTint`, `text` when selected; hover `MimeTheme.hover`. Selection was already `sidebarSelected` inset smallSpacing. The sidebar shows no unread counts yet (model has none), so none added. Screenshots: scratchpad t179-dark.png, t179-light.png.
 
 ### T180 — Reading pane header and label chip colours
-- status: todo
+- status: done
 - depends on: T186
 - parallel-safe with: none
 - files: src/qml/MessagePage.qml, src/qml/MimeTheme.qml
@@ -3891,7 +3891,7 @@ known light look and derive it (macOS light: sidebar `#e8e6ee`-ish, band `#f3f1f
   header separator uses `divider`; MimeTheme gets `labelColours` (the seven tag colours above) and a
   `chipColour(name)` helper for later — not shown anywhere until labels exist.
 - verify: build; ctest; offscreen start without QML warnings.
-- notes:
+- notes: done 2026-10-10. Subject large bold in `text`; sender name Bold `text`, address and "To:" `secondaryText`, date right-aligned `secondaryText`; separator is a 1 px `divider` Rectangle (was an opacity-0.5 Kirigami.Separator); avatar kept; toolbar untouched. MimeTheme: `labelColours` (tag colours, deeper in light), `chipBackgrounds` (Home/Inquiries/Travel chip bg), `chipColour(name)` (known name, else stable hash into the palette), `chipTextColour(bg)` (white/dark by luminance). Unused until labels exist (open question 1). Screenshots: scratchpad t180-dark.png, t180-light.png.
 
 ### T181 — Visual check, dark mode
 - status: todo

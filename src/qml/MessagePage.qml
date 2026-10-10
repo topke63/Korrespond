@@ -435,6 +435,7 @@ Kirigami.Page {
                 Layout.fillWidth: true
                 level: 1
                 font.weight: Font.Bold
+                color: MimeTheme.text
                 wrapMode: Text.Wrap
                 textFormat: Text.PlainText
                 text: MailController.messageSubject.length > 0 ? MailController.messageSubject
@@ -461,20 +462,21 @@ Kirigami.Page {
                         QQC2.Label {
                             text: page.sender.name
                             textFormat: Text.PlainText
-                            font.weight: Font.DemiBold
+                            color: MimeTheme.text
+                            font.weight: Font.Bold
                         }
                         QQC2.Label {
                             Layout.fillWidth: true
                             text: page.sender.address
                             textFormat: Text.PlainText
-                            color: Kirigami.Theme.disabledTextColor
-                            font: Kirigami.Theme.smallFont
+                            color: MimeTheme.secondaryText
                             elide: Text.ElideRight
                         }
                         QQC2.Label {
+                            Layout.alignment: Qt.AlignRight
                             text: isNaN(MailController.messageDate) ? ""
                                 : MailController.messageDate.toLocaleString(Qt.locale(), Locale.ShortFormat)
-                            color: Kirigami.Theme.disabledTextColor
+                            color: MimeTheme.secondaryText
                             font: Kirigami.Theme.smallFont
                         }
                     }
@@ -483,7 +485,7 @@ Kirigami.Page {
                         visible: MailController.messageTo.length > 0
                         text: KI18n.i18nc("@label recipients of a message", "To: %1", MailController.messageTo)
                         textFormat: Text.PlainText
-                        color: Kirigami.Theme.disabledTextColor
+                        color: MimeTheme.secondaryText
                         font: Kirigami.Theme.smallFont
                         elide: Text.ElideRight
                     }
@@ -558,10 +560,11 @@ Kirigami.Page {
             }
         }
 
-        Kirigami.Separator {
+        Rectangle {
             Layout.fillWidth: true
+            Layout.preferredHeight: 1
             visible: page.loaded
-            opacity: 0.5
+            color: MimeTheme.divider
         }
 
         Kirigami.InlineMessage {

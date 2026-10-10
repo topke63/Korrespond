@@ -4776,6 +4776,10 @@ first, then stop.
 - verify: build; ctest; the T208 Ctrl+Z demo check still passes (undo fires; focused search field
   keeps its own Ctrl+Z).
 - notes: No public API reaches the shortcut map: QCoreApplication/QGuiApplication::sendEvent of KeyPress/ShortcutOverride does not run QShortcutMap (only QGuiApplicationPrivate::processKeyEvent does, entered from the QPA key path). `QTest::keyClick(window, Qt::Key_Z, Qt::ControlModifier)` (public, Qt6::Test) does, so the hook now uses it, behind CMake option `PLASMAMAIL_DEV_HOOKS` (default OFF; defines PLASMAMAIL_DEV_HOOKS and links Qt6::Test into the app only when ON). `QT_FIND_PRIVATE_MODULES` and `Qt6::GuiPrivate` removed; grep for GuiPrivate/QT_FIND_PRIVATE/qpa/ in CMakeLists.txt and src is empty. Verified with -DPLASMAMAIL_DEV_HOOKS=ON offscreen: Ctrl+Z from main window undoes ("send undone id=1", pending 1 -> 0); with search field focused the message stays pending and is handed off at quit. Default OFF build clean, ctest 19/19, binary links no Qt6Test.
+- verification (2026-10-10, T210 pass): default build/ still configured with PLASMAMAIL_DEV_HOOKS=OFF;
+  `cmake --build build` no work to do; ctest 19/19; `ldd build/bin/plasma-mail` has no libQt6Test
+  (0 matches) and `grep -rn "GuiPrivate\|QT_FIND_PRIVATE\|qpa" CMakeLists.txt src/` is empty. Separate dev
+  build (scratchpad build-dev, -DPLASMAMAIL_DEV_HOOKS=ON) links Qt6Test and runs the Ctrl+Z hook.
 
 
 ### T229 — Undo: tell the user when a restored attachment is gone
@@ -4790,7 +4794,7 @@ first, then stop.
 - notes: not urgent.
 
 ### T210 — Check: undo send
-- status: todo
+- status: done (headless checks pass; real-app checks listed below remain for the user)
 - depends on: T208, T209, T228
 - parallel-safe with: none
 - files: none (fixes become new tasks)
@@ -4798,7 +4802,40 @@ first, then stop.
 - output: queue → countdown → send; undo → compose reopened with identical content (attachments
   too); delay Off sends at once; quit during delay follows the decision.
 - verify: offscreen demo runs and logs, both schemes.
-- notes:
+- notes: dev build (`-DPLASMAMAIL_DEV_HOOKS=ON`, separate dir), offscreen, isolated XDG, timeout-bounded,
+  no real mail. No product code changed by this check (no fixes needed).
+- verification (2026-10-10):
+  - queue -> countdown -> send: `PLASMAMAIL_DEMO_SEND=1` logs "send queued id=1 in 10s", the status bar
+    shows "Sending in 8 s" (dark) / "Sending in 9 s" (light) with Undo and the passive "Sending message…"
+    notification; "send handed off id=1" and "demo: would send" follow after the delay (T207 logs).
+    Shots: `t210-pending-dark.png`, `t210-pending-light.png` (scratchpad).
+  - undo (Ctrl+Z through the platform key path, `PLASMAMAIL_DEMO_KEY_UNDO`): "send undone id=1", pending 1 -> 0,
+    composer reopened with to bob@example.com, subject "Demo: message 1", the body, and the attachment
+    t210-attach.txt (1 attachment, restored); no hand-off. Shots: `t210-undo-dark.png`, `t210-undo-light.png`
+    (the original composer was not shot; identity checked against the logged fields and the reopened shot).
+  - delay Off (seeded `UndoSendSeconds=0`): no "send queued"; "send handed off id=1" at once; the composer
+    stays open with waiting=1 until the demo hand-off, then closes (objects 1 -> 0).
+  - quit during the delay (`PLASMAMAIL_DEMO_QUIT_AFTER=3000`): "quit: sending 1 pending message(s) now",
+    "send handed off id=1", "demo: would send", "quit: all messages handed off", rc 0 in ~5 s.
+  - second quit (`+PLASMAMAIL_DEMO_QUIT_TWICE=1`): "quit: already waiting ... request ignored", rc 0.
+  - demo failure (`PLASMAMAIL_DEMO_FAIL=1`, default 10 s delay): "send queued", "send handed off",
+    "demo: send failed Demo: message 1"; the composer reopens with the same content, the attachment and the
+    red "Demo: the server refused the message." (`t210-fail-dark.png`).
+  - Sending settings page (`PLASMAMAIL_SCREENSHOT_SETTINGS=sending`): shows "10 seconds" with the default
+    (`t210-settings-BreezeDark.png`, `t210-settings-BreezeLight.png`); the seeded values were checked under T209.
+  - Notes for the planner (not product bugs): the screenshot hook quits with a plain quit, so a pending send
+    in a screenshot run logs "quit: exiting with message(s) not yet sent" (dev hook only). A screenshot taken
+    1-2 s after the hand-off races the 1.5 s demo hand-off; use a later PLASMAMAIL_SCREENSHOT_DELAY.
+    The known cosmetic dark-scheme icon contrast in ComposeWindow (T208 b) is still there.
+  - needs a real-app check by the user (not verifiable headless):
+    1. real SMTP send after the delay (the demo never sends; check the Sent folder copy);
+    2. a click on the status bar Undo button and on the notification Undo action;
+    3. Ctrl+Z with a real keyboard through the window manager (not the synthesized key);
+    4. tray menu Quit during a pending send (flush, then exit);
+    5. window close with close-to-tray off (flush, then exit) and with it on (keeps running);
+    6. a real SMTP failure reopens the composer with the error;
+    7. the delay setting changed in the real Sending page applies to the next send.
+
 
 ## b. Command bar and keyboard shortcuts
 

@@ -5,6 +5,7 @@
 
 #include <AbstractKirigamiApplication>
 #include <QPointer>
+#include <QTimer>
 #include <QtQml/qqmlregistration.h>
 
 Q_MOC_INCLUDE("mailcontroller.h")
@@ -37,21 +38,26 @@ Q_SIGNALS:
     void controllerChanged();
     // kind: "new", "reply", "replyAll" or "forward" (the argument of MessagePage.openCompose).
     void composeRequested(const QString &kind);
-    void moveRequested();
     void searchRequested();
     void toggleSidebarRequested();
     void settingsRequested();
     void shortcutsHelpRequested();
     void nextMessageRequested();
     void previousMessageRequested();
-    void goToFolderRequested();
 
 protected:
     void setupActions() override;
 
 private:
     void updateEnabled();
+    // Go to / Move to entries for the folders (command bar, T214): rebuilt, after a short delay, when
+    // the accounts, their folders or the open message change.
+    void scheduleFolderActions();
+    void rebuildFolderActions();
     QAction *addMailAction(const QString &id, const QString &text, const QString &icon);
 
     QPointer<MailController> m_controller;
+    QTimer m_folderTimer;
+    QList<QAction *> m_folderActions; // owned by the collection's parent (this); removed on rebuild
+    QList<QAction *> m_moveActions; // the subset that moves the message; each has a "path" property
 };

@@ -112,7 +112,8 @@ StatefulApp.StatefulWindow {
 
     // The actions that need the window (their keys are the action collection's default shortcuts,
     // Ctrl+Q included: file_quit routes to MailController.requestQuit()). Compose, search, next and
-    // previous are handled by the pages. Move, Go to Folder and Keyboard Shortcuts have no UI yet (T214, T215).
+    // previous are handled by the pages. The folder entries (Go to / Move to) are built by MailApplication for the
+    // command bar; Keyboard Shortcuts has no UI yet (T215).
     Connections {
         target: mailApplication
 

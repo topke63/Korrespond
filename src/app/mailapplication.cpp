@@ -7,6 +7,7 @@
 
 #include <KLocalizedString>
 
+#include <QAbstractListModel>
 #include <QAction>
 #include <QCoreApplication>
 #include <QIcon>
@@ -18,6 +19,9 @@ MailApplication::MailApplication(QObject *parent)
     : AbstractKirigamiApplication(parent)
 {
     setupActions();
+    m_folderTimer.setSingleShot(true);
+    m_folderTimer.setInterval(0);
+    connect(&m_folderTimer, &QTimer::timeout, this, &MailApplication::rebuildFolderActions);
 }
 
 MailController *MailApplication::controller() const
@@ -41,8 +45,17 @@ void MailApplication::setController(MailController *controller)
         connect(m_controller, &MailController::currentFolderChanged, this, &MailApplication::updateEnabled);
         // Refresh is off while a refresh runs.
         connect(m_controller, &MailController::busyChanged, this, &MailApplication::updateEnabled);
+        // The folder entries follow the accounts, their folders and the open message's account.
+        connect(m_controller, &MailController::accountChanged, this, &MailApplication::scheduleFolderActions);
+        connect(m_controller, &MailController::currentMessageChanged, this, &MailApplication::scheduleFolderActions);
+        QAbstractListModel *accounts = m_controller->accounts();
+        connect(accounts, &QAbstractItemModel::modelReset, this, &MailApplication::scheduleFolderActions);
+        connect(accounts, &QAbstractItemModel::rowsInserted, this, &MailApplication::scheduleFolderActions);
+        connect(accounts, &QAbstractItemModel::rowsRemoved, this, &MailApplication::scheduleFolderActions);
+        connect(accounts, &QAbstractItemModel::rowsMoved, this, &MailApplication::scheduleFolderActions);
     }
     updateEnabled();
+    scheduleFolderActions();
     Q_EMIT controllerChanged();
 }
 
@@ -100,7 +113,6 @@ void MailApplication::setupActions()
     controllerAction(u"delete"_s, i18nc("@action", "Delete"), u"edit-delete"_s, [](MailController *c) {
         c->deleteMessage();
     });
-    signalAction(u"move"_s, i18nc("@action", "Move to Folder…"), u"folder-move"_s, &MailApplication::moveRequested);
     controllerAction(u"mark_read"_s, i18nc("@action", "Mark as Read"), u"mail-mark-read"_s, [](MailController *c) {
         c->setUnread(c->currentMessageAccount(), c->currentUid(), false);
     });
@@ -119,7 +131,6 @@ void MailApplication::setupActions()
     signalAction(u"shortcuts_help"_s, i18nc("@action", "Keyboard Shortcuts"), u"help-keybord-shortcuts"_s, &MailApplication::shortcutsHelpRequested);
     signalAction(u"next_message"_s, i18nc("@action", "Next Message"), u"go-down"_s, &MailApplication::nextMessageRequested);
     signalAction(u"previous_message"_s, i18nc("@action", "Previous Message"), u"go-up"_s, &MailApplication::previousMessageRequested);
-    signalAction(u"go_to_folder"_s, i18nc("@action", "Go to Folder…"), u"folder"_s, &MailApplication::goToFolderRequested);
 
     // Single keys do not fire while a text field has focus: the field accepts the ShortcutOverride.
     // Mark as Read and Mark as Unread share U; only one of them is enabled at a time (a toggle).
@@ -168,6 +179,107 @@ void MailApplication::setupActions()
     updateEnabled();
 }
 
+void MailApplication::scheduleFolderActions()
+{
+    m_folderTimer.start();
+}
+
+void MailApplication::rebuildFolderActions()
+{
+    for (QAction *action : std::as_const(m_folderActions)) {
+        mainCollection()->takeAction(action);
+        action->deleteLater();
+    }
+    m_folderActions.clear();
+    m_moveActions.clear();
+    MailController *c = m_controller;
+    if (!c || !c->hasAccount()) {
+        return;
+    }
+
+    int serial = 0;
+    auto add = [this, &serial](const QString &prefix, const QString &text, const QString &icon) {
+        auto *action = new QAction(this);
+        action->setText(text);
+        action->setIcon(QIcon::fromTheme(icon));
+        // Named by position: a path can hold any characters, and the name is only an identifier.
+        mainCollection()->addAction(prefix + QString::number(serial++), action);
+        m_folderActions.append(action);
+        return action;
+    };
+
+    // Go to: the shared views, then every account's folders. Several accounts: say which one.
+    const QVariantList shared = c->sharedFolders();
+    for (const QVariant &entry : shared) {
+        const QVariantMap map = entry.toMap();
+        const QString path = map.value(u"path"_s).toString();
+        QAction *action = add(u"go_to_folder_"_s, i18nc("@action", "Go to %1", map.value(u"name"_s).toString()), map.value(u"iconName"_s).toString());
+        connect(action, &QAction::triggered, this, [this, path] {
+            if (m_controller) {
+                m_controller->selectFolder(QString(), path);
+            }
+        });
+    }
+    QAbstractListModel *accounts = c->accounts();
+    const int accountCount = accounts->rowCount();
+    const QHash<int, QByteArray> accountRoles = accounts->roleNames();
+    const int emailRole = accountRoles.key("email");
+    const int folderModelRole = accountRoles.key("folderModel");
+    // Watch each account's folder list: the folders arrive after the first sync.
+    for (int row = 0; row < accountCount; ++row) {
+        const QModelIndex index = accounts->index(row);
+        const QString email = index.data(emailRole).toString();
+        auto *folders = qvariant_cast<QAbstractListModel *>(index.data(folderModelRole));
+        if (!folders) {
+            continue;
+        }
+        const QHash<int, QByteArray> roles = folders->roleNames();
+        const int pathRole = roles.key("path");
+        const int nameRole = roles.key("name");
+        const int iconRole = roles.key("iconName");
+        connect(folders, &QAbstractItemModel::modelReset, this, &MailApplication::scheduleFolderActions, Qt::UniqueConnection);
+        connect(folders, &QAbstractItemModel::rowsInserted, this, &MailApplication::scheduleFolderActions, Qt::UniqueConnection);
+        connect(folders, &QAbstractItemModel::rowsRemoved, this, &MailApplication::scheduleFolderActions, Qt::UniqueConnection);
+        connect(folders, &QAbstractItemModel::dataChanged, this, &MailApplication::scheduleFolderActions, Qt::UniqueConnection);
+        for (int i = 0; i < folders->rowCount(); ++i) {
+            const QModelIndex folder = folders->index(i);
+            const QString path = folder.data(pathRole).toString();
+            const QString name = folder.data(nameRole).toString();
+            const QString label =
+                accountCount > 1 ? i18nc("@action %1 folder, %2 account email", "Go to %1 (%2)", name, email) : i18nc("@action", "Go to %1", name);
+            QAction *action = add(u"go_to_folder_"_s, label, folder.data(iconRole).toString());
+            connect(action, &QAction::triggered, this, [this, email, path] {
+                if (m_controller) {
+                    m_controller->selectFolder(email, path);
+                }
+            });
+        }
+    }
+
+    // Move to: the folders of the open message's account.
+    QAbstractListModel *targets = c->messageFolderModel();
+    const QHash<int, QByteArray> roles = targets->roleNames();
+    const int pathRole = roles.key("path");
+    const int nameRole = roles.key("name");
+    const int iconRole = roles.key("iconName");
+    connect(targets, &QAbstractItemModel::modelReset, this, &MailApplication::scheduleFolderActions, Qt::UniqueConnection);
+    connect(targets, &QAbstractItemModel::rowsInserted, this, &MailApplication::scheduleFolderActions, Qt::UniqueConnection);
+    connect(targets, &QAbstractItemModel::rowsRemoved, this, &MailApplication::scheduleFolderActions, Qt::UniqueConnection);
+    for (int i = 0; i < targets->rowCount(); ++i) {
+        const QModelIndex folder = targets->index(i);
+        const QString path = folder.data(pathRole).toString();
+        QAction *action = add(u"move_to_folder_"_s, i18nc("@action", "Move to %1", folder.data(nameRole).toString()), folder.data(iconRole).toString());
+        action->setProperty("path", path);
+        connect(action, &QAction::triggered, this, [this, path] {
+            if (m_controller) {
+                m_controller->moveMessage(path);
+            }
+        });
+        m_moveActions.append(action);
+    }
+    updateEnabled();
+}
+
 void MailApplication::updateEnabled()
 {
     const MailController *c = m_controller;
@@ -185,7 +297,6 @@ void MailApplication::updateEnabled()
     set("forward", message && c->canCompose());
     set("archive", message && c->canArchive());
     set("delete", message && c->canDelete());
-    set("move", message && c->canMove());
     set("mark_read", message && c->messageUnread());
     set("mark_unread", message && !c->messageUnread());
     set("flag", message);
@@ -195,7 +306,10 @@ void MailApplication::updateEnabled()
     set("settings", account);
     set("next_message", account);
     set("previous_message", account);
-    set("go_to_folder", account);
+    // Move to <folder>: the open message's own folder is not a target.
+    for (QAction *action : std::as_const(m_moveActions)) {
+        action->setEnabled(message && c->canMove() && action->property("path").toString() != c->currentMessageFolder());
+    }
     if (QAction *flag = mainCollection()->action(QStringLiteral("flag"))) {
         flag->setChecked(message && c->messageFlagged());
     }

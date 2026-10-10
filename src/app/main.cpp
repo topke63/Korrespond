@@ -487,6 +487,11 @@ int main(int argc, char *argv[])
         // PLASMAMAIL_DEMO_KEYS=<seq>@<ms>[,<seq>@<ms>...]: key presses for the main window (same path
         // as KEY_UNDO), e.g. "E@3000,Ctrl+B@4000". The sequence "focus:search" focuses the search field
         // instead. Logs the focus item at each step (the window is activated at the first one).
+        // PLASMAMAIL_DEMO_KEYS_TARGET=composer sends the steps to the last root window (the demo composer
+        // of PLASMAMAIL_DEMO_COMPOSE=1) instead; =focus sends them to the window that has the focus now
+        // (no activation, so a settings window or a popup window keeps its focus). The sequence "dump"
+        // logs the focus item and its text.
+        const QString keyTarget = qEnvironmentVariable("PLASMAMAIL_DEMO_KEYS_TARGET");
         const QStringList keySteps = qEnvironmentVariable("PLASMAMAIL_DEMO_KEYS").split(u',', Qt::SkipEmptyParts);
         for (const QString &step : keySteps) {
             const QString sequence = step.section(u'@', 0, 0);
@@ -494,17 +499,47 @@ int main(int argc, char *argv[])
             if (ms <= 0) {
                 continue;
             }
-            QTimer::singleShot(ms, &engine, [&engine, sequence] {
-                auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
+            QTimer::singleShot(ms, &engine, [&engine, sequence, keyTarget] {
+                const auto roots = engine.rootObjects();
+                if (roots.isEmpty()) {
+                    return;
+                }
+                QQuickWindow *window = nullptr;
+                if (keyTarget == "focus"_L1) {
+                    window = qobject_cast<QQuickWindow *>(QGuiApplication::focusWindow());
+                } else {
+                    window = qobject_cast<QQuickWindow *>(keyTarget == "composer"_L1 ? roots.constLast() : roots.constFirst());
+                    if (window) {
+                        window->requestActivate();
+                    }
+                }
                 if (!window) {
                     return;
                 }
-                window->requestActivate();
                 QTimer::singleShot(300, window, [window, sequence] {
                     if (sequence == "focus:search"_L1) {
                         if (auto *field = window->findChild<QQuickItem *>(u"searchField"_s)) {
                             field->forceActiveFocus();
                         }
+                    } else if (sequence == "dump"_L1) {
+                        const QQuickItem *focus = window->activeFocusItem();
+                        // currentIndex (lists) and contentY (flickables) when the focus item has them.
+                        QVariant index;
+                        for (const QQuickItem *up = focus; up && !index.isValid(); up = up->parentItem()) {
+                            index = up->property("currentIndex"); // the list (a row's ancestor) or the item itself
+                        }
+                        const QVariant contentY = focus ? focus->property("contentY") : QVariant();
+                        QStringList chain;
+                        for (const QQuickItem *up = focus ? focus->parentItem() : nullptr; up && chain.size() < 4; up = up->parentItem()) {
+                            chain << QString::fromLatin1(up->metaObject()->className());
+                        }
+                        qInfo("demo: dump active=%d focus item=%s parents=%s text=%s index=%s contentY=%s",
+                              window->isActive() ? 1 : 0,
+                              focus ? focus->metaObject()->className() : "none",
+                              qPrintable(chain.join(u" < ")),
+                              qPrintable(focus ? focus->property("text").toString() : QString()),
+                              qPrintable(index.isValid() ? index.toString() : QStringLiteral("-")),
+                              qPrintable(contentY.isValid() ? contentY.toString() : QStringLiteral("-")));
                     } else {
                         const QKeyCombination key = QKeySequence(QString(sequence).replace("Comma"_L1, ","_L1))[0]; // "," separates the steps
                         const QQuickItem *focus = window->activeFocusItem();

@@ -5063,7 +5063,7 @@ MessagePage.qml.
   "ambiguous shortcut" lines.
 
 ### T214 — Command bar (Ctrl+K)
-- status: todo
+- status: done
 - depends on: T212
 - parallel-safe with: T215
 - files: src/qml/Main.qml, src/app/mailapplication.cpp
@@ -5075,6 +5075,17 @@ MessagePage.qml.
   `PLASMAMAIL_SCREENSHOT_COMMANDBAR=1`) in both schemes.
 - notes: if the bar can't take dynamic entries, register per-folder actions in a separate
   collection.
+  Done 2026-10-10 (no sub-agents). The bar takes dynamic entries: MailApplication adds QActions to the
+  main collection and takes them out again (takeAction + deleteLater; removeAction deletes the action,
+  a second delete crashed at first) when the accounts, a folder list or the open message change
+  (coalesced by a 0 ms timer). "Go to <folder>" for the three shared views and every folder of every
+  account (with "(email)" when there is more than one account; hidden folders included); "Move to
+  <folder>" for the open message's account, enabled when canMove and not the message's own folder.
+  The generic "Move to Folder…"/"Go to Folder…" placeholders were removed. Verified offscreen (demo,
+  dev build): Ctrl+K shot in BreezeLight and BreezeDark (t214-bar-*.png), typing "trash" lists Go to
+  Trash (alice), Go to Trash (bob), Move to Trash. Not verified: triggering a folder entry with the
+  mouse/Enter, and the bar's behaviour with real accounts. The hook PLASMAMAIL_SCREENSHOT_COMMANDBAR
+  was not needed: PLASMAMAIL_DEMO_KEYS=Ctrl+K@<ms> does it.
 
 ### T215 — Shortcuts help and editor
 - status: todo

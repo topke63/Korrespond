@@ -3856,7 +3856,7 @@ known light look and derive it (macOS light: sidebar `#e8e6ee`-ish, band `#f3f1f
 - notes: list and message pages replace the page row header's background (ToolBarPageHeader, via the ColumnView.globalHeader loader) with a headerBackground rectangle; page row separators off, own 1 px columnDivider on sidebar and list right edges (list also in the header band); Action/ToolButton icon.color toolbarIcon, 40% alpha when disabled, flag keeps orange. Not checked on screen.
 
 ### T178 — Message list rows like Mimestream
-- status: todo
+- status: done
 - depends on: T186
 - parallel-safe with: none
 - files: src/qml/MessageListPage.qml
@@ -3867,7 +3867,7 @@ known light look and derive it (macOS light: sidebar `#e8e6ee`-ish, band `#f3f1f
   `listSelected`. Unread dot kept, unread sender bold, read sender DemiBold. Existing icons
   (attachment, flag) kept, tinted `secondaryText`.
 - verify: build; ctest; screenshot compared with the reference list column.
-- notes:
+- notes: rows are three lines (sender MimeTheme.text bold/DemiBold with small secondaryText date, subject text, one-line elided previewText); hairline dividers removed; background rect radius 6 inset 12 px, listSelected / hover; flag icon tinted secondaryText (orange when flagged). The row has no attachment indicator (not in the model), so none added. Screenshots checked dark and light; clicks, menu and drag untouched.
 
 ### T179 — Sidebar like Mimestream
 - status: todo

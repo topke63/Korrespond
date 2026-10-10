@@ -152,8 +152,8 @@ Kirigami.ScrollablePage {
 
         model: MailController.messageModel
 
-        // Mimestream-like rows: unread dot, sender + date, subject, preview of stored mail; hairline dividers and a soft
-        // neutral selection (avatars are only in the message view).
+        // Mimestream-like rows: unread dot, sender + date, subject, one-line preview of stored mail; no dividers, and
+        // selection and hover as rounded rects inset from the list edges (avatars are only in the message view).
         delegate: QQC2.ItemDelegate {
             id: row
 
@@ -170,12 +170,12 @@ Kirigami.ScrollablePage {
             width: list.width
             topInset: 1
             bottomInset: 1
-            leftInset: Kirigami.Units.smallSpacing
-            rightInset: Kirigami.Units.smallSpacing
+            leftInset: Kirigami.Units.largeSpacing * 1.5
+            rightInset: Kirigami.Units.largeSpacing * 1.5
             topPadding: Kirigami.Units.smallSpacing * 2
             bottomPadding: Kirigami.Units.smallSpacing * 2
-            leftPadding: Kirigami.Units.smallSpacing
-            rightPadding: Kirigami.Units.largeSpacing * 1.5
+            leftPadding: Kirigami.Units.largeSpacing * 1.5 + Kirigami.Units.smallSpacing
+            rightPadding: Kirigami.Units.largeSpacing * 1.5 + Kirigami.Units.smallSpacing
             highlighted: uid === MailController.currentUid && account === MailController.currentMessageAccount
             onClicked: page.openMessage(account, uid)
 
@@ -221,16 +221,15 @@ Kirigami.ScrollablePage {
             }
 
             background: Rectangle {
-                radius: Kirigami.Units.cornerRadius
+                radius: 6
                 color: row.highlighted ? MimeTheme.listSelected
                      : row.hovered ? MimeTheme.hover : "transparent"
-
             }
 
             contentItem: RowLayout {
                 spacing: Kirigami.Units.smallSpacing
 
-                // Unread: a clear accent dot .
+                // Unread: a clear accent dot.
                 Rectangle {
                     Layout.alignment: Qt.AlignTop
                     Layout.topMargin: Math.round(senderLabel.height / 2 - height / 2)
@@ -258,6 +257,7 @@ Kirigami.ScrollablePage {
                             text: row.from
                             textFormat: Text.PlainText
                             elide: Text.ElideRight
+                            color: MimeTheme.text
                             font.weight: row.unread ? Font.Bold : Font.DemiBold
                         }
                         // Orange when flagged; faint on hover so any row can be flagged with a click.
@@ -269,7 +269,7 @@ Kirigami.ScrollablePage {
                             opacity: row.flagged ? 1 : row.hovered ? 0.5 : 0
                             enabled: row.flagged || row.hovered
                             icon.name: "flag"
-                            icon.color: row.flagged ? "#f67400" : Kirigami.Theme.textColor
+                            icon.color: row.flagged ? "#f67400" : MimeTheme.secondaryText
                             icon.width: Kirigami.Units.iconSizes.small
                             icon.height: Kirigami.Units.iconSizes.small
                             display: QQC2.AbstractButton.IconOnly
@@ -279,7 +279,7 @@ Kirigami.ScrollablePage {
                         QQC2.Label {
                             text: row.dateText
                             font: Kirigami.Theme.smallFont
-                            color: Kirigami.Theme.disabledTextColor
+                            color: MimeTheme.secondaryText
                         }
                     }
                     QQC2.Label {
@@ -287,7 +287,7 @@ Kirigami.ScrollablePage {
                         text: row.subject.length > 0 ? row.subject : KI18n.i18nc("@info", "(no subject)")
                         textFormat: Text.PlainText
                         elide: Text.ElideRight
-                        opacity: row.unread ? 1 : 0.85
+                        color: MimeTheme.text
                     }
                     // Only stored messages have a preview; the row stays two lines otherwise.
                     QQC2.Label {
@@ -295,24 +295,10 @@ Kirigami.ScrollablePage {
                         visible: row.preview.length > 0
                         text: row.preview
                         textFormat: Text.PlainText
-                        wrapMode: Text.Wrap
-                        maximumLineCount: 2
                         elide: Text.ElideRight
-                        color: Kirigami.Theme.disabledTextColor
+                        color: MimeTheme.previewText
                     }
                 }
-            }
-
-            // Hairline divider under the text, hidden around the selected row.
-            Rectangle {
-                anchors.bottom: parent.bottom
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.leftMargin: Kirigami.Units.gridUnit * 1.5
-                anchors.rightMargin: Kirigami.Units.largeSpacing
-                height: 1
-                color: MimeTheme.divider
-                visible: !row.highlighted && !row.hovered
             }
         }
 

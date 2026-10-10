@@ -3782,6 +3782,20 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   or was dropped runs checkInbox once after 5 s. (c) the push-state log is skipped for a session that is
   not in `m_sessions` (deleted, or still pending verification). Build, ctest 19/19, offscreen demo start
   clean. No unit test: ImapClient has no fake-server test harness in autotests/.
+  Verification 2026-10-10 (review of 36bbd87): (a) `m_checkGeneration` is cleared on every path that
+  ends a check: inboxChecked, the empty-result path, and `fail()` (the generation then no longer
+  `isCurrent`, so a later disconnect does not emit a spurious jobsDropped). A non-fatal error in
+  checkJob() (errorOccurred, session kept) leaves it set; the controller's onSessionError already
+  clears `m_checking`, so the only effect is one harmless jobsDropped() at the next disconnect.
+  Fixed: `~ImapClient()` now clears `m_checkGeneration` before disconnectFromServer(), as it already
+  does for `m_pendingMoves`; otherwise a check pending at app quit (sessions are children of
+  MailController) emitted jobsDropped() from the destructor into a half-destroyed AccountSession
+  (`session->account()` after its `m_account` member is gone). (b) `retryQueuedCheck()` runs only
+  when `m_checkQueued` held the session, so it is one-shot: a failed retry queues nothing, so it
+  cannot loop; the 5 s singleShot has the session as context, so it is dropped when the session is
+  deleted, and `isKnown()` covers removal. (c) the "#0" skip is in place. Build clean; ctest 19/19
+  passed after the fix; offscreen demo start (timeout 20, isolated XDG dirs) exits by timeout with no
+  warnings from the changed code (only Qt offscreen/Vulkan/QML messages at startup).
 
 # Milestone 3i — Mimestream look (user request 2026-10-10: "match Mimestream's look as closely as possible")
 

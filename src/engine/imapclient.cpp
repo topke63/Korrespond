@@ -76,6 +76,7 @@ ImapClient::ImapClient(QObject *parent)
 ImapClient::~ImapClient()
 {
     m_pendingMoves.clear(); // nobody is listening any more
+    m_checkGeneration = 0; // same for a pending check: no jobsDropped() from the destructor
     disconnectFromServer();
 }
 

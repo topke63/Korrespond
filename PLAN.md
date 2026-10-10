@@ -4889,6 +4889,29 @@ MessagePage.qml.
   QML gets an action with `application.action("archive")` (a QAction; wrap with
   `Kirigami.Action { fromQAction: … }`). Dev check: a PLASMAMAIL_DEMO=1 run logs `actions: …`
   with all ids. Offscreen shots (dark/light) pixel-identical to the previous build; no new warnings.
+- verification (2026-10-10, offscreen, isolated XDG, timeout-bounded, dev build with hooks): build clean;
+  ctest 19/19 in build/ and the dev build. Ids: all 18 listed plus the base's open_kcommand_bar,
+  file_quit, options_configure_keybinding, open_about_page, open_about_kde_page match the notes.
+  Quit: the base's file_quit called QCoreApplication::quit directly ("quit: exiting with message(s)
+  not yet sent", rc 0, message lost); fixed in "T211: Action collection (fix)": file_quit now calls
+  requestQuit(). After the fix: file_quit with a pending send flushes, hands off, exits rc 0; with
+  nothing pending exits rc 0; a second request during the wait is ignored; closing the main window
+  with a send pending still flushes (T227 rule unchanged). Ctrl+Q: the QML Shortcut now runs the
+  file_quit action. Offscreen, StandardKey.Quit did not match a QTest Ctrl+Q key press (the literal
+  "Ctrl+Q" did, and quit); the same Shortcut existed before T211, real-session key path unverified.
+  Enabled states: with no selection, archive/delete/mark_read/mark_unread/flag/move/reply/forward
+  are disabled and triggering them is a no-op; compose was wrongly disabled without an open message
+  (fixed: needs only an account); search/refresh/settings/next/previous/go_to_folder/toggle_sidebar
+  trigger without a crash. With a demo message open, archive/delete/mark_read/flag/refresh run.
+  Not fixed (planner): the demo guard is missing in MailController's set-flag/set-unread/move/refresh
+  paths, so they create an ImapClient session to the demo host imap.example.com (KIMAP
+  "Connection to server lost QAbstractSocket::HostNotFoundError" in the log: a DNS lookup and a TCP
+  attempt). Pre-existing for the QML buttons; the actions expose the same path.
+  Window state: StatefulWindow writes only $XDG_STATE_HOME/plasma-mailstaterc, group [Main], keys
+  "800x800 screen: XPosition/YPosition" (per screen size); no config file. Settings (plasmamailrc
+  [General]) hold SidebarWidth/ListWidth only, no window size, so no collision.
+  Unverifiable headless: a real window-manager close, tray Quit, Ctrl+Q with a real keyboard, the
+  Kirigami shortcut editor, and the T213 default shortcuts (none set yet, so no ambiguity today).
 
 ### T212 — Views use the actions
 - status: todo

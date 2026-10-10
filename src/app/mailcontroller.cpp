@@ -1202,6 +1202,27 @@ void MailController::openMessage(const QString &account, qint64 uid)
     session->client()->fetchMessage(m_messageFolder, uid);
 }
 
+void MailController::showSampleMessage(const QByteArray &raw)
+{
+    clearMessage(true);
+    auto message = std::make_shared<KMime::Message>();
+    message->setContent(KMime::CRLFtoLF(raw));
+    message->parse();
+    // Same properties as showMessage(), minus its mark-as-read part; no account or folder, so the
+    // message actions find no session and do nothing.
+    m_currentUid = 1; // > 0: the reading pane shows a message
+    const KMime::Message &msg = *message;
+    m_openMessage = message;
+    m_messageSubject = msg.subject() ? msg.subject()->asUnicodeString() : QString();
+    m_messageFrom = msg.from() ? msg.from()->asUnicodeString() : QString();
+    m_messageTo = msg.to() ? msg.to()->displayString() : QString();
+    m_messageDate = ::messageDate(msg);
+    m_messageHtml = renderBody(msg, false);
+    m_messageHasRemoteImages = ::messageHasRemoteImages(msg);
+    m_messageAttachments = attachmentNames(msg);
+    Q_EMIT currentMessageChanged();
+}
+
 void MailController::setFlagged(const QString &account, qint64 uid, bool flagged)
 {
     AccountSession *session = sessionFor(account);

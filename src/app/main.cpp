@@ -22,6 +22,7 @@
 #include <QTimer>
 #include <QtWebEngineQuick>
 
+#include <QFile>
 #include <memory>
 
 using namespace Qt::StringLiterals;
@@ -51,6 +52,20 @@ static void scheduleScreenshot(QQmlApplicationEngine &engine)
             const int uidRole = model->roleNames().key("uid");
             const int accountRole = model->roleNames().key("account");
             controller->openMessage(model->index(0, 0).data(accountRole).toString(), model->index(0, 0).data(uidRole).toLongLong());
+        });
+    }
+    // PLASMAMAIL_SCREENSHOT_SAMPLE=<file.eml> shows that local message in the reading pane (parsed
+    // and rendered as usual; no account, server, cache or flag is touched), a third of the way in.
+    const QString sample = qEnvironmentVariable("PLASMAMAIL_SCREENSHOT_SAMPLE");
+    if (!sample.isEmpty()) {
+        QTimer::singleShot(delay / 3, &engine, [&engine, sample] {
+            QFile sampleFile(sample);
+            auto controller = engine.singletonInstance<MailController *>("PlasmaMail", "MailController");
+            if (controller && sampleFile.open(QIODevice::ReadOnly)) {
+                controller->showSampleMessage(sampleFile.readAll());
+            } else {
+                qWarning("Could not read the sample message %s", qPrintable(sample));
+            }
         });
     }
     // PLASMAMAIL_SCREENSHOT_SETTINGS=<module id> (accounts, storage, about) opens that settings page

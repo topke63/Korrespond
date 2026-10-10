@@ -1,0 +1,22 @@
+From: Alice Example <alice@example.com>
+To: Bob Example <bob@example.com>
+Subject: Weekend plans and the project notes
+Date: Fri, 9 Oct 2026 18:42:10 +0200
+Message-ID: <sample-plain@example.com>
+MIME-Version: 1.0
+Content-Type: text/html; charset=utf-8
+
+<html><body>
+<p>Hi Bob,</p>
+<p>Thanks for the notes. I put the draft on the <a href="https://example.com/wiki/notes">team wiki</a>
+and the schedule is at <a href="https://example.com/schedule">example.com/schedule</a>.
+Could you have a look before Monday? A short reply is plenty.</p>
+<p>On the weekend: we could meet at the market, or take the
+<a href="https://example.org/trails">forest trail</a> if the weather holds.</p>
+<blockquote>
+<p>On 8 Oct 2026, Bob Example wrote:</p>
+<blockquote><p>Hello Alice, are you free on Saturday? I would like to go through the open points.</p></blockquote>
+<p>Also, I found the old photos, see <a href="https://example.com/photos">the album</a>.</p>
+</blockquote>
+<p>Best,<br>Alice</p>
+</body></html>

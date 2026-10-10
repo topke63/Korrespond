@@ -3933,7 +3933,7 @@ known light look and derive it (macOS light: sidebar `#e8e6ee`-ish, band `#f3f1f
   MimeTheme.sidebarBackground / headerBackground (the drawer ignores the Custom background).
 
 ### T183 — Dev hook: sample message in the reading pane
-- status: todo
+- status: done
 - depends on: T175
 - parallel-safe with: T182
 - files: src/app/main.cpp, src/app/mailcontroller.h, src/app/mailcontroller.cpp,
@@ -3945,6 +3945,14 @@ known light look and derive it (macOS light: sidebar `#e8e6ee`-ish, band `#f3f1f
   HTML newsletter with its own colours (white/coloured backgrounds, dark text, coloured links).
 - verify: build; ctest; screenshot with each sample in both schemes.
 - notes:
+  Done 2026-10-10. `PLASMAMAIL_SCREENSHOT_SAMPLE=<file.eml>` (main.cpp, a third of the way into the
+  delay) calls the new `MailController::showSampleMessage(raw)`: parses like openMessage and sets the
+  same properties as showMessage() (subject/from/to/date/html/remote images/attachments) but no
+  session, store, mark-seen or move; currentUid is set to 1 so the pane shows it, and as no account
+  or folder is set, the message actions are no-ops. Samples: autotests/data/sample-plain.eml and
+  sample-newsletter.eml (example.com). Screenshots (scratchpad t183-<plain|newsletter>-<dark|light>.png):
+  the pane shows both. Observation: the newsletter in dark mode keeps its own white/coloured cards on
+  the dark pane (readable); the plain mail takes the theme colours. ctest 19/19.
 
 ### T184 — Visual check, light mode
 - status: todo

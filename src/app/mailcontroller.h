@@ -256,6 +256,9 @@ public:
     // fetched from the server; marks it read if it was unread (on the server and locally).
     // The message properties stay empty until it has arrived.
     Q_INVOKABLE void openMessage(const QString &account, qint64 uid);
+    // Dev only: shows a raw RFC 822 message in the reading pane through the normal parse and render
+    // path, without any account, server, store or flag involved.
+    void showSampleMessage(const QByteArray &raw);
     // Attachment `index` (as in messageAttachments) of the open message, from the loaded message only.
     // openAttachment writes it to a private temp folder (removed when the app quits) and opens it with
     // the default application; a risky one (executable, script, ...) is not opened: attachmentBlocked.

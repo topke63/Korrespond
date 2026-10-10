@@ -1,0 +1,34 @@
+From: Example Weekly <news@example.com>
+To: Bob Example <bob@example.com>
+Subject: Example Weekly: ten things worth reading
+Date: Fri, 9 Oct 2026 07:00:00 +0200
+Message-ID: <sample-newsletter@example.com>
+MIME-Version: 1.0
+Content-Type: text/html; charset=utf-8
+
+<html><body bgcolor="#f4f4f4" style="margin:0;padding:0;">
+<table width="100%" cellpadding="0" cellspacing="0" bgcolor="#f4f4f4"><tr><td align="center">
+<table width="600" cellpadding="0" cellspacing="0" style="background-color:#ffffff;">
+<tr><td style="background-color:#1b1f3b;padding:24px;color:#ffffff;font-family:Arial,sans-serif;">
+<h1 style="margin:0;color:#ffffff;font-size:26px;">Example Weekly</h1>
+<p style="margin:4px 0 0 0;color:#ffffff;">Issue 41 &middot; 9 October 2026</p>
+</td></tr>
+<tr><td style="background-color:#ffffff;padding:24px;color:#222222;font-family:Arial,sans-serif;">
+<h2 style="color:#222222;">This week</h2>
+<p style="color:#333333;">Ten stories picked by the editors. Read the lead piece on
+<a href="https://example.com/lead" style="color:#0b5cd5;">how small teams ship</a>, or jump to the
+<a href="https://example.com/archive" style="color:#c2185b;">archive</a>.</p>
+</td></tr>
+<tr><td style="background-color:#ffe9a8;padding:20px;color:#3a2e00;font-family:Arial,sans-serif;">
+<strong>Sponsor:</strong> try Example Cloud free for 30 days.
+<a href="https://example.com/offer" style="color:#8a4b00;">Claim the offer</a>
+</td></tr>
+<tr><td style="background-color:#d6ecff;padding:20px;color:#10304f;font-family:Arial,sans-serif;">
+<p style="color:#10304f;">Reader question of the week: how do you keep an inbox small?</p>
+</td></tr>
+<tr><td style="background-color:#ffffff;padding:16px;color:#777777;font-size:12px;font-family:Arial,sans-serif;">
+You receive this because you subscribed at example.com.
+<a href="https://example.com/unsubscribe" style="color:#777777;">Unsubscribe</a>
+</td></tr>
+</table></td></tr></table>
+</body></html>

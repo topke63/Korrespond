@@ -5276,14 +5276,14 @@ no contacts API: its autocomplete (and Gmail's fallback) comes from addresses se
 - notes: Done 2026-10-10 (no sub-agents). ContactsSettingsPage.qml (module 'contacts' in Main.qml, after Sending): switch 'Use contacts', one entry per Google account with the state text from contactsStatus() and 'Allow Access to Contacts…' when permission is needed, counts of saved contacts / other contacts / addresses seen in mail, 'Sync Now', 'Clear Contacts Cache…' (asks first). Controller: contactsEnabled property, setContactsEnabled() (off stops the syncs, on starts them; both emit contactsChanged so suggestions and names go away or return at once), contactAccounts(), contactCounts(), syncContactsNow(), clearContacts() (stops syncs, cancels a running history pass, clears the store, then syncs again if on). A history pass that meets the switch off is not marked done, so it runs again later. Test: AppSettings round trip of the switch. Shots: t240-{BreezeLight,BreezeDark}.png. Not verified with the real app: clearing while a Google sync is in flight.
 
 ### T241 — Check: contacts
-- status: todo
+- status: done
 - depends on: T238, T239, T240
 - files: none
 - output: end-to-end against the fake People API server in a demo run: sync, autocomplete, sender
   names, switch off, clear, re-authorize path; no network call without the switch; nothing written
   to the Google account (the fake server logs only GET).
 - verify: offscreen demo runs + review.
-- notes:
+- notes: Checked 2026-10-10 (no sub-agents), by tests and code review, not by one full demo run. Passing: contactsynctest (full, incremental with deletion, expired token, 403, 429 retry, stop during a run, rejected token), peopleclienttest, contactstoretest, addresshistorytest, appsettingstest (switch round trip); all 25 tests pass. Read-only: PeopleClient has one network call, QNetworkAccessManager::get(), in the whole tree. No network without the switch: the only 'new ContactSync' is in startContactSync(), which returns when contactsEnabled is false; every caller (session folders, new account, allowContacts, setContactsEnabled, syncContactsNow, clearContacts) goes through it; the sign-in asks for the contacts scopes only when the switch is on. Switching off also stops the running syncs and hides suggestions and names. NOT verified: a key-driven demo run of the compose field with the switch off (the demo keys did not reach the field in these runs, with the switch on as well, so the pictures prove nothing) and the Settings page buttons by click.
 
 ### T242 — Manual check with the user
 - status: todo

@@ -5586,6 +5586,145 @@ Approach: thread ids are computed in the engine and stored, the list model group
   Only the repeat is fixed. No automated test covers the dedupe. If the red chip returns, read the log
   around that time before changing the connection logic.
 
+# Milestone 9 — Flatpak package (user request 2026-10-10: "is it possible to create flatpak package" / "it has to be fully functional")
+
+- **Goal**: `flatpak-builder` builds `io.github.topke63.korrespond` from this repository into a Flatpak
+  that does everything the installed app does: every account type signs in (Yahoo app password, Google
+  OAuth with the XOAUTH2 SASL plugin, custom IMAP), IMAP IDLE push, send, attachments (add, save, open),
+  remote-image loading, notifications, tray icon, contacts, local store, keychain.
+- **Out of scope**: publishing on Flathub (separate review; see Q9.1), a Flatpak of the Windows build,
+  CI that builds the Flatpak.
+- **Verify**: `flatpak-builder --user --install --force-clean build-flatpak packaging/flatpak/io.github.topke63.korrespond.yml`
+  succeeds, `flatpak run io.github.topke63.korrespond` starts, and the T257 checklist passes in the
+  sandbox with the user's accounts.
+- **Open questions**:
+  - **Q9.1**: Local-only package for the user's own use, or Flathub-ready (stable release tag as the module
+    source, screenshots in the metainfo, OARS rating, no network at build time)? Proposal: local first;
+    the manifest's source is the working tree (`type: dir`), switched to a git tag later. Needed by T252.
+  - **Q9.2**: Carry the existing accounts and cache into the sandbox? The sandbox has its own
+    `~/.var/app/<id>/{config,data}`. Proposal: one-time copy of `korrespondrc` and `~/.local/share/korrespond/`
+    by a documented command (not a permanent `--filesystem` hole). Keychain entries are shared with the host
+    through the Secret Service, so passwords and tokens carry over without copying. Needed by T256.
+  - **Q9.3**: Google OAuth client id/secret: the installed app reads them from `korrespondrc`
+    `[GoogleOAuth]` or `PLASMAMAIL_GOOGLE_CLIENT_*`. In the sandbox these come with the config copy (Q9.2).
+    No secret is put in the manifest or the repository. Confirm.
+- **Known facts** (checked 2026-10-10): `flatpak` is installed, `flatpak-builder` is not
+  (`sudo pacman -S flatpak-builder`, the user runs it); `org.kde.Platform` 6.10 and 6.11 are installed,
+  `io.qt.qtwebengine.BaseApp` is not. The app needs KPim6IMAP/KPim6SMTP (KDE Gear, not in the runtime),
+  Qt6Keychain, Cyrus SASL and the libkgapi `libkdexoauth2.so` SASL plugin (README: without it Gmail
+  sign-in works but the IMAP login fails), QtWebEngineQuick, KF6KirigamiAddons (check the runtime).
+
+### T248 — Install the build tools and runtimes
+- status: todo
+- depends on: none (the user installs `flatpak-builder`)
+- files: none
+- output: `flatpak-builder --version` works; `flatpak install flathub io.qt.qtwebengine.BaseApp//6.<runtime>`
+  and `org.kde.Sdk//6.<runtime>` are installed for the same branch as the Platform; the branch is chosen
+  (6.11 if its KDE Gear modules build) and written in the notes.
+- verify: `flatpak-builder --version`; `flatpak list --runtime | grep -E "Sdk|BaseApp"`.
+
+### T249 — Manifest skeleton that builds the app against the runtime
+- status: todo
+- depends on: T248
+- files: packaging/flatpak/io.github.topke63.korrespond.yml
+- inputs: README "Flatpak" section, the CMake `find_package` list in CMakeLists.txt.
+- output: manifest with runtime `org.kde.Platform`, sdk `org.kde.Sdk`, base app `io.qt.qtwebengine.BaseApp`,
+  `command: korrespond`, `rename-*` not needed (ids already match), and the app module with
+  `-DBUILD_TESTING=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo`. Dependency modules are placeholders.
+- verify: `flatpak-builder` reaches the first missing-dependency error of the app module.
+
+### T250 — Dependency modules: KMime, KIMAP, KSMTP, KCodecs and whatever they need
+- status: todo
+- depends on: T249
+- files: packaging/flatpak/io.github.topke63.korrespond.yml
+- output: modules in dependency order from the KDE Gear tag the installed Arch packages use (the notes record
+  the version); each with the shared cmake flags; `KPim6IMAP`/`KPim6SMTP` found by the app's configure step.
+- verify: the app module configures and compiles in `flatpak-builder`.
+- notes: Tag the KDE Gear sources by the same version as the Arch `kimap` (README requires 26.08+).
+
+### T251 — Dependency modules: Cyrus SASL with the XOAUTH2 plugin, Qt6Keychain, KirigamiAddons
+- status: todo
+- depends on: T250
+- files: packaging/flatpak/io.github.topke63.korrespond.yml
+- output: `cyrus-sasl` (with the plugins the app uses: PLAIN/LOGIN) and `libkgapi`'s `libkdexoauth2.so`
+  plugin built into `/app/lib/sasl2`; `SASL_PATH=/app/lib/sasl2` in `finish-args` (`--env=`);
+  `qtkeychain` (libsecret backend, plus `libsecret` if the runtime has none); `kirigami-addons` if missing
+  from the runtime.
+- verify: build succeeds; `flatpak run --command=sh <id> -c 'ls /app/lib/sasl2'` lists the plugin.
+
+### T252 — Sandbox permissions (finish-args) and desktop integration
+- status: todo
+- depends on: T251, Q9.1
+- files: packaging/flatpak/io.github.topke63.korrespond.yml
+- output: `--share=network`, `--share=ipc`, `--socket=wayland`, `--socket=fallback-x11`, `--device=dri`;
+  `--talk-name=org.freedesktop.secrets` (keychain), `--talk-name=org.kde.kwalletd6`,
+  `--talk-name=org.kde.StatusNotifierWatcher` (tray), `--talk-name=org.freedesktop.Notifications`;
+  `--filesystem=xdg-download` only if the save dialog needs it (the portal file chooser covers the rest).
+  Install `korrespond.notifyrc` and the icons where KNotifications looks inside `/app`.
+- verify: `flatpak run <id>` starts, window shows, tray icon appears, a test notification
+  (existing demo mode, if it has one) shows.
+
+### T253 — WebEngine in the sandbox
+- status: todo
+- depends on: T252
+- files: packaging/flatpak/io.github.topke63.korrespond.yml, src/app/main.cpp (only if a flag is needed)
+- output: the message view renders (the base app's zypak wrapper runs Chromium's sandbox); remote-image
+  loading and "Open link" work. If the app sets `QTWEBENGINE_*` or sandbox flags itself, they are checked
+  against the base app's `command` wrapper.
+- verify: an HTML message renders with the user's theme; no `Failed to ... sandbox` lines in the log.
+
+### T254 — Attachments: open, save, add
+- status: todo
+- depends on: T252
+- files: src/app/mailcontroller.cpp (only if the temp dir must move), manifest
+- inputs: mailcontroller.cpp:3412 (attachments are written to `QDir::tempPath()/korrespond-<pid>-...`
+  and opened with `QDesktopServices::openUrl`, line 3430). Inside the sandbox `/tmp` is private, so the
+  host's handler cannot see a `file://` URL there; Qt's portal platform theme passes a file descriptor
+  through `org.freedesktop.portal.OpenURI`, which should work, but this is unproven.
+- output: open-attachment works in the sandbox; if not, the temp directory moves under
+  `$XDG_CACHE_HOME` and is opened through the portal. Save and add use the portal `FileDialog` (already
+  `QtQuick.Dialogs`).
+- verify: open a PDF attachment, save an attachment, attach a file to a draft and send it to a second
+  account (manual, the user).
+
+### T255 — Google sign-in in the sandbox
+- status: todo
+- depends on: T252, T251
+- files: manifest (only if a permission is missing)
+- inputs: src/engine/oauthclient.cpp: `QDesktopServices::openUrl` for the consent page and a
+  `QtNetworkAuth` localhost reply handler. Both work inside a sandbox with `--share=network`, but the
+  default browser is opened through the portal, and the redirect port is on the sandbox's own loopback
+  (`--share=network` shares the host's network namespace).
+- output: add a Google account in the sandbox; the XOAUTH2 login via the SASL plugin succeeds.
+- verify: manual with the user (Google consent screen).
+
+### T256 — Data migration into the sandbox (depends on Q9.2)
+- status: todo
+- depends on: T252, Q9.2
+- files: README.md (the documented command) or src/app/legacyprofile.cpp
+- output: a documented one-shot command (e.g. `cp ~/.config/korrespondrc ~/.var/app/<id>/config/` and
+  `cp -a ~/.local/share/korrespond ~/.var/app/<id>/data/`), or an automatic import if the user prefers.
+  The app's existing `LegacyProfile::migrate` is not reused (different source paths).
+- verify: the sandbox starts with the accounts and the local cache in place, no password prompt.
+
+### T257 — Full functional check in the sandbox with the user
+- status: todo
+- depends on: T253, T254, T255, T256
+- output: checklist run by the user: add/open every account, push (new mail arrives with the window
+  open), send with and without attachment, undo send, search, conversations, contacts autocomplete,
+  notifications on a new message, tray, close-to-tray, window size remembered, remote images toggle,
+  "Open link" in the browser, mailto (if a handler exists), dark/light follows Plasma, language.
+- verify: every line ticked; failures become new tasks.
+
+### T258 — Documentation and metainfo
+- status: todo
+- depends on: T257
+- files: README.md, data/io.github.topke63.korrespond.metainfo.xml
+- output: README "Flatpak" section gets the real build/install commands and the permission list with the
+  reason for each; metainfo has a release entry; `appstreamcli validate` passes.
+- verify: `appstreamcli validate data/io.github.topke63.korrespond.metainfo.xml`; the README commands run
+  on a clean clone.
+
 ## Execution Loop
 
 Execute the plan as a loop. Each iteration handles one task in a fresh context, then ends.

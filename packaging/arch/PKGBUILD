@@ -14,7 +14,7 @@ arch=(x86_64)
 url='https://github.com/topke63/Korrespond'
 license=(GPL-3.0-or-later)
 depends=(
-  cyrus-sasl
+  libsasl
   kcolorscheme
   kconfig
   kcoreaddons

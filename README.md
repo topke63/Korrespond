@@ -41,7 +41,7 @@ sudo pacman -S --needed base-devel cmake ninja extra-cmake-modules \
     qt6-base qt6-declarative qt6-webengine qt6-networkauth qt6-tools \
     kirigami kirigami-addons qqc2-desktop-style ki18n kcoreaddons kconfig kcolorscheme \
     kmime knotifications knotifyconfig kstatusnotifieritem \
-    kimap ksmtp qtkeychain-qt6 cyrus-sasl libkgapi
+    kimap ksmtp qtkeychain-qt6 libsasl libkgapi
 ```
 
 `libkgapi` is needed at runtime only: it ships the `libkdexoauth2` SASL plugin that Gmail's

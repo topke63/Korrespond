@@ -66,8 +66,11 @@ QQC2.Pane {
     contentItem: RowLayout {
         spacing: Kirigami.Units.largeSpacing
 
-        // One chip per account.
+        // One chip per account that is not connected. A healthy account shows nothing: the bar is
+        // quiet unless something needs attention, and the chip is the way to reconnect.
         Repeater {
+            id: chips
+
             model: MailController.accounts
 
             delegate: QQC2.AbstractButton {
@@ -79,8 +82,8 @@ QQC2.Pane {
                 required property string statusText
                 required property string pushText
 
-                // Only a failed account can be reconnected.
-                enabled: connectionState === "failed"
+                visible: connectionState === "failed"
+                enabled: true
                 hoverEnabled: true
                 padding: Kirigami.Units.smallSpacing
                 onClicked: MailController.reconnect(email)
@@ -92,7 +95,7 @@ QQC2.Pane {
                     if (chip.statusText.length > 0) {
                         text += "\n" + chip.statusText;
                     }
-                    return chip.enabled ? text + "\n" + KI18n.i18nc("@info:tooltip", "Click to reconnect") : text;
+                    return text + "\n" + KI18n.i18nc("@info:tooltip", "Click to reconnect");
                 }
 
                 background: Rectangle {
@@ -112,8 +115,6 @@ QQC2.Pane {
                         text: chip.email
                         font: Kirigami.Theme.smallFont
                         elide: Text.ElideRight
-                        // Not greyed out: only the click is off for a healthy account.
-                        opacity: 1
                         color: Kirigami.Theme.textColor
                     }
                 }
@@ -121,6 +122,14 @@ QQC2.Pane {
         }
 
         Kirigami.Separator {
+            visible: {
+                for (let i = 0; i < chips.count; ++i) {
+                    if (chips.itemAt(i)?.visible) {
+                        return true;
+                    }
+                }
+                return false;
+            }
             Layout.fillHeight: true
             Layout.topMargin: Kirigami.Units.smallSpacing
             Layout.bottomMargin: Kirigami.Units.smallSpacing

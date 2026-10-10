@@ -357,6 +357,12 @@ StatefulApp.StatefulWindow {
     Connections {
         target: MailController
         function onErrorOccurred(message: string) {
+            // A hidden window (the app lives in the tray) would queue the toast and show every
+            // background connection error that happened meanwhile as soon as it is reopened.
+            if (!mainWindow.visible) {
+                console.info("Error while the window is hidden: " + message);
+                return;
+            }
             mainWindow.showPassiveNotification(message);
         }
         // The compose window closed when the message was queued; the status bar counts down and

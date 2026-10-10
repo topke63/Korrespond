@@ -40,6 +40,7 @@ struct MessageSummary {
     QString inReplyTo; // the first In-Reply-To id
     QStringList references; // References, oldest first
     qint64 gmThreadId = 0; // Gmail's X-GM-THRID; 0 = none
+    QString threadId; // computed by ThreadBuilder and stored (T220); empty = not computed
 };
 
 // Gmail's X-GM-THRID attribute (a decimal number as a string, bytes or integer) → thread id; 0 when

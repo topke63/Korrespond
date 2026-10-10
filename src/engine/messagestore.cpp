@@ -12,6 +12,7 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QSaveFile>
+#include <QSet>
 #include <QSqlDatabase>
 #include <QSqlError>
 #include <QSqlQuery>
@@ -20,6 +21,8 @@
 
 using namespace Qt::StringLiterals;
 
+// Threading columns (T219) are added by updateThreading() by looking for them, not by a version
+// bump: a bump recomputes every preview, which a column does not need.
 // Bump when the schema changes; open() can then migrate older databases.
 // 2: messages.preview. 3: previews without image placeholders. Every bump recomputes the
 // previews, so a better messagePreview() reaches messages stored before it.
@@ -77,12 +80,107 @@ bool MessageStore::open()
         && query.exec(
             u"CREATE TABLE IF NOT EXISTS folders ("
             "position INTEGER PRIMARY KEY, path TEXT NOT NULL, name TEXT NOT NULL, role TEXT NOT NULL, depth INTEGER NOT NULL)"_s)
-        && updatePreviews() && query.exec(u"PRAGMA user_version = %1"_s.arg(schemaVersion));
+        && updatePreviews() && updateThreading() && query.exec(u"PRAGMA user_version = %1"_s.arg(schemaVersion));
     if (!ok) {
         if (query.lastError().isValid()) { // else updatePreviews() set m_lastError
             m_lastError = query.lastError().text();
         }
         db.close();
+        return false;
+    }
+    return true;
+}
+
+// The header block of a raw message (up to the first empty line); parsing only it is much cheaper
+// than parsing attachments.
+static QByteArray headerBlock(const QByteArray &raw)
+{
+    const qsizetype crlf = raw.indexOf("\r\n\r\n");
+    const qsizetype lf = raw.indexOf("\n\n");
+    qsizetype end = raw.size();
+    for (const qsizetype candidate : {crlf, lf}) {
+        if (candidate >= 0 && candidate < end) {
+            end = candidate;
+        }
+    }
+    return raw.left(end);
+}
+
+// Message-ID, In-Reply-To and References from a raw message.
+static MessageSummary threadingOf(const QByteArray &raw)
+{
+    KMime::Message message;
+    message.setContent(headerBlock(raw) + "\n\n");
+    message.parse();
+    MessageSummary summary;
+    fillThreadingHeaders(message, summary);
+    return summary;
+}
+
+bool MessageStore::updateThreading()
+{
+    QSqlDatabase db = QSqlDatabase::database(m_connectionName, false);
+    QSqlQuery query(db);
+    if (!query.exec(u"PRAGMA table_info(messages)"_s)) {
+        m_lastError = query.lastError().text();
+        return false;
+    }
+    QSet<QString> columns;
+    while (query.next()) {
+        columns.insert(query.value(1).toString());
+    }
+    // message_id NULL = not read from the .eml yet ("" = read, the message has none).
+    const QList<std::pair<QString, QString>> wanted = {
+        {u"message_id"_s, u"TEXT"_s},
+        {u"in_reply_to"_s, u"TEXT"_s},
+        {u"refs"_s, u"TEXT"_s}, // References, space separated
+        {u"gm_thrid"_s, u"INTEGER NOT NULL DEFAULT 0"_s},
+        {u"thread_id"_s, u"TEXT"_s},
+    };
+    for (const auto &[name, type] : wanted) {
+        if (!columns.contains(name) && !query.exec(u"ALTER TABLE messages ADD COLUMN %1 %2"_s.arg(name, type))) {
+            m_lastError = query.lastError().text();
+            return false;
+        }
+    }
+
+    if (!query.exec(u"SELECT folder, uid, path FROM messages WHERE message_id IS NULL"_s)) {
+        m_lastError = query.lastError().text();
+        return false;
+    }
+    struct Row {
+        QString folder;
+        qint64 uid;
+        MessageSummary threading;
+    };
+    QList<Row> rows;
+    while (query.next()) {
+        QFile file(m_baseDir + u'/' + query.value(2).toString());
+        const QByteArray raw = file.open(QIODevice::ReadOnly) ? file.read(64 * 1024) : QByteArray();
+        rows.append({query.value(0).toString(), query.value(1).toLongLong(), threadingOf(raw)});
+    }
+    if (rows.isEmpty()) {
+        return true;
+    }
+    if (!db.transaction()) {
+        m_lastError = db.lastError().text();
+        return false;
+    }
+    query.prepare(u"UPDATE messages SET message_id = ?, in_reply_to = ?, refs = ? WHERE folder = ? AND uid = ?"_s);
+    for (const Row &row : std::as_const(rows)) {
+        query.addBindValue(row.threading.messageId);
+        query.addBindValue(row.threading.inReplyTo);
+        query.addBindValue(row.threading.references.join(u' '));
+        query.addBindValue(row.folder);
+        query.addBindValue(row.uid);
+        if (!query.exec()) {
+            m_lastError = query.lastError().text();
+            db.rollback();
+            return false;
+        }
+    }
+    if (!db.commit()) {
+        m_lastError = db.lastError().text();
         return false;
     }
     return true;
@@ -191,10 +289,20 @@ bool MessageStore::addMessage(const QString &folder, qint64 uidValidity, const M
         return false;
     }
 
+    // The list fetch has the threading headers; a summary made some other way gets them from the raw
+    // message (a message without any of them is stored with empty values).
+    MessageSummary threading = summary;
+    if (summary.messageId.isEmpty() && summary.inReplyTo.isEmpty() && summary.references.isEmpty()) {
+        threading = threadingOf(raw);
+        threading.gmThreadId = summary.gmThreadId;
+        threading.threadId = summary.threadId;
+    }
+
     QSqlQuery query(QSqlDatabase::database(m_connectionName, false));
     query.prepare(
-        u"INSERT OR REPLACE INTO messages (folder, uidvalidity, uid, subject, sender, date, unread, flagged, size, path, preview) "
-        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"_s);
+        u"INSERT OR REPLACE INTO messages (folder, uidvalidity, uid, subject, sender, date, unread, flagged, size, path, preview, "
+        "message_id, in_reply_to, refs, gm_thrid, thread_id) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"_s);
     query.addBindValue(folder);
     query.addBindValue(uidValidity);
     query.addBindValue(summary.uid);
@@ -206,6 +314,11 @@ bool MessageStore::addMessage(const QString &folder, qint64 uidValidity, const M
     query.addBindValue(qint64(raw.size()));
     query.addBindValue(relPath);
     query.addBindValue(previewOf(raw));
+    query.addBindValue(threading.messageId);
+    query.addBindValue(threading.inReplyTo);
+    query.addBindValue(threading.references.join(u' '));
+    query.addBindValue(threading.gmThreadId);
+    query.addBindValue(threading.threadId.isEmpty() ? QVariant(QMetaType::fromType<QString>()) : QVariant(threading.threadId));
     if (!query.exec()) {
         m_lastError = query.lastError().text();
         // The file only belongs to us if no row pointed at it before.
@@ -218,6 +331,36 @@ bool MessageStore::addMessage(const QString &folder, qint64 uidValidity, const M
     // Same uid under an older UIDVALIDITY: the previous file is no longer referenced.
     if (!oldRelPath.isEmpty() && oldRelPath != relPath) {
         QFile::remove(m_baseDir + u'/' + oldRelPath);
+    }
+    return true;
+}
+
+bool MessageStore::setThreadIds(const QString &folder, const QHash<qint64, QString> &threadIds)
+{
+    if (!isOpen()) {
+        m_lastError = u"Message store is not open"_s;
+        return false;
+    }
+    QSqlDatabase db = QSqlDatabase::database(m_connectionName, false);
+    if (!db.transaction()) {
+        m_lastError = db.lastError().text();
+        return false;
+    }
+    QSqlQuery query(db);
+    query.prepare(u"UPDATE messages SET thread_id = ? WHERE folder = ? AND uid = ?"_s);
+    for (auto it = threadIds.cbegin(); it != threadIds.cend(); ++it) {
+        query.addBindValue(it.value());
+        query.addBindValue(folder);
+        query.addBindValue(it.key());
+        if (!query.exec()) {
+            m_lastError = query.lastError().text();
+            db.rollback();
+            return false;
+        }
+    }
+    if (!db.commit()) {
+        m_lastError = db.lastError().text();
+        return false;
     }
     return true;
 }
@@ -237,7 +380,8 @@ QList<MessageSummary> MessageStore::messages(const QString &folder, int limit) c
     QSqlQuery query(QSqlDatabase::database(m_connectionName, false));
     // SQLite treats LIMIT -1 as "no limit". uid breaks ties, so equal dates keep a stable order.
     query.prepare(
-        u"SELECT uid, subject, sender, date, unread, flagged, preview FROM messages WHERE folder = ? "
+        u"SELECT uid, subject, sender, date, unread, flagged, preview, message_id, in_reply_to, refs, gm_thrid, thread_id "
+        "FROM messages WHERE folder = ? "
         "ORDER BY date IS NULL, date DESC, uid DESC LIMIT ?"_s);
     query.addBindValue(folder);
     query.addBindValue(limit < 0 ? -1 : limit);
@@ -256,6 +400,11 @@ QList<MessageSummary> MessageStore::messages(const QString &folder, int limit) c
         summary.unread = query.value(4).toBool();
         summary.flagged = query.value(5).toBool();
         summary.preview = query.value(6).toString();
+        summary.messageId = query.value(7).toString();
+        summary.inReplyTo = query.value(8).toString();
+        summary.references = query.value(9).toString().split(u' ', Qt::SkipEmptyParts);
+        summary.gmThreadId = query.value(10).toLongLong();
+        summary.threadId = query.value(11).toString();
         result.append(summary);
     }
     return result;

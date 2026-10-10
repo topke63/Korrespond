@@ -645,6 +645,95 @@ private Q_SLOTS:
         QVERIFY(store.contains(u"INBOX"_s, 1));
     }
 
+    void testThreadingFieldsRoundTrip()
+    {
+        QTemporaryDir dir;
+        MessageStore store(dir.path());
+        QVERIFY(store.open());
+        MessageSummary s = summary(1);
+        s.messageId = u"b@example.org"_s;
+        s.inReplyTo = u"a@example.org"_s;
+        s.references = {u"a@example.org"_s, u"z@example.org"_s};
+        s.gmThreadId = 1812345678901234567;
+        QVERIFY(store.addMessage(u"INBOX"_s, 1, s, "Subject: x\r\n\r\nbody\r\n"));
+        const MessageSummary back = store.messages(u"INBOX"_s, -1).first();
+        QCOMPARE(back.messageId, s.messageId);
+        QCOMPARE(back.inReplyTo, s.inReplyTo);
+        QCOMPARE(back.references, s.references);
+        QCOMPARE(back.gmThreadId, s.gmThreadId);
+        QVERIFY(back.threadId.isEmpty());
+    }
+
+    void testThreadingFromRawWhenSummaryHasNone()
+    {
+        QTemporaryDir dir;
+        MessageStore store(dir.path());
+        QVERIFY(store.open());
+        QVERIFY(store.addMessage(u"INBOX"_s,
+                                 1,
+                                 summary(1),
+                                 "Message-ID: <m@example.org>\r\nIn-Reply-To: <p@example.org>\r\nReferences: <r@example.org> <p@example.org>\r\n"
+                                 "Subject: x\r\n\r\nbody\r\n"));
+        const MessageSummary back = store.messages(u"INBOX"_s, -1).first();
+        QCOMPARE(back.messageId, u"m@example.org"_s);
+        QCOMPARE(back.inReplyTo, u"p@example.org"_s);
+        QCOMPARE(back.references, (QStringList{u"r@example.org"_s, u"p@example.org"_s}));
+    }
+
+    void testSetThreadIds()
+    {
+        QTemporaryDir dir;
+        MessageStore store(dir.path());
+        QVERIFY(store.open());
+        QVERIFY(store.addMessage(u"INBOX"_s, 1, summary(1), rawMessage("a")));
+        QVERIFY(store.addMessage(u"INBOX"_s, 2, summary(2), rawMessage("b")));
+        QVERIFY(store.setThreadIds(u"INBOX"_s, {{1, u"t1"_s}, {2, u"t1"_s}, {99, u"nobody"_s}}));
+        const QList<MessageSummary> list = store.messages(u"INBOX"_s, -1);
+        QCOMPARE(list.size(), 2);
+        QCOMPARE(list.at(0).threadId, u"t1"_s);
+        QCOMPARE(list.at(1).threadId, u"t1"_s);
+        // Stored again (e.g. a flag change re-fetch): the thread id given with the summary is kept.
+        MessageSummary again = summary(1);
+        again.threadId = u"t1"_s;
+        QVERIFY(store.addMessage(u"INBOX"_s, 1, again, rawMessage("a")));
+        QCOMPARE(store.messages(u"INBOX"_s, -1).last().threadId, u"t1"_s);
+    }
+
+    void testMigrationAddsThreadingColumns()
+    {
+        QTemporaryDir dir;
+        QVERIFY(QDir().mkpath(dir.filePath(u"messages/f"_s)));
+        QFile eml(dir.filePath(u"messages/f/7-1.eml"_s));
+        QVERIFY(eml.open(QIODevice::WriteOnly));
+        eml.write("Message-ID: <old@example.org>\r\nReferences: <root@example.org>\r\nSubject: old\r\n\r\nBody\r\n");
+        eml.close();
+        {
+            // Version 3: has the preview column, no threading columns.
+            QSqlDatabase db = QSqlDatabase::addDatabase(u"QSQLITE"_s, u"messagestoretest-v3"_s);
+            db.setDatabaseName(dir.filePath(u"mail.sqlite"_s));
+            QVERIFY(db.open());
+            QSqlQuery query(db);
+            QVERIFY(
+                query.exec(u"CREATE TABLE messages (folder TEXT NOT NULL, uidvalidity INTEGER NOT NULL, uid INTEGER NOT NULL, "
+                           "subject TEXT, sender TEXT, date INTEGER, unread INTEGER NOT NULL, flagged INTEGER NOT NULL DEFAULT 0, "
+                           "size INTEGER NOT NULL, path TEXT NOT NULL, preview TEXT, PRIMARY KEY(folder, uid))"_s));
+            QVERIFY(query.exec(u"INSERT INTO messages VALUES ('INBOX', 7, 1, 'old', 'a', 1, 1, 0, 10, 'messages/f/7-1.eml', 'Body')"_s));
+            QVERIFY(query.exec(u"PRAGMA user_version = 3"_s));
+            db.close();
+        }
+        QSqlDatabase::removeDatabase(u"messagestoretest-v3"_s);
+
+        MessageStore store(dir.path());
+        QVERIFY2(store.open(), qPrintable(store.lastError()));
+        const QList<MessageSummary> list = store.messages(u"INBOX"_s, -1);
+        QCOMPARE(list.size(), 1);
+        QCOMPARE(list.first().subject, u"old"_s);
+        QCOMPARE(list.first().messageId, u"old@example.org"_s);
+        QCOMPARE(list.first().references, QStringList{u"root@example.org"_s});
+        QCOMPARE(list.first().gmThreadId, qint64(0));
+        QVERIFY(list.first().threadId.isEmpty());
+    }
+
     void testRemoveMessageOnClosedStore()
     {
         QTemporaryDir dir;

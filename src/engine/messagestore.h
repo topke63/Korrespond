@@ -41,6 +41,9 @@ public:
     [[nodiscard]] QByteArray rawMessage(const QString &folder, qint64 uid) const;
     // uid → preview text (see messagePreview()) of the stored messages of folder.
     [[nodiscard]] QHash<qint64, QString> previews(const QString &folder) const;
+    // Stores the computed thread id of stored messages of folder (uid → id); ids of messages that
+    // are not stored are ignored. False on error.
+    bool setThreadIds(const QString &folder, const QHash<qint64, QString> &threadIds);
     // Updates the local read state, e.g. after the message was marked seen on the server.
     // Returns false when the message isn't stored.
     bool setUnread(const QString &folder, qint64 uid, bool unread);
@@ -97,6 +100,8 @@ private:
     // Adds the preview column to a version 1 database and computes missing previews from the
     // .eml files; all of them when the database is older than this code's schema version.
     bool updatePreviews();
+    // Adds the threading columns to an older database and fills them from the .eml files.
+    bool updateThreading();
     [[nodiscard]] static QString previewOf(const QByteArray &raw);
 
     QString m_baseDir;

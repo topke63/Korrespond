@@ -5336,14 +5336,20 @@ Approach: thread ids are computed in the engine and stored, the list model group
   the extra items (checked in T226 manually); a non-Gmail account never asks for them.
 
 ### T219 — Store: thread columns
-- status: todo
+- status: done
 - depends on: T217
 - parallel-safe with: T218
 - files: src/engine/messagestore.h, src/engine/messagestore.cpp, autotests/messagestoretest.cpp
 - output: schema migration adds message_id, in_reply_to, refs, gm_thrid, thread_id (existing
   databases upgrade in place); `addMessage`/`messages` persist and load them.
 - verify: build; ctest (fresh DB and upgrade from the old schema).
-- notes: never touch the user's DB in tests; temp dirs only.
+- notes: never touch the user's DB in tests; temp dirs only. Done 2026-10-10 (no sub-agents). Columns message_id, in_reply_to, refs (space
+  separated), gm_thrid, thread_id are added by MessageStore::updateThreading() by looking for them
+  (no schemaVersion bump: a bump recomputes every preview); existing rows get their threading
+  fields from the first 64 KB of their .eml (message_id NULL = not read yet, "" = none).
+  addMessage takes them from the summary, or from the raw header block when the summary has none.
+  MessageSummary::threadId is stored too, and MessageStore::setThreadIds() writes computed ids.
+  Tests: round trip, from raw, setThreadIds, upgrade from a version 3 database.
 
 ### T220 — ThreadBuilder
 - status: todo

@@ -4760,9 +4760,36 @@ first, then stop.
 - verify: build; ctest; offscreen shot via `PLASMAMAIL_SCREENSHOT_SETTINGS=sending`.
 - notes:
 
+### T228 — Dev key hook without Qt private API
+- status: todo
+- depends on: T208
+- parallel-safe with: T209
+- files: CMakeLists.txt, src/CMakeLists.txt, src/app/main.cpp
+- inputs: T208 verification added `QT_FIND_PRIVATE_MODULES` + `Qt6::GuiPrivate` to the app only so a
+  demo hook can inject Ctrl+Z through QWindowSystemInterface; a private Qt module in the shipped
+  binary breaks on Qt updates.
+- output: the hook uses public API (e.g. `QTest::keyClick` on the QWindow from Qt6::Test, which is
+  already found, or a synthesized QKeyEvent delivered via QGuiApplication::sendEvent to the focus
+  object/window after activation) or the hook moves behind a dev-only CMake option that is off by
+  default; `Qt6::GuiPrivate` and `QT_FIND_PRIVATE_MODULES` removed from the default build.
+- verify: build; ctest; the T208 Ctrl+Z demo check still passes (undo fires; focused search field
+  keeps its own Ctrl+Z).
+- notes:
+
+### T229 — Undo: tell the user when a restored attachment is gone
+- status: todo
+- depends on: T208
+- parallel-safe with: T209, T228
+- files: src/qml/ComposeWindow.qml
+- inputs: T208 verification: a restored composer silently drops an attachment whose file was
+  deleted meanwhile.
+- output: the restored composer shows an inline warning naming the missing files.
+- verify: build; ctest; demo run with a deleted attachment file shows the warning (offscreen shot).
+- notes: not urgent.
+
 ### T210 — Check: undo send
 - status: todo
-- depends on: T208, T209
+- depends on: T208, T209, T228
 - parallel-safe with: none
 - files: none (fixes become new tasks)
 - inputs: demo hooks.

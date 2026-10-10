@@ -4783,7 +4783,7 @@ first, then stop.
 
 
 ### T229 — Undo: tell the user when a restored attachment is gone
-- status: todo
+- status: done
 - depends on: T208
 - parallel-safe with: T209, T228
 - files: src/qml/ComposeWindow.qml
@@ -4792,6 +4792,12 @@ first, then stop.
 - output: the restored composer shows an inline warning naming the missing files.
 - verify: build; ctest; demo run with a deleted attachment file shows the warning (offscreen shot).
 - notes: not urgent.
+- verification (2026-10-10, offscreen, isolated XDG, dev build, demo composer with attachment, queued,
+  file deleted before Ctrl+Z undo): build clean, ctest 19/19. ComposeWindow.addAttachments now returns
+  the names it skipped; onCompleted stores them for initialAttachments, shown by a dismissable
+  Kirigami.InlineMessage (Warning, i18np plural) at the top of the window. Shots (scratchpad)
+  t229-dark/light.png show the warning naming the file; t229-present.png (file kept) shows the chip and
+  no warning. Drag/drop and file-dialog adds ignore the return value (unchanged).
 
 ### T210 — Check: undo send
 - status: done (headless checks pass; real-app checks listed below remain for the user)

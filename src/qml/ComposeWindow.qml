@@ -39,6 +39,8 @@ Kirigami.ApplicationWindow {
     // The id MailController gave the message; 0 until sendMessage() returned.
     property int sendId: 0
     property string errorText
+    // The names of restored attachments whose files are gone (shown as a dismissable warning).
+    property var missingAttachments: []
     // The files to attach: {path, name, size}.
     property var attachments: []
     readonly property double attachmentsTotal: attachments.reduce((sum, file) => sum + file.size, 0)
@@ -51,15 +53,20 @@ Kirigami.ApplicationWindow {
     minimumHeight: Kirigami.Units.gridUnit * 16
     pageStack.globalToolBar.style: Kirigami.ApplicationHeaderStyle.None
 
+    // Returns the file names that could not be read (deleted, unreadable).
     function addAttachments(urls) {
         const list = attachments.slice();
+        const missing = [];
         for (const url of urls) {
             const info = MailController.fileInfo(url);
-            if (info.path !== undefined && !list.some(file => file.path === info.path)) {
+            if (info.path === undefined) {
+                missing.push(String(url).split("/").pop());
+            } else if (!list.some(file => file.path === info.path)) {
                 list.push(info);
             }
         }
         attachments = list;
+        return missing;
     }
 
     function send() {
@@ -97,7 +104,7 @@ Kirigami.ApplicationWindow {
         bodyArea.text = initialBody;
         errorText = initialError;
         if (initialAttachments.length > 0) {
-            addAttachments(initialAttachments);
+            missingAttachments = addAttachments(initialAttachments);
         }
         const index = fromBox.indexOfValue(initialAccount);
         fromBox.currentIndex = index >= 0 ? index : 0;
@@ -146,6 +153,17 @@ Kirigami.ApplicationWindow {
         ColumnLayout {
             anchors.fill: parent
             spacing: 0
+
+            // Restored message whose attached files were removed in the meantime.
+            Kirigami.InlineMessage {
+                Layout.fillWidth: true
+                type: Kirigami.MessageType.Warning
+                showCloseButton: true
+                visible: composer.missingAttachments.length > 0
+                text: KI18n.i18np("This attachment is no longer available and was left out: %2",
+                    "These %1 attachments are no longer available and were left out: %2",
+                    composer.missingAttachments.length, composer.missingAttachments.join(", "))
+            }
 
             // From / To / Cc / Subject rows with hairline dividers, like the mail clients it is modeled on.
             GridLayout {

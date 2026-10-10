@@ -1,5 +1,5 @@
 // SPDX-FileCopyrightText: 2026 topke <topke63@gmail.com>
-// SPDX-License-Identifier: GPL-2.0-or-later
+// SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <KAboutData>
 #include <KColorSchemeManager>
@@ -189,14 +189,14 @@ int main(int argc, char *argv[])
                      i18nc("@title", "Plasma Mail"),
                      u"0.1"_s,
                      i18nc("@info", "A simple IMAP mail client for Plasma"),
-                     KAboutLicense::GPL_V2,
+                     KAboutLicense::GPL_V3,
                      i18nc("@info:credit", "© 2026 topke"),
                      QString(),
                      QString(),
                      QString()); // no bug address: not a KDE project, so no bugs.kde.org link
     // Not "org.kde.…" (the default), so the About page shows no KDE donate/get-involved links.
     about.setDesktopFileName(u"plasma-mail"_s);
-    about.setLicense(KAboutLicense::GPL_V2, KAboutLicense::OrLaterVersions); // matches the SPDX headers
+    about.setLicense(KAboutLicense::GPL_V3, KAboutLicense::OrLaterVersions); // matches the SPDX headers
     // The installed themed icon, else the copy inside the executable.
     const QIcon appIcon = QIcon::fromTheme(u"org.topke.plasmamail"_s, QIcon(u":/icons/sc-apps-org.topke.plasmamail.svg"_s));
     QGuiApplication::setWindowIcon(appIcon);

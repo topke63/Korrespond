@@ -8,8 +8,8 @@ SPDX-License-Identifier: CC0-1.0
 A simple IMAP mail client for KDE Plasma, written in C++20 with Qt 6 and Kirigami.
 It is a personal project: it does not use Akonadi, and it talks IMAP/SMTP directly.
 
-- **Accounts:** Yahoo (app password) and Gmail (Google sign-in, OAuth2). Several accounts at once.
-  Outlook is not available yet.
+- **Accounts:** Yahoo (app password), Gmail (Google sign-in, OAuth2) and any other IMAP
+  provider with a password. Several accounts at once. Outlook is not available yet.
 - **Mail:** folders, conversations, local storage with import date / keep time / size limits,
   IMAP IDLE (push) and new-mail notifications, compose / reply / forward over SMTP.
 - **Contacts:** recipient autocomplete and sender names (Google People API for Gmail, addresses
@@ -101,7 +101,15 @@ To update: `git pull`, rebuild and install again.
 
 ## Set up accounts
 
-Start Plasma Mail and use **Settings → Accounts → Add Account…**.
+Start Plasma Mail and use **Settings → Accounts → Add Account…** (on first start the setup
+page opens by itself). Pick the provider in the list:
+
+| Provider | Login | What you need |
+|---|---|---|
+| Yahoo | app password | an app password from Yahoo ([below](#yahoo)) |
+| Gmail | Google sign-in (OAuth2) | your own Google OAuth client, once ([below](#gmail--google)) |
+| Custom IMAP | password | IMAP server and port ([below](#other-providers-custom-imap)) |
+| Outlook | — | not available yet (greyed out in the list) |
 
 ### Yahoo
 
@@ -109,7 +117,7 @@ Yahoo rejects your normal password over IMAP. Create an app password first:
 Yahoo → Account security → turn on 2-step verification → **Generate app password**.
 Enter your address and that app password in the app.
 
-### Gmail
+### Gmail / Google
 
 Gmail uses Google sign-in, which needs an OAuth client of your own (this repository does not
 ship one). You only create it once.
@@ -134,6 +142,19 @@ ship one). You only create it once.
 
 The client is never committed anywhere; keep the secret out of version control.
 
+Notes:
+
+- Plasma Mail never sees your Google password; it stores only the OAuth refresh token (in the
+  keychain) and requests new access tokens itself.
+- The scope is `https://mail.google.com/` (IMAP and SMTP), so the same sign-in covers reading
+  and sending.
+- A project in "Testing" mode makes Google expire the refresh token after 7 days. If the app
+  asks you to sign in again every week, publish the app "In production" (it stays unverified,
+  which is fine for personal use; Google shows a warning screen you click through).
+- One OAuth client works for any number of Gmail addresses; add each one as a test user while
+  the app is in "Testing". Google Workspace addresses work the same way if the admin allows
+  the client.
+
 #### Gmail contacts (optional)
 
 For recipient autocomplete from your Google contacts:
@@ -144,6 +165,50 @@ For recipient autocomplete from your Google contacts:
    (in "Testing" mode the account must be a test user).
 3. In **Settings → Contacts**, click **Allow Access to Contacts…** for the account
    (existing tokens do not carry the new scopes).
+
+### Other providers (custom IMAP)
+
+Any provider that offers IMAP with a password works through **Custom IMAP**: fastmail.com,
+iCloud, GMX, mailbox.org, posteo.de, your own server, and so on.
+
+1. Choose **Custom IMAP**, enter your email address, your name and the password.
+2. Fill in **IMAP server** (for example `imap.example.com`) and **Port**. Port `993` uses TLS
+   from the first byte; port `143` upgrades with STARTTLS. Connections are always encrypted.
+3. Click **Connect**. The login is checked before the account is saved.
+
+Many providers want an **app password** instead of your normal password when 2-step
+verification is on (iCloud, Fastmail, GMX with 2FA, and others); create one in the provider's
+account settings and use it here.
+
+**Sending mail with a custom account:** the setup page has no SMTP fields yet, so add the
+server by hand to `~/.config/plasmamailrc`, in the group of the account, with Plasma Mail
+closed:
+
+```ini
+[Account you@example.com]
+SmtpHost=smtp.example.com
+SmtpPort=465
+```
+
+Port `465` uses TLS from the first byte; any other port (for example `587`) uses STARTTLS.
+The password is the same one as for IMAP.
+
+Typical servers:
+
+| Provider | IMAP | SMTP |
+|---|---|---|
+| Yahoo (built in) | `imap.mail.yahoo.com` 993 | `smtp.mail.yahoo.com` 465 |
+| Gmail (built in) | `imap.gmail.com` 993 | `smtp.gmail.com` 465 |
+| iCloud | `imap.mail.me.com` 993 | `smtp.mail.me.com` 587 |
+| Fastmail | `imap.fastmail.com` 993 | `smtp.fastmail.com` 465 |
+| GMX | `imap.gmx.net` 993 | `mail.gmx.net` 587 |
+| mailbox.org | `imap.mailbox.org` 993 | `smtp.mailbox.org` 465 |
+
+(Check the provider's own help page; these are the usual values, not something Plasma Mail
+verifies.)
+
+**Not supported:** Outlook.com / Microsoft 365 (they have switched off password login and
+need OAuth2, which is planned), and providers that only offer OAuth2.
 
 ## Files
 
@@ -173,4 +238,5 @@ For recipient autocomplete from your Google contacts:
 
 ## License
 
-GPL-2.0-or-later. See [`LICENSES/GPL-2.0-or-later.txt`](LICENSES/GPL-2.0-or-later.txt).
+Plasma Mail is free software, licensed under the GNU General Public License, version 3
+or (at your option) any later version: GPL-3.0-or-later. See [`LICENSES/GPL-3.0-or-later.txt`](LICENSES/GPL-3.0-or-later.txt).

@@ -206,8 +206,8 @@ T39 and T46 later make it fully functional.
 - Every source, CMake and QML file starts with an SPDX header (`//` comments in C++/QML,
   `#` in CMake):
   `SPDX-FileCopyrightText: 2026 topke <topke63@gmail.com>` and
-  `SPDX-License-Identifier: GPL-2.0-or-later`. The licence text is in
-  `LICENSES/GPL-2.0-or-later.txt`.
+  `SPDX-License-Identifier: GPL-3.0-or-later`. The licence text is in
+  `LICENSES/GPL-3.0-or-later.txt`.
 - Build only in `build/` (or `build-*/` presets). Never run `cmake .` in the source tree.
 - Include project headers by file name (`"folderutils.h"`), not `"engine/…"`.
 - Tests live in `autotests/`, use QTest, are added with ECM's `ecm_add_test`, and must call

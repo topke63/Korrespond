@@ -3777,6 +3777,133 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - verify: build; `ctest --preset dev`; offscreen start clean.
 - notes: pre-existing / edge cases; not urgent.
 
+# Milestone 3i — Mimestream look (user request 2026-10-10: "match Mimestream's look as closely as possible")
+
+Reference: the user's Mimestream dark-mode screenshot (session image `2.png`, kept outside the repo).
+Sampled colours (dark):
+
+| Element | Mimestream | Notes |
+|---|---|---|
+| Sidebar background | `#4c4951` | macOS vibrancy over the wallpaper; we use it solid |
+| Sidebar selected row | `#68656b` | rounded, inset ~8 px |
+| Sidebar text / section header / icons | `#f3eff5` / `#8c8991` / `#cfc8ba`-ish | header small, semi-bold, not uppercase |
+| Title bar band (list header + reading toolbar) | `#251e2c` (`#241d29`) | the deep purple is only here, not in the list |
+| List and reading background | `#1e1e1e` | neutral, not purple |
+| List selected row | `#464646` | neutral grey, rounded, inset ~12 px; no row separators |
+| Sender / subject / preview / date | `#ececec` bold / `#e8e8e8` / `#aaaaaa` / `#a4a4a4` | three lines; date top right |
+| Secondary text (reading pane dates) | `#ababab` | |
+| Column dividers | `#010101`–`#060606`, 1 px | black hairline |
+| Toolbar icons | `#9f99a2` | |
+| Accent (menu selection) | `#1866c5` | |
+| Label chips (bg, text white) | Inquiries `#b4d1f8` (dark text), Travel `#b69dfe`, Home `#1ba26b` | |
+| Label tag icons | Awaiting `#f78671`, Delegated `#ffbd66`, Follow Up `#f8d075`, Home `#2ecb94`, Inquiries `#a9c6e6`, Travel `#bba3fd`, Website `#bebbc1` | |
+
+Light mode has no reference; derive it (macOS light: sidebar `#e8e6ee`-ish, band `#f3f1f6`, list
+`#ffffff`, selection `#dcdcdc`, text `#1c1b22`, secondary `#6e6e73`, accent `#0a60d6`).
+
+- **Open questions**:
+  1. Labels: the app has no labels. Mimestream's chips and the "Personal" tag list are Gmail labels.
+     Real support (Gmail `X-GM-LABELS`, IMAP keywords for Yahoo) is a feature, not styling — build it?
+     Until answered, T180 only adds the chip colours to MimeTheme; nothing shows them.
+  2. Task IDs: the user asked to start at T174, but T174 already exists (push follow-ups), so this
+     milestone starts at T175.
+  3. `PLASMAMAIL_SCREENSHOT_OPEN=1` opens the newest message and may mark it read on the server.
+     Is that fine for checking the reading pane, or should the hook get a no-mark-read mode?
+  4. The sidebar is translucent (vibrancy) in Mimestream. KWin blur behind the sidebar is possible
+     but out of scope unless the user wants it.
+
+### T175 — First Mimestream palette pass (work already done)
+- status: done
+- depends on: none
+- parallel-safe with: none
+- files: src/qml/MimeTheme.qml (new), src/CMakeLists.txt, src/qml/FolderSidebar.qml,
+  src/qml/StatusBar.qml, src/qml/MessageListPage.qml, src/qml/MessagePage.qml,
+  src/app/mailcontroller.h, src/app/mailcontroller.cpp, src/engine/messagerenderer.h,
+  src/engine/messagerenderer.cpp, autotests/messagerenderertest.cpp
+- inputs: the uncommitted working tree of 2026-10-10.
+- output: MimeTheme singleton (dark/light from `Qt.styleHints.colorScheme`) applied through
+  `Kirigami.Theme.colorSet: Custom`; `MailController::setMessageColours` feeds text, background and
+  link colours to the body HTML; `readableLinkColour` minimum contrast 4.5:1; unread rows keep bold
+  sender and dot, lose accent bar and tint.
+- verify: `cmake --build build -j8`; `ctest --test-dir build` all pass.
+- notes: committed as-is 2026-10-10; build clean, ctest 19/19.
+
+### T176 — Palette: sampled Mimestream colours
+- status: todo
+- depends on: T175
+- parallel-safe with: none
+- files: src/qml/MimeTheme.qml
+- inputs: the table above.
+- output: dark values replaced with the sampled ones (list `#1e1e1e`, reading `#1e1e1e`, sidebar
+  `#4c4951`, selections `#68656b`/`#464646`, accent `#1866c5`, link stays readable `#5ea2ff`-ish
+  ≥ 4.5:1 on `#1e1e1e`); new tokens `headerBackground`, `columnDivider`, `sectionText`,
+  `previewText`, `iconTint`, `toolbarIcon`; light values derived. Existing token names kept.
+- verify: build; ctest; screenshot shows neutral list/reading background and grey sidebar.
+- notes:
+
+### T177 — Title bar band and column dividers
+- status: todo
+- depends on: T176
+- parallel-safe with: none
+- files: src/qml/MessageListPage.qml, src/qml/MessagePage.qml, src/qml/FolderSidebar.qml,
+  src/qml/Main.qml (only if the dividers live there)
+- inputs: `MimeTheme.headerBackground`, `columnDivider`, `toolbarIcon`.
+- output: the list page title bar and the reading-pane toolbar use `headerBackground`; the sidebar
+  header stays on the sidebar colour (as in Mimestream); 1 px `columnDivider` between the three
+  columns; toolbar icons tinted `toolbarIcon`.
+- verify: build; ctest; screenshot: purple band across list and reading headers only, black hairlines.
+- notes:
+
+### T178 — Message list rows like Mimestream
+- status: todo
+- depends on: T177
+- parallel-safe with: none
+- files: src/qml/MessageListPage.qml
+- inputs: palette tokens.
+- output: three lines: sender (bold, `text`) with date right (`secondaryText`, small); subject
+  (normal weight, `text`); preview (`previewText`, one line, elided). No row separators. Selection
+  and hover are rounded rects inset from the list edges (about `largeSpacing`), selection
+  `listSelected`. Unread dot kept, unread sender bold, read sender DemiBold. Existing icons
+  (attachment, flag) kept, tinted `secondaryText`.
+- verify: build; ctest; screenshot compared with the reference list column.
+- notes:
+
+### T179 — Sidebar like Mimestream
+- status: todo
+- depends on: T177
+- parallel-safe with: none
+- files: src/qml/FolderSidebar.qml
+- inputs: palette tokens.
+- output: account/section headers small, DemiBold, `sectionText`; rows a bit taller, rounded
+  selection `sidebarSelected` inset ~`smallSpacing`; selected row text stays normal weight; folder
+  icons tinted `iconTint` (selected: `text`); unread counts `secondaryText`.
+- verify: build; ctest; screenshot compared with the reference sidebar.
+- notes:
+
+### T180 — Reading pane header and label chip colours
+- status: todo
+- depends on: T177
+- parallel-safe with: none
+- files: src/qml/MessagePage.qml, src/qml/MimeTheme.qml
+- inputs: palette tokens; open question 1.
+- output: subject as a large bold heading; sender line `text`, date right-aligned `secondaryText`;
+  header separator uses `divider`; MimeTheme gets `labelColours` (the seven tag colours above) and a
+  `chipColour(name)` helper for later — not shown anywhere until labels exist.
+- verify: build; ctest; offscreen start without QML warnings.
+- notes:
+
+### T181 — Visual check against the reference
+- status: todo
+- depends on: T178, T179, T180
+- parallel-safe with: none
+- files: none (fixes go back to the owning task as new tasks)
+- inputs: reference image; `PLASMAMAIL_SCREENSHOT=<png> build/bin/plasma-mail` (no `_OPEN`, see
+  open question 3).
+- output: a screenshot of the app next to the reference with sampled colours of sidebar, band,
+  list, selection, text; differences listed.
+- verify: sampled colours within about 6 per channel of the table (dark mode).
+- notes:
+
 ## Execution Loop
 
 Execute the plan as a loop. Each iteration handles one task in a fresh context, then ends.

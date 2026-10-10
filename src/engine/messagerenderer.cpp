@@ -100,7 +100,7 @@ double contrastRatio(const QColor &a, const QColor &b)
 
 QColor readableLinkColour(const QColor &link, const QColor &background)
 {
-    constexpr double minimum = 3.0;
+    constexpr double minimum = 4.5;
     if (contrastRatio(link, background) >= minimum) {
         return link;
     }

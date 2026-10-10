@@ -56,6 +56,7 @@ qt_policy(SET QTP0004 NEW)
 add_executable(plasma-mail
     app/main.cpp
 )
+set_source_files_properties(qml/MimeTheme.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
 qt_add_qml_module(plasma-mail
     URI PlasmaMail
     VERSION 1.0
@@ -66,6 +67,7 @@ qt_add_qml_module(plasma-mail
         app/trayicon.cpp app/trayicon.h
         app/mailcontroller.cpp app/mailcontroller.h
     QML_FILES
+        qml/MimeTheme.qml
         qml/Main.qml
         qml/AccountSetupPage.qml
         qml/MessageListPage.qml

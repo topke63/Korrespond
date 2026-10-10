@@ -88,7 +88,7 @@ private Q_SLOTS:
         QFETCH(QColor, background);
         QFETCH(bool, unchanged);
         const QColor result = readableLinkColour(link, background);
-        QVERIFY(contrastRatio(result, background) >= 3.0);
+        QVERIFY(contrastRatio(result, background) >= 4.5);
         QCOMPARE(result == link, unchanged);
     }
     void testCspAlwaysPresent_data()

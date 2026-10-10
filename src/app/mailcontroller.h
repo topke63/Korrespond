@@ -13,6 +13,7 @@
 #include "storagesettings.h"
 
 #include <QAbstractListModel>
+#include <QColor>
 #include <QDateTime>
 #include <QObject>
 #include <QQmlEngine>
@@ -170,6 +171,8 @@ public:
     [[nodiscard]] bool messageHasRemoteImages() const;
     [[nodiscard]] bool remoteImagesLoaded() const;
     Q_INVOKABLE void loadRemoteImages();
+    // Colours for the HTML of the open message; QML's theme decides, so the body matches its pane.
+    Q_INVOKABLE void setMessageColours(const QColor &text, const QColor &background, const QColor &link);
     [[nodiscard]] QStringList messageAttachments() const;
     [[nodiscard]] bool messageFlagged() const;
     [[nodiscard]] bool messageUnread() const;
@@ -459,9 +462,13 @@ private:
     QString m_messageFrom;
     QString m_messageTo;
     QDateTime m_messageDate;
+    QString renderBody(const KMime::Message &msg, bool allowRemoteImages) const;
     QString m_messageHtml;
     bool m_messageHasRemoteImages = false; // the open message's HTML refers to remote images
     bool m_remoteImagesLoaded = false;
+    QColor m_bodyText;
+    QColor m_bodyBackground;
+    QColor m_bodyLink;
     QStringList m_messageAttachments;
     bool m_messageFlagged = false;
     bool m_messageUnread = false;

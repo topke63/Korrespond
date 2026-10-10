@@ -22,7 +22,13 @@ Kirigami.ScrollablePage {
 
     title: MailController.searchActive ? KI18n.i18nc("@title", "Search") : MailController.currentFolderName
     // Fixed accent for unread: the theme's highlight turns dull when the window is inactive.
-    readonly property color unreadColor: "#3daee9"
+    readonly property color unreadColor: MimeTheme.accent
+    Kirigami.Theme.colorSet: Kirigami.Theme.Custom
+    Kirigami.Theme.inherit: false
+    Kirigami.Theme.customBackgroundColor: MimeTheme.listBackground
+    Kirigami.Theme.customTextColor: MimeTheme.text
+    Kirigami.Theme.customDisabledTextColor: MimeTheme.secondaryText
+    Kirigami.Theme.customHighlightColor: MimeTheme.accent
     titleDelegate: Kirigami.Heading {
         level: 2
         font.weight: Font.Bold
@@ -170,28 +176,15 @@ Kirigami.ScrollablePage {
 
             background: Rectangle {
                 radius: Kirigami.Units.cornerRadius
-                color: row.highlighted ? Qt.alpha(Kirigami.Theme.textColor, 0.12)
-                     : row.unread ? Qt.alpha(page.unreadColor, 0.10)
-                     : row.hovered ? Qt.alpha(Kirigami.Theme.textColor, 0.05) : "transparent"
+                color: row.highlighted ? MimeTheme.listSelected
+                     : row.hovered ? MimeTheme.hover : "transparent"
 
-                // Accent bar on the left edge of unread rows.
-                Rectangle {
-                    visible: row.unread
-                    anchors.left: parent.left
-                    anchors.top: parent.top
-                    anchors.bottom: parent.bottom
-                    anchors.topMargin: Kirigami.Units.smallSpacing
-                    anchors.bottomMargin: Kirigami.Units.smallSpacing
-                    width: 3
-                    radius: 1.5
-                    color: page.unreadColor
-                }
             }
 
             contentItem: RowLayout {
                 spacing: Kirigami.Units.smallSpacing
 
-                // Unread: a clear accent dot (the row also gets an accent bar, below).
+                // Unread: a clear accent dot .
                 Rectangle {
                     Layout.alignment: Qt.AlignTop
                     Layout.topMargin: Math.round(senderLabel.height / 2 - height / 2)
@@ -240,7 +233,7 @@ Kirigami.ScrollablePage {
                         QQC2.Label {
                             text: row.dateText
                             font: Kirigami.Theme.smallFont
-                            color: row.unread ? page.unreadColor : Kirigami.Theme.disabledTextColor
+                            color: Kirigami.Theme.disabledTextColor
                         }
                     }
                     QQC2.Label {
@@ -272,7 +265,7 @@ Kirigami.ScrollablePage {
                 anchors.leftMargin: Kirigami.Units.gridUnit * 1.5
                 anchors.rightMargin: Kirigami.Units.largeSpacing
                 height: 1
-                color: Qt.alpha(Kirigami.Theme.textColor, 0.08)
+                color: MimeTheme.divider
                 visible: !row.highlighted && !row.hovered
             }
         }

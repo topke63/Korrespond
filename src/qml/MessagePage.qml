@@ -18,6 +18,22 @@ Kirigami.Page {
 
     readonly property string html: MailController.messageHtml
 
+    Kirigami.Theme.colorSet: Kirigami.Theme.Custom
+    Kirigami.Theme.inherit: false
+    Kirigami.Theme.customBackgroundColor: MimeTheme.readingBackground
+    Kirigami.Theme.customTextColor: MimeTheme.text
+    Kirigami.Theme.customDisabledTextColor: MimeTheme.secondaryText
+    Kirigami.Theme.customHighlightColor: MimeTheme.accent
+
+    // The body's own colours follow the pane.
+    function syncBodyColours() {
+        MailController.setMessageColours(MimeTheme.text, MimeTheme.readingBackground, MimeTheme.link);
+    }
+    Connections {
+        target: MimeTheme
+        function onDarkChanged() { page.syncBodyColours(); }
+    }
+
     function showHtml() {
         // Set right before loading so the setting and the HTML always belong to the same message.
         view.settings.autoLoadImages = MailController.remoteImagesLoaded;
@@ -368,7 +384,10 @@ Kirigami.Page {
         enabled: page.hasMessage && MailController.canDelete
         onActivated: MailController.deleteMessage()
     }
-    Component.onCompleted: showHtml()
+    Component.onCompleted: {
+        syncBodyColours();
+        showHtml();
+    }
 
     ColumnLayout {
         anchors.fill: parent

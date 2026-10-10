@@ -49,7 +49,7 @@ bool htmlHasOwnColours(const QString &html);
 // WCAG contrast ratio (1..21) between two colours.
 double contrastRatio(const QColor &a, const QColor &b);
 
-// The link colour if it has a contrast of at least 3:1 on the background, else a lighter or
+// The link colour if it has a contrast of at least 4.5:1 on the background, else a lighter or
 // darker variant of it that does.
 QColor readableLinkColour(const QColor &link, const QColor &background);
 

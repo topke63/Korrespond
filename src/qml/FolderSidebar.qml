@@ -61,8 +61,12 @@ Kirigami.OverlayDrawer {
     topPadding: 0
     bottomPadding: 0
 
-    Kirigami.Theme.colorSet: Kirigami.Theme.Window
+    Kirigami.Theme.colorSet: Kirigami.Theme.Custom
     Kirigami.Theme.inherit: false
+    Kirigami.Theme.customBackgroundColor: MimeTheme.sidebarBackground
+    Kirigami.Theme.customTextColor: MimeTheme.text
+    Kirigami.Theme.customDisabledTextColor: MimeTheme.secondaryText
+    Kirigami.Theme.customHighlightColor: MimeTheme.accent
 
     // The folder list, with the drag handle for the width on its right edge.
     contentItem: Item {
@@ -274,8 +278,8 @@ Kirigami.OverlayDrawer {
 
         background: Rectangle {
             radius: Kirigami.Units.cornerRadius
-            color: folderRow.highlighted ? Qt.alpha(Kirigami.Theme.textColor, 0.12)
-                 : folderRow.hovered ? Qt.alpha(Kirigami.Theme.textColor, 0.05) : "transparent"
+            color: folderRow.highlighted ? MimeTheme.sidebarSelected
+                 : folderRow.hovered ? MimeTheme.hover : "transparent"
         }
         contentItem: RowLayout {
             spacing: Kirigami.Units.mediumSpacing

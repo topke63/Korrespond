@@ -386,10 +386,33 @@ void MailController::loadRemoteImages()
     if (!m_openMessage || !m_messageHasRemoteImages || m_remoteImagesLoaded) {
         return;
     }
-    const QPalette palette = QGuiApplication::palette();
     m_remoteImagesLoaded = true;
-    m_messageHtml = messageBodyHtml(*m_openMessage, palette.color(QPalette::Text), palette.color(QPalette::Base), palette.color(QPalette::Link), true);
+    m_messageHtml = renderBody(*m_openMessage, true);
     Q_EMIT currentMessageChanged();
+}
+
+QString MailController::renderBody(const KMime::Message &msg, bool allowRemoteImages) const
+{
+    const QPalette palette = QGuiApplication::palette();
+    return messageBodyHtml(msg,
+                           m_bodyText.isValid() ? m_bodyText : palette.color(QPalette::Text),
+                           m_bodyBackground.isValid() ? m_bodyBackground : palette.color(QPalette::Base),
+                           m_bodyLink.isValid() ? m_bodyLink : palette.color(QPalette::Link),
+                           allowRemoteImages);
+}
+
+void MailController::setMessageColours(const QColor &text, const QColor &background, const QColor &link)
+{
+    if (text == m_bodyText && background == m_bodyBackground && link == m_bodyLink) {
+        return;
+    }
+    m_bodyText = text;
+    m_bodyBackground = background;
+    m_bodyLink = link;
+    if (m_openMessage) {
+        m_messageHtml = renderBody(*m_openMessage, m_remoteImagesLoaded);
+        Q_EMIT currentMessageChanged();
+    }
 }
 
 QStringList MailController::messageAttachments() const
@@ -1531,8 +1554,7 @@ void MailController::showMessage(AccountSession *session, const QString &folder,
     m_messageFrom = msg.from() ? msg.from()->asUnicodeString() : QString(); // "Name <address>"
     m_messageTo = msg.to() ? msg.to()->displayString() : QString();
     m_messageDate = ::messageDate(msg); // falls back to the Received date
-    const QPalette palette = QGuiApplication::palette();
-    m_messageHtml = messageBodyHtml(msg, palette.color(QPalette::Text), palette.color(QPalette::Base), palette.color(QPalette::Link));
+    m_messageHtml = renderBody(msg, false);
     m_messageHasRemoteImages = ::messageHasRemoteImages(msg);
     m_remoteImagesLoaded = false;
     m_messageAttachments = attachmentNames(msg);

@@ -197,6 +197,20 @@ private Q_SLOTS:
         QVERIFY(folderForRole({}, u"trash"_s).isEmpty());
     }
 
+    void testCanHideFolder()
+    {
+        const QList<FolderInfo> folders = {folder(u"INBOX"_s, u"inbox"_s), folder(u"Archive"_s, u"archive"_s), folder(u"Projects/Alpha"_s, QString())};
+        QVERIFY(!canHideFolder(folders, u"INBOX"_s));
+        QVERIFY(!canHideFolder(folders, u"Inbox"_s));
+        QVERIFY(!canHideFolder(folders, u"inbox"_s));
+        QVERIFY(!canHideFolder(folders, QString()));
+        // A server whose inbox role folder has another name.
+        QVERIFY(!canHideFolder({folder(u"Posteingang"_s, u"inbox"_s)}, u"Posteingang"_s));
+        QVERIFY(canHideFolder(folders, u"Archive"_s));
+        QVERIFY(canHideFolder(folders, u"Projects/Alpha"_s));
+        QVERIFY(canHideFolder(folders, u"INBOX/Sub"_s));
+    }
+
     void testArchiveTarget()
     {
         // Yahoo-like: a real Archive folder.

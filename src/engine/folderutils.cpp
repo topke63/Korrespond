@@ -72,3 +72,11 @@ QString archiveTarget(const QList<FolderInfo> &folders)
     const QString archive = folderForRole(folders, QStringLiteral("archive"));
     return archive.isEmpty() ? folderForRole(folders, QStringLiteral("all")) : archive;
 }
+
+bool canHideFolder(const QList<FolderInfo> &folders, const QString &path)
+{
+    if (path.isEmpty() || path.compare(QStringLiteral("INBOX"), Qt::CaseInsensitive) == 0) {
+        return false;
+    }
+    return path != folderForRole(folders, QStringLiteral("inbox"));
+}

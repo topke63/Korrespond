@@ -743,6 +743,62 @@ void MailController::setAllAccountsCollapsed(bool collapsed)
     Q_EMIT collapsedAccountsChanged();
 }
 
+QVariantMap MailController::hiddenFolders() const
+{
+    QVariantMap map;
+    for (auto it = m_app.hiddenFolders.cbegin(); it != m_app.hiddenFolders.cend(); ++it) {
+        map.insert(it.key(), it.value());
+    }
+    return map;
+}
+
+bool MailController::showHiddenFolders() const
+{
+    return m_app.showHiddenFolders;
+}
+
+void MailController::setShowHiddenFolders(bool show)
+{
+    if (show == m_app.showHiddenFolders) {
+        return;
+    }
+    m_app.showHiddenFolders = show;
+    m_app.save();
+    Q_EMIT showHiddenFoldersChanged();
+}
+
+bool MailController::isFolderHidden(const QString &account, const QString &path) const
+{
+    return m_app.hiddenFolders.value(account).contains(path);
+}
+
+bool MailController::setFolderHidden(const QString &account, const QString &path, bool hidden)
+{
+    const AccountSession *session = sessionFor(account);
+    if (!session) {
+        return false;
+    }
+    // Showing again is always allowed; hiding is refused for the inbox.
+    if (hidden && !canHideFolder(session->folders(), path)) {
+        return false;
+    }
+    if (hidden == isFolderHidden(account, path)) {
+        return true;
+    }
+    QStringList &list = m_app.hiddenFolders[account];
+    if (hidden) {
+        list.append(path);
+    } else {
+        list.removeAll(path);
+        if (list.isEmpty()) {
+            m_app.hiddenFolders.remove(account);
+        }
+    }
+    m_app.save();
+    Q_EMIT hiddenFoldersChanged();
+    return true;
+}
+
 int MailController::sidebarMinWidth() const
 {
     return AppSettings::minSidebarWidth;
@@ -1974,6 +2030,11 @@ void MailController::removeAccount(const QString &account)
     if (m_app.collapsedAccounts.removeAll(email) > 0) {
         m_app.save();
         Q_EMIT collapsedAccountsChanged();
+    }
+    // Neither may its hidden folders carry over to a new account with the same address.
+    if (m_app.hiddenFolders.remove(email) > 0) {
+        m_app.save();
+        Q_EMIT hiddenFoldersChanged();
     }
     if (m_messageAccount == email) {
         clearMessage(true);

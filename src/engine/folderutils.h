@@ -28,3 +28,7 @@ QString folderForRole(const QList<FolderInfo> &folders, const QString &role);
 // Where Archive moves a message to: the "archive" folder, else (Gmail) "all", whose All Mail
 // holds every message that is not in the inbox any more. Empty when there is neither.
 QString archiveTarget(const QList<FolderInfo> &folders);
+
+// Whether the user may hide this folder from the sidebar: never the inbox (path "INBOX" in any
+// case, or the folder whose role is "inbox"), and never an empty path.
+bool canHideFolder(const QList<FolderInfo> &folders, const QString &path);

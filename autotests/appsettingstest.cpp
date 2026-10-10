@@ -45,6 +45,8 @@ private Q_SLOTS:
         QCOMPARE(settings.listWidth, 360);
         QVERIFY(!settings.sidebarCollapsed);
         QVERIFY(settings.collapsedAccounts.isEmpty());
+        QVERIFY(settings.hiddenFolders.isEmpty());
+        QVERIFY(!settings.showHiddenFolders);
     }
 
     void testRoundTrip()
@@ -60,6 +62,24 @@ private Q_SLOTS:
         settings.collapsedAccounts = {u"bob@example.com"_s, u"we,ird\\x@example.com"_s};
         settings.save();
         QCOMPARE(AppSettings::load(), settings);
+    }
+
+    void testHiddenFoldersRoundTrip()
+    {
+        AppSettings settings;
+        settings.showHiddenFolders = true;
+        // Awkward addresses and paths: commas, slashes, backslashes, dots, brackets, equals, spaces.
+        settings.hiddenFolders.insert(u"we,ird\\x.y@example.com"_s, {u"Projects/Alpha"_s, u"a,b"_s, u"back\\slash"_s, u"[Gmail]/All Mail"_s, u"x=y [z]"_s});
+        settings.hiddenFolders.insert(u"bob@example.com"_s, {u"Archive.2024"_s, u"INBOX/Sub"_s});
+        settings.save();
+        const AppSettings loaded = AppSettings::load();
+        QCOMPARE(loaded.hiddenFolders, settings.hiddenFolders);
+        QVERIFY(loaded.showHiddenFolders);
+        QCOMPARE(loaded, settings);
+        // Removing an account's list is saved too (no stale keys).
+        settings.hiddenFolders.remove(u"bob@example.com"_s);
+        settings.save();
+        QCOMPARE(AppSettings::load().hiddenFolders, settings.hiddenFolders);
     }
 
     void testValuesAreClampedWhenLoaded()

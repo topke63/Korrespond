@@ -134,6 +134,10 @@ class MailController : public QObject
     Q_PROPERTY(int listWidth READ listWidth NOTIFY panelWidthsChanged)
     // Whether the docked folder sidebar is hidden (remembered between runs).
     Q_PROPERTY(QStringList collapsedAccounts READ collapsedAccounts NOTIFY collapsedAccountsChanged)
+    // Folders hidden from the sidebar (display only): account email -> list of folder paths, and
+    // whether they are shown anyway. Inbox can never be hidden. Both are saved at once.
+    Q_PROPERTY(QVariantMap hiddenFolders READ hiddenFolders NOTIFY hiddenFoldersChanged)
+    Q_PROPERTY(bool showHiddenFolders READ showHiddenFolders WRITE setShowHiddenFolders NOTIFY showHiddenFoldersChanged)
     Q_PROPERTY(bool sidebarCollapsed READ sidebarCollapsed WRITE setSidebarCollapsed NOTIFY sidebarCollapsedChanged)
     Q_PROPERTY(int sidebarMinWidth READ sidebarMinWidth CONSTANT)
     Q_PROPERTY(int sidebarMaxWidth READ sidebarMaxWidth CONSTANT)
@@ -221,6 +225,12 @@ public:
     Q_INVOKABLE bool isAccountCollapsed(const QString &email) const;
     Q_INVOKABLE void setAccountCollapsed(const QString &email, bool collapsed);
     Q_INVOKABLE void setAllAccountsCollapsed(bool collapsed);
+    [[nodiscard]] QVariantMap hiddenFolders() const;
+    [[nodiscard]] bool showHiddenFolders() const;
+    void setShowHiddenFolders(bool show);
+    Q_INVOKABLE bool isFolderHidden(const QString &account, const QString &path) const;
+    // Returns false (and changes nothing) for the inbox or an unknown account.
+    Q_INVOKABLE bool setFolderHidden(const QString &account, const QString &path, bool hidden);
     [[nodiscard]] int sidebarMinWidth() const;
     [[nodiscard]] int sidebarMaxWidth() const;
     [[nodiscard]] int sidebarDefaultWidth() const;
@@ -358,6 +368,8 @@ Q_SIGNALS:
     void panelWidthsChanged();
     void sidebarCollapsedChanged();
     void collapsedAccountsChanged();
+    void hiddenFoldersChanged();
+    void showHiddenFoldersChanged();
     void showMessageRequested();
     // New mail found by a background check. With count == 1, sender ("Name <address>") and
     // subject describe the message; uid is the newest new message of the account's inbox.

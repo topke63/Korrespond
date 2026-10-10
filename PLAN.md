@@ -4219,7 +4219,7 @@ scripts/desktop3-run.sh or a visible window; never act on the user's real folder
   contrast than folder rows. Not measured; left as is.
 
 ### T189 — Hidden folders: storage and controller
-- status: todo
+- status: done
 - depends on: T188
 - parallel-safe with: none
 - files: src/engine/appsettings.h, src/engine/appsettings.cpp, autotests/appsettingstest.cpp,
@@ -4229,7 +4229,20 @@ scripts/desktop3-run.sh or a visible window; never act on the user's real folder
   path, bool)`, `isFolderHidden`, `showHiddenFolders` property (persisted); Inbox can never be
   hidden. No change to counts, sync or notifications.
 - verify: build; ctest (new tests incl. Inbox refusal).
-- notes:
+- notes: `AppSettings::hiddenFolders` (QMap<email, QStringList paths>) and `showHiddenFolders`
+  (bool, default false, key "ShowHiddenFolders" in [General]). Stored in subgroup
+  [General][HiddenFolders]: key = percent-encoded email, value = path list (KConfig escapes commas
+  and backslashes); stale keys are removed on save; tested with commas, slashes, backslashes, dots,
+  brackets, "=". Refusal rule: `canHideFolder(folders, path)` in engine/folderutils (false for empty
+  path, "INBOX" in any case, or the folder with role "inbox"); tested in folderutilstest.
+  MailController API for T190: read-only property `hiddenFolders` (QVariantMap email -> list of
+  paths, NOTIFY hiddenFoldersChanged; bind to this so the view updates, e.g.
+  `(MailController.hiddenFolders[email] || []).indexOf(path) >= 0`), property `showHiddenFolders`
+  (read/write, NOTIFY showHiddenFoldersChanged), invokables `isFolderHidden(account, path)` and
+  `setFolderHidden(account, path, hidden)` (returns false and does nothing for Inbox or an unknown
+  account; hidden=false always allowed). Display-only: counts, sync, IDLE, notifications and the
+  All Inboxes / Unread / Flagged views are untouched. removeAccount drops the account's list. Saved
+  at once. No UI yet. ctest 19/19; offscreen demo start shows only the usual offscreen messages.
 
 ### T190 — Hidden folders: sidebar UI
 - status: todo

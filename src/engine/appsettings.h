@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include <QMap>
+#include <QString>
 #include <QStringList>
 
 // General app options, in plasmamailrc, group [General].
@@ -30,6 +32,10 @@ struct AppSettings {
     bool sidebarCollapsed = false;
     // Accounts (by email) whose folder tree is folded in the sidebar; the others are open.
     QStringList collapsedAccounts;
+    // Folder paths hidden from the sidebar, by account email (display only). Absent = shown.
+    QMap<QString, QStringList> hiddenFolders;
+    // Show the hidden folders anyway (dimmed).
+    bool showHiddenFolders = false;
 
     // Missing or out-of-range values fall back to the defaults / the nearest allowed value.
     static AppSettings load();

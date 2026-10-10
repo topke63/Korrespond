@@ -4680,6 +4680,18 @@ first, then stop.
   requestQuit(), which waits for pending sends. With keepInTray on, nothing quits (tray). Main.qml
   onClosing and TrayIcon::setKeepInTray were removed (they fought Qt's quit). Tray Quit and Ctrl+Q
   still call requestQuit() directly.
+- verification (2026-10-10, offscreen, isolated XDG, timeout-bounded): build clean; ctest 19/19.
+  Builder: SEND+QUIT_AFTER=3000 rc 0 (queued, "quit: sending 1 pending message(s) now", handed off,
+  "quit: all messages handed off"); +QUIT_TWICE rc 0 (second request "ignored"); no pending
+  QUIT_AFTER=2000 rc 0 (no log line: quits at once); SEND only rc 124 (timeout kill; the app has no
+  quit hook, handed off at 10 s). Window close: main closed with a send pending rc 0 (flushed,
+  handed off, exit); main closed, no composer, nothing pending rc 0; main closed with a composer open
+  keeps running (rc 124 at the timeout, no quit lines: the regression is fixed); composer closed
+  later with a send pending rc 0 (flushed, handed off, exit); keepInTray=true, main closed: keeps
+  running (rc 124). Not verified headless: the 60 s cap (no hand-off that hangs in demo mode), tray
+  menu Quit, Ctrl+Q keypress, a real window-manager close, real SMTP. Hook-only QML message: a
+  composer loaded for the PLASMAMAIL_DEMO_COMPOSE hook is a root object, so its destroy() logs
+  "Invalid attempt to destroy() an indestructible object"; real composers use createObject.
 
 ### T208 — UI: "Sending… Undo" and reopening the message
 - status: todo

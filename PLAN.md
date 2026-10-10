@@ -4287,9 +4287,28 @@ scripts/desktop3-run.sh or a visible window; never act on the user's real folder
   the selection never jumps. Offscreen demo shots with alice hiding Receipts, Projects, Projects/Beta:
   scratchpad t190-{hidden,showhidden}-{dark,light}.png; only the usual offscreen "not placed in the
   graphics scene" messages. ctest 19/19.
+- verification (2026-10-10, tester, check of b919b7c): build up to date; ctest 19/19. Code review
+  of the diff (the menu cannot be clicked offscreen): the row menu is offered only when
+  `canHide || hidden`, so the shared views (account "", never hidden) and Inbox (role "inbox" or
+  path INBOX) get no menu; `folderRole` is a real FolderModel role (foldermodel.cpp). The
+  show-hidden toggle is bound to MailController.showHiddenFolders (checked: binding; the
+  onToggled write keeps it in step). Hidden rows use `visible: false`, which ColumnLayout skips;
+  `visible` keeps the selected folder (`highlighted`). Drag and drop is untouched (no drop
+  handlers in FolderSidebar). Subfolders of a hidden parent keep their depth indent. The
+  right-button TapHandler does not take the left click (onClicked). Offscreen demo with a seeded
+  hidden list (Projects, Projects/Beta, Receipts for alice): shows Projects and Receipts gone
+  and Projects/Alpha still listed at depth 1; with show-hidden on, the three rows are dimmed.
+  Logs: no binding loop, no QML warning.
+  Not exercised live: the right-click menu and the hamburger toggle (no input offscreen); the
+  C++ setFolderHidden path is covered only by reading (T189).
+  Design points for the planner (not changed): (1) a hidden parent's visible child sits right
+  under the previous sibling, which can read as belonging to that sibling (seen in alice's
+  Archive / Alpha shot); (2) with show-hidden on, a hidden row uses disabledTextColor, which is
+  3.69:1 on the light sidebar (see T191); (3) with PLASMAMAIL_SIDEBAR_COLLAPSED set, toggling
+  does not visibly change the sidebar for that run (the env override wins over the saved flag).
 
 ### T191 — Check: sidebar control in both schemes
-- status: todo
+- status: done (2026-10-10, tester; with the caveats in the notes)
 - depends on: T190
 - parallel-safe with: none
 - files: none (fixes become new tasks)
@@ -4297,7 +4316,42 @@ scripts/desktop3-run.sh or a visible window; never act on the user's real folder
 - output: collapse/expand, account collapse, hidden folders, all persisted across restart; menus
   and dimmed rows readable in both schemes.
 - verify: screenshots + restart checks pass.
-- notes:
+- notes: 2026-10-10 (tester, offscreen only: `QT_QPA_PLATFORM=offscreen`, `PLASMAMAIL_DEMO=1`,
+  isolated XDG dirs under the scratchpad, timeout 30, no window). Build clean; ctest 19/19.
+  Each case in BreezeDark and BreezeLight; PNGs in scratchpad `t191-<case>-<dark|light>.png`:
+  - (a) default: `default`. Logo top left, drawn (146 / 142 distinct colours in the logo box).
+    Code: FolderSidebar.qml `source: "org.topke.plasmamail"`, `fallback:
+    ":/icons/sc-apps-org.topke.plasmamail.svg"`; the qrc alias exists (src/CMakeLists.txt:88,
+    prefix /icons, data/icons/sc-apps-org.topke.plasmamail.svg). The theme icon is installed in
+    ~/.local/share/icons, which the isolated XDG_DATA_HOME does not reach, so this run probably
+    drew the bundled fallback (not proven). Note: the T198 text says theme name `plasma-mail`;
+    the code uses `org.topke.plasmamail` (the text is out of date, the code is right).
+  - (b) `seed-collapsed-env` (PLASMAMAIL_SIDEBAR_COLLAPSED=1): sidebar and logo hidden, show-sidebar
+    button top left of the list band. Both schemes.
+  - (c) `seed-collapsed-cfg` ($X/config/plasmamailrc, `[General] SidebarCollapsed=true`): same as
+    (b). Read from the file at start; the toggle-and-restart write path was not clicked.
+  - (d) `seed-bob-collapsed` (`CollapsedAccounts=bob@example.com`): bob folded with a right arrow,
+    alice open. Both schemes.
+  - (e) `seed-hidden-off` (`ShowHiddenFolders=false`, `[General][HiddenFolders]`
+    `alice%40example.com=Projects,Projects/Beta,Receipts`): the three rows are gone; Projects/Alpha
+    stays listed at depth 1. Both schemes.
+  - (f) `seed-hidden-on` (same seed, `ShowHiddenFolders=true`): the three rows dimmed and readable.
+    Both schemes.
+  - Contrast (WCAG ratio, glyph colour against the sidebar background, measured with python3 -I
+    and PIL on the PNGs; text colour = the glyph pixel farthest from the background):
+
+    | scheme | sidebar text ("Inbox") | heading ("Mail") | dimmed text (Projects, Beta, Receipts) |
+    |---|---|---|---|
+    | dark  | 15.00:1 | 13.67:1 (vs header bar) | 6.64:1 |
+    | light | 12.82:1 | 11.49:1 (vs header bar) | 3.69:1 |
+
+    The light dimmed text is below 4.5:1 (the theme's disabledTextColor). Reported to the planner,
+    not changed: a design choice (hidden rows should look quieter) against the readability goal.
+  - Logs (`t191-*.log`): only the usual offscreen messages (Vulkan, "not placed in the graphics
+    scene"); no QML warning, no binding loop.
+  - Not done: menus (readability not shot, per the brief); a live restart after toggling.
+  - Config reset: scratchpad xdg/config emptied after the runs. Nothing running; the user's
+    installed app and their config were not touched.
 
 # Milestone 3k — Follow the system colour scheme (user direction 2026-10-10: "the app's looks must
 # follow the global (Plasma) theme, not a fixed Mimestream palette")

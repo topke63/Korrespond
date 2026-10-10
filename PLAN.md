@@ -5586,6 +5586,21 @@ Approach: thread ids are computed in the engine and stored, the list model group
   Only the repeat is fixed. No automated test covers the dedupe. If the red chip returns, read the log
   around that time before changing the connection logic.
 
+### T247a — No error toasts while the window is hidden
+- status: done
+- depends on: T247
+- files: src/app/mailcontroller.cpp, src/app/mailcontroller.h, src/qml/Main.qml
+- inputs: the user saw two identical "topke63@yahoo.com: Connection to the server was lost." toasts
+  when reopening the window from the tray. Log: Yahoo's push connection goes `Failed` → `Stopped` about
+  every 5 minutes; the toasts were queued by the hidden window and shown together on reopen.
+- output: `reportConnectionError()` suppresses the same text until an inbox check succeeds (no 30 s
+  window) and logs every shown error; `Main.qml` `onErrorOccurred` logs and drops the toast while
+  `mainWindow.visible` is false.
+- verify: launch with logging, close to the tray ~5 min, reopen: no toast, log has
+  "Error while the window is hidden". Passed 2026-10-10 (commits e3d643c, 0c3d8ad).
+- notes: the Yahoo chip is red while its push connection is stopped; why Yahoo drops it every ~5 min
+  is still unknown.
+
 # Milestone 9 — Flatpak package (user request 2026-10-10: "is it possible to create flatpak package" / "it has to be fully functional")
 
 - **Goal**: `flatpak-builder` builds `io.github.topke63.korrespond` from this repository into a Flatpak

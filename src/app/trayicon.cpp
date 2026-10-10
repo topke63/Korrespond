@@ -51,11 +51,6 @@ TrayIcon::TrayIcon(MailController *controller, QWindow *window, QObject *parent)
     update();
 }
 
-void TrayIcon::setKeepInTray(bool keepInTray)
-{
-    QGuiApplication::setQuitOnLastWindowClosed(!keepInTray);
-}
-
 void TrayIcon::update()
 {
     const int unread = m_controller->unreadCount();

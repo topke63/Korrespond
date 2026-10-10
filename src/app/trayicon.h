@@ -18,9 +18,6 @@ class TrayIcon : public QObject
 public:
     TrayIcon(MailController *controller, QWindow *window, QObject *parent = nullptr);
 
-    // With true, closing the last window hides it to the tray instead of quitting the app.
-    void setKeepInTray(bool keepInTray);
-
 private:
     void update();
 

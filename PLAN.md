@@ -4673,8 +4673,13 @@ first, then stop.
   still pending. Dev hooks: PLASMAMAIL_DEMO_QUIT_AFTER calls requestQuit();
   PLASMAMAIL_DEMO_QUIT_TWICE=1 calls it again 300 ms later. Verified headless: send+quit 3 s exits
   rc 0 in ~5 s (also with QUIT_TWICE, second ignored), no-pending quit rc 0. Unverified headless:
-  tray menu Quit and a real window close. Note: with keepInTray off, closing the main window now
-  quits even if a compose window is still open.
+  tray menu Quit and a real window close.
+  Window-close rule (fix, 2026-10-10): Qt's quitOnLastWindowClosed is off (set by MailController, so
+  Qt never quits by itself). Closing any window only hides or destroys it. When the LAST window
+  closes (QGuiApplication::lastWindowClosed) and keepInTray is off, MailController calls
+  requestQuit(), which waits for pending sends. With keepInTray on, nothing quits (tray). Main.qml
+  onClosing and TrayIcon::setKeepInTray were removed (they fought Qt's quit). Tray Quit and Ctrl+Q
+  still call requestQuit() directly.
 
 ### T208 — UI: "Sending… Undo" and reopening the message
 - status: todo

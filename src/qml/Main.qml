@@ -41,14 +41,7 @@ Kirigami.ApplicationWindow {
 
     Component.onCompleted: showStartPage()
 
-    // Without "keep running in the tray", closing the window quits: through the controller, which
-    // sends pending messages first. With it, the window just hides (unchanged).
-    onClosing: close => {
-        if (!MailController.keepInTray) {
-            close.accepted = false;
-            MailController.requestQuit();
-        }
-    }
+    // Closing the window only hides it; the controller quits when the last window closes (lastWindowClosed).
 
     Shortcut {
         sequence: StandardKey.Quit

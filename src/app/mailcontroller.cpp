@@ -89,6 +89,17 @@ MailController::MailController(QObject *parent)
                 session->stopWatcher();
             }
         });
+        // Qt must not quit by itself when the last window closes: that would skip the wait for the
+        // pending sends. The last window closing (main or a composer) quits through requestQuit()
+        // unless "keep running in the tray" is on. While another window is open, nothing happens.
+        if (auto *guiApp = qobject_cast<QGuiApplication *>(app)) {
+            guiApp->setQuitOnLastWindowClosed(false);
+            connect(guiApp, &QGuiApplication::lastWindowClosed, this, [this] {
+                if (!keepInTray()) {
+                    requestQuit();
+                }
+            });
+        }
     }
     m_app = AppSettings::load();
     if (qEnvironmentVariableIsSet("PLASMAMAIL_SIDEBAR_COLLAPSED")) {
@@ -642,8 +653,8 @@ void MailController::requestQuit()
     connect(this, &MailController::sendFailed, this, &MailController::continueQuit);
     auto limit = new QTimer(this);
     limit->setSingleShot(true);
-    connect(limit, &QTimer::timeout, this, [] {
-        qWarning("quit: timed out, some messages were not sent");
+    connect(limit, &QTimer::timeout, this, [this] {
+        qWarning("quit: timed out after 60 s, %lld message(s) not sent", qlonglong(m_handOffQueue.size() + m_pendingSends.size() + (handingOff() ? 1 : 0)));
         QCoreApplication::quit();
     });
     limit->start(std::chrono::seconds(60));

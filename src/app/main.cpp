@@ -204,12 +204,8 @@ int main(int argc, char *argv[])
         || qEnvironmentVariableIntValue("PLASMAMAIL_DEMO") == 1;
     auto controller = engine.singletonInstance<MailController *>("PlasmaMail", "MailController");
     if (!screenshotRun && controller && !engine.rootObjects().isEmpty()) {
+        // "Keep running in the tray" is applied by MailController (lastWindowClosed), not here.
         tray = std::make_unique<TrayIcon>(controller, qobject_cast<QWindow *>(engine.rootObjects().constFirst()));
-        tray->setKeepInTray(AppSettings::load().keepInTray);
-        // The tray follows the "keep running in the tray" option as it is changed in Settings.
-        QObject::connect(controller, &MailController::appSettingsChanged, tray.get(), [controller, trayPtr = tray.get()] {
-            trayPtr->setKeepInTray(controller->keepInTray());
-        });
         notifier = std::make_unique<MailNotifier>(controller, qobject_cast<QWindow *>(engine.rootObjects().constFirst()));
     }
 
@@ -242,6 +238,28 @@ int main(int argc, char *argv[])
                     controller->requestQuit();
                 });
             }
+        }
+        // Window close checks: PLASMAMAIL_DEMO_COMPOSE=1 opens a message window at start;
+        // PLASMAMAIL_DEMO_CLOSE_MAIN=<ms> / PLASMAMAIL_DEMO_CLOSE_COMPOSE=<ms> close the main window
+        // (the first root object) / the composer (the last root object) like a window-manager close.
+        if (qEnvironmentVariableIntValue("PLASMAMAIL_DEMO_COMPOSE") == 1) {
+            engine.loadFromModule("PlasmaMail", "ComposeWindow");
+        }
+        const int closeMain = qEnvironmentVariableIntValue("PLASMAMAIL_DEMO_CLOSE_MAIN");
+        if (closeMain > 0) {
+            QTimer::singleShot(closeMain, &engine, [&engine] {
+                if (auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst())) {
+                    window->close();
+                }
+            });
+        }
+        const int closeComposer = qEnvironmentVariableIntValue("PLASMAMAIL_DEMO_CLOSE_COMPOSE");
+        if (closeComposer > 0) {
+            QTimer::singleShot(closeComposer, &engine, [&engine] {
+                if (auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().constLast())) {
+                    window->close();
+                }
+            });
         }
     }
 

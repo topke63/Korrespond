@@ -4066,6 +4066,31 @@ known light look and derive it (macOS light: sidebar `#e8e6ee`-ish, band `#f3f1f
   white on dark, dark on grey and on Classic light. Build, ctest 19/19, no new QML warnings.
   Not seen in a real window (GUI runs paused).
 
+### T201 — Sidebar headings at the folder rows' scale
+- status: todo
+- depends on: T200
+- parallel-safe with: none
+- files: src/qml/FolderSidebar.qml
+- inputs: user feedback 2026-10-10: "All Accounts" and the account-name headings look oversized next
+  to the folder rows (dark shot gui-dark-plain.png). Reference schemes from now on: Breeze Light and
+  Breeze Dark (Classic only has to stay readable).
+- output: "All Accounts" and account header rows use the folder rows' height and spacing; the
+  account avatar is no larger than the folder icons (`iconSizes.small`); heading text small and
+  DemiBold in `disabledTextColor`, aligned with the folder text column.
+- verify: build; ctest; GUI shots via scripts/desktop3-run.sh in Breeze Dark and Light.
+- notes:
+
+### T202 — Hairline between sidebar and list
+- status: todo
+- depends on: T201
+- parallel-safe with: none
+- files: src/qml/FolderSidebar.qml (or src/qml/Main.qml)
+- inputs: T196 issue 3: no hairline on the sidebar/list edge (light: only a 1.14 background step).
+- output: 1 px divider (text colour at `MimeTheme.columnDividerAlpha`) on the docked sidebar's right
+  edge, like the list/reading divider; not shown when collapsed or modal.
+- verify: build; ctest; GUI shots in Breeze Dark and Light, divider ≥ 1.2:1.
+- notes:
+
 # Milestone 3j — Sidebar control (user request 2026-10-10: "a collapse option for the left panel;
 # I don't need to see the whole tree of each account, I'd like to choose")
 
@@ -4103,7 +4128,7 @@ Queued after the Mimestream palette tasks (T175–T186); same file (FolderSideba
 
 ### T188 — Account trees: persisted collapse, Collapse all / Expand all
 - status: todo
-- depends on: T187, T194, T195, T199 (Milestone 3k code first)
+- depends on: T187, T194, T195, T199, T202 (Milestone 3k code first)
 - parallel-safe with: none
 - files: src/engine/appsettings.h, src/engine/appsettings.cpp, autotests/appsettingstest.cpp,
   src/app/mailcontroller.h, src/app/mailcontroller.cpp, src/qml/FolderSidebar.qml

@@ -301,6 +301,7 @@ void MailController::discardSession(AccountSession *session, bool deleteStore)
 {
     m_sharedRequested.erase(session);
     m_inflight.erase(session);
+    m_idleReconnect.erase(session);
     forgetChecks(session);
     session->stopWatcher();
     if (m_awaitingFolders.erase(session) > 0) {
@@ -2916,7 +2917,21 @@ void MailController::onSessionError(AccountSession *session, const QString &mess
     if (!isKnown(session)) {
         return;
     }
+    const auto queued = m_inflight.find(session);
+    const bool hadJobs = queued != m_inflight.end() && !queued->second.empty();
     m_inflight.erase(session); // its queued answers will not come
+    // A server that closes an idle connection (Yahoo does, every few minutes) is not an error:
+    // nobody asked for anything, so connect again quietly. A second loss within a minute is shown.
+    if (!hadJobs && !m_refreshRetry.contains(session) && !m_checking.contains(session) && !m_awaitingFolders.contains(session) && session != m_pending
+        && !session->client()->hasSession()) {
+        QElapsedTimer &last = m_idleReconnect[session];
+        if (!last.isValid() || last.hasExpired(60000)) {
+            last.start();
+            qInfo("Idle connection of %s was closed by the server; reconnecting", qPrintable(session->account().email));
+            reconnect(session->account().email);
+            return;
+        }
+    }
     if (m_refreshRetry.erase(session) > 0 && session != m_pending && !session->client()->hasSession()) {
         qInfo("Connection of %s was lost during a refresh; reconnecting", qPrintable(session->account().email));
         m_awaitingFolders.erase(session);

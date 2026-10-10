@@ -16,6 +16,7 @@
 #include <QAbstractListModel>
 #include <QColor>
 #include <QDateTime>
+#include <QElapsedTimer>
 #include <QObject>
 #include <QQmlEngine>
 #include <QSet>
@@ -627,6 +628,7 @@ private:
     QSet<QString> m_batchKeys; // the moves of one conversation still on their way
     bool m_batchWasOpen = false; // the open message was one of the batch
     QString m_lastConnectionError;
+    std::map<AccountSession *, QElapsedTimer> m_idleReconnect; // when a closed idle connection was last re-opened
     std::set<AccountSession *> m_refreshRetry; // refreshed, no answer yet: a lost connection is retried once
     std::set<AccountSession *> m_awaitingFolders; // sessions with a folder-list request in flight (counted as busy)
     AccountListModel *m_accounts;

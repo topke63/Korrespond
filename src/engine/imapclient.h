@@ -123,8 +123,8 @@ Q_SIGNALS:
     // The session ended (connection lost, login failed); emitted just before errorOccurred().
     // Moves still pending are failed by it: no moveFailed() follows for them.
     void sessionLost(const QString &message);
-    // The session was replaced or closed while moves were pending; their results will never
-    // arrive, and neither moveFailed() nor messageMoved() is emitted for them.
+    // The session was replaced or closed while moves or a checkInbox() were pending; their results
+    // will never arrive, and neither moveFailed(), messageMoved() nor inboxChecked() is emitted.
     void jobsDropped();
 
 private:
@@ -165,5 +165,6 @@ private:
     QStringList m_capabilities; // the server's, read after login; empty until asked
     quint64 m_generation = 0; // number of the current (or last) session
     quint64 m_failedGeneration = 0; // session whose failure was already reported
+    quint64 m_checkGeneration = 0; // session of the checkInbox() still waiting for its answer, 0 = none
     QSet<QString> m_pendingMoves; // "folder\nuid" of moves that have not reported yet
 };

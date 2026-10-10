@@ -402,6 +402,7 @@ private:
     // Background check of one account's inbox (unread count, new mail); every checkMinutes and
     // right after an account's folders arrive.
     void checkInbox(AccountSession *session);
+    void retryQueuedCheck(AccountSession *session);
     void checkForNewMail();
     // Push mail (IDLE): the watcher's change signal starts a check after a short pause.
     void startPush(AccountSession *session);

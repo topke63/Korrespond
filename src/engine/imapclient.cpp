@@ -93,9 +93,12 @@ void ImapClient::setAccessToken(const QString &accessToken)
 
 void ImapClient::disconnectFromServer()
 {
+    // A check that is still waiting for its answer is dropped as well (the caller keeps a flag for it).
+    const bool checkDropped = m_checkGeneration != 0 && isCurrent(m_checkGeneration);
+    m_checkGeneration = 0;
     ++m_generation; // whatever the old session still reports is no longer relevant
     dropSession();
-    if (!m_pendingMoves.isEmpty()) {
+    if (!m_pendingMoves.isEmpty() || checkDropped) {
         m_pendingMoves.clear();
         Q_EMIT jobsDropped();
     }
@@ -416,6 +419,7 @@ void ImapClient::checkInbox(const QString &folder, int limit)
 {
     session();
     const quint64 generation = m_generation;
+    m_checkGeneration = generation;
     // A folder that stays selected may keep showing the mail it had when it was selected, so the
     // check always selects it again (some servers only report new mail that way).
     m_selectedFolder.clear();
@@ -430,6 +434,7 @@ void ImapClient::checkInbox(const QString &folder, int limit)
         QList<qint64> uids = static_cast<KIMAP::SearchJob *>(job)->results();
         const int total = int(uids.size());
         if (uids.isEmpty() || !m_session) {
+            m_checkGeneration = 0;
             Q_EMIT inboxChecked(folder, 0, {});
             return;
         }
@@ -437,6 +442,7 @@ void ImapClient::checkInbox(const QString &folder, int limit)
         KIMAP::ImapSet set;
         set.add(QList<qint64>(uids.cend() - std::min<qsizetype>(limit, uids.size()), uids.cend()));
         fetchSummaries(set, true, folder, Unread, generation, [this, folder, total](const QList<MessageSummary> &messages) {
+            m_checkGeneration = 0;
             Q_EMIT inboxChecked(folder, total, messages);
         });
     });

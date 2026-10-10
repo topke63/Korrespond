@@ -3763,7 +3763,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
 - notes:
 
 ### T174 — Push follow-ups found in T171
-- status: todo
+- status: done
 - depends on: T171
 - parallel-safe with: none
 - files: src/app/mailcontroller.cpp, src/engine/imapclient.h, src/engine/imapclient.cpp
@@ -3775,7 +3775,13 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   after a short delay instead of waiting for the 15-minute poll; (c) the push-state log line in
   ~AccountSession prints "#0" — skip logging for a session no longer in the list.
 - verify: build; `ctest --preset dev`; offscreen start clean.
-- notes: pre-existing / edge cases; not urgent.
+- notes: Done 2026-10-10. (a) ImapClient keeps `m_checkGeneration` (set in checkInbox, cleared when
+  inboxChecked is emitted); disconnectFromServer/setAccount emit `jobsDropped()` also when a check of the
+  current generation was pending; the controller's jobsDropped handler clears `m_checking` for the
+  account (and updates the activity). (b) `retryQueuedCheck()`: a push queued behind a check that failed
+  or was dropped runs checkInbox once after 5 s. (c) the push-state log is skipped for a session that is
+  not in `m_sessions` (deleted, or still pending verification). Build, ctest 19/19, offscreen demo start
+  clean. No unit test: ImapClient has no fake-server test harness in autotests/.
 
 # Milestone 3i — Mimestream look (user request 2026-10-10: "match Mimestream's look as closely as possible")
 

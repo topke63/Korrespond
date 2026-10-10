@@ -205,6 +205,11 @@ AccountSession *MailController::createSession(const Account &account)
     });
     connect(session, &AccountSession::jobsDropped, this, [this, session] {
         dropMoves(session, false);
+        // A check that was dropped silently would keep m_checking set and stop polling and push.
+        if (m_checking.erase(session) > 0) {
+            updateActivity();
+            retryQueuedCheck(session);
+        }
     });
     connect(session, &AccountSession::messageMoved, this, [this, session](const QString &from, qint64 uid, const QString &to) {
         onMessageMoved(session, from, uid, to);
@@ -216,7 +221,10 @@ AccountSession *MailController::createSession(const Account &account)
         onPushChanged(session);
     });
     connect(session, &AccountSession::pushStateChanged, this, [this, session] {
-        // States only: no address, no data.
+        // States only: no address, no data. A session that is being deleted is no longer listed.
+        if (!m_sessions.contains(session)) {
+            return;
+        }
         qInfo("Push state for account #%d: %s",
               int(m_sessions.indexOf(session)) + 1,
               session->idling() ? "Idling" : qPrintable(QString::fromLatin1(QMetaEnum::fromType<ImapIdleWatcher::State>().valueToKey(session->pushState()))));
@@ -1591,6 +1599,20 @@ void MailController::onPushChanged(AccountSession *session)
     timer->start();
 }
 
+// A push change was queued behind a check that failed or was dropped: try once more shortly.
+// Without a queued change the next poll or push change tries again.
+void MailController::retryQueuedCheck(AccountSession *session)
+{
+    if (m_checkQueued.erase(session) == 0) {
+        return;
+    }
+    QTimer::singleShot(std::chrono::seconds(5), session, [this, session] {
+        if (isKnown(session)) {
+            checkInbox(session);
+        }
+    });
+}
+
 void MailController::forgetChecks(AccountSession *session)
 {
     m_checkQueued.erase(session);
@@ -2144,7 +2166,10 @@ void MailController::onSessionError(AccountSession *session, const QString &mess
     m_inflight.erase(session); // its queued answers will not come
     // A failed background check is only logged: offline, it would complain every few minutes.
     const bool quiet = m_checking.erase(session) > 0;
-    m_checkQueued.erase(session); // the next poll or push change tries again
+    if (quiet) {
+        retryQueuedCheck(session); // a push that came during the failed check is not left to the poll
+    }
+    m_checkQueued.erase(session);
     updateActivity();
     if (quiet) {
         qWarning("Checking the inbox of %s failed: %s", qPrintable(session->account().email), qPrintable(message));

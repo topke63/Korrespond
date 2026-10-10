@@ -4107,9 +4107,14 @@ known light look and derive it (macOS light: sidebar `#e8e6ee`-ish, band `#f3f1f
 
 Queued after the Mimestream palette tasks (T175–T186); same file (FolderSidebar.qml).
 
+Decisions 2026-10-10: hidden folders are display-only (still counted in All Inboxes, tray count and
+notifications); Inbox can't be hidden. Visual checks: offscreen only (`QT_QPA_PLATFORM=offscreen`,
+`PLASMAMAIL_COLOR_SCHEME=BreezeLight|BreezeDark`, `PLASMAMAIL_DEMO=1`, isolated XDG dirs); never
+scripts/desktop3-run.sh or a visible window; never act on the user's real folders.
+
 - **Open questions**:
   1. Hidden folders: do they still count in shared views (All Inboxes, Unread, Flagged), the tray
-     count and notifications? Proposal: yes — hiding is display-only. T190/T191 build the proposal.
+     count and notifications? Answered 2026-10-10: yes, hiding is display-only.
 
 ### T187 — Collapse the whole sidebar
 - status: done
@@ -4137,9 +4142,29 @@ Queued after the Mimestream palette tasks (T175–T186); same file (FolderSideba
   the sidebar and logo and shows the show-sidebar icon at the top left of the list band. Light
   collapsed captured during "Loading..." (busy stripe under the band), transient.
 
+### T205 — Dev hook: demo accounts for headless checks
+- status: todo
+- depends on: T202
+- parallel-safe with: none
+- files: src/app/main.cpp, src/app/mailcontroller.h, src/app/mailcontroller.cpp (models it fills)
+- inputs: user 2026-10-10: visual checks only offscreen, never touch the real mailbox state; the
+  installed app (~/.local/bin/plasma-mail) is running. A second instance on the same data dir could
+  race the user's store, and the screenshot instance also registers a tray icon and can notify.
+- output: `PLASMAMAIL_DEMO=1` (dev only) fills the sidebar and list with two fictional accounts
+  (`alice@example.com`, `bob@example.com`) and folder trees (Inbox, Drafts, Sent, Trash, Archive,
+  Projects/Alpha, Projects/Beta, Receipts, a few unread/flagged messages) in memory: no network, no
+  secret store, no message store writes. While `PLASMAMAIL_SCREENSHOT` or `PLASMAMAIL_DEMO` is set,
+  no tray icon and no notifications. Checks run with isolated
+  `XDG_CONFIG_HOME/XDG_DATA_HOME/XDG_CACHE_HOME/XDG_STATE_HOME` under the scratchpad, so settings
+  written during a check never reach the user's config.
+- verify: build; ctest; offscreen shot (`QT_QPA_PLATFORM=offscreen`, isolated XDG dirs,
+  `PLASMAMAIL_COLOR_SCHEME=BreezeDark`/`BreezeLight`) shows both demo accounts; no
+  `org.kde.StatusNotifierItem` registration from the test process.
+- notes: if this is more than ~150 lines, split (model fill vs tray/notification guard).
+
 ### T188 — Account trees: persisted collapse, Collapse all / Expand all
 - status: todo
-- depends on: T187, T194, T195, T199, T202 (Milestone 3k code first)
+- depends on: T187, T194, T195, T199, T202, T205 (Milestone 3k code first)
 - parallel-safe with: none
 - files: src/engine/appsettings.h, src/engine/appsettings.cpp, autotests/appsettingstest.cpp,
   src/app/mailcontroller.h, src/app/mailcontroller.cpp, src/qml/FolderSidebar.qml

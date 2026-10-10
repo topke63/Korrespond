@@ -251,18 +251,10 @@ Many providers want an **app password** instead of your normal password when 2-s
 verification is on (iCloud, Fastmail, GMX with 2FA, and others); create one in the provider's
 account settings and use it here.
 
-**Sending mail with a custom account:** the setup page has no SMTP fields yet, so add the
-server by hand to `~/.config/plasmamailrc`, in the group of the account, with Plasma Mail
-closed:
-
-```ini
-[Account you@example.com]
-SmtpHost=smtp.example.com
-SmtpPort=465
-```
-
-Port `465` uses TLS from the first byte; any other port (for example `587`) uses STARTTLS.
-The password is the same one as for IMAP.
+**Sending mail with a custom account:** fill in **Outgoing server (SMTP)** and **SMTP port**
+on the same page (for example `smtp.example.com`, `465`). Port `465` uses TLS from the first
+byte; any other port (for example `587`) uses STARTTLS. The password is the same one as for
+IMAP. If you leave the outgoing server empty, the account can only read mail.
 
 Typical servers:
 

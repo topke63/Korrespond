@@ -5500,6 +5500,24 @@ Approach: thread ids are computed in the engine and stored, the list model group
   (only the timer + MailController::saveWindowSize, covered by the settings round trip), Wayland
   placement; the saved size is the window's, positions are not remembered (the compositor places it).
 
+### T244 — Outgoing server fields for custom accounts
+- status: done
+- depends on: none
+- files: src/qml/AccountSetupPage.qml, README.md
+- inputs: `MailController::setupAccount` already takes `smtpHost`/`smtpPort`; the setup page passes none,
+  so a custom account has no outgoing server and sending fails with "This account has no outgoing
+  mail server" until `SmtpHost`/`SmtpPort` are written into plasmamailrc by hand.
+- output: with "Custom IMAP" the page shows "Outgoing server (SMTP):" (optional; empty keeps the account
+  receive-only) and "Port:" (default 465; 465 = TLS, other ports = STARTTLS), passed to `setupAccount`.
+  A short hint says so. README: the hand-editing instructions are replaced.
+- verify: build; qmllint baseline (2) not raised; offscreen start of the setup page with "custom"
+  shows the fields (screenshot hook); ctest.
+- notes: Done 2026-10-10. Two fields + hint, shown only for Custom IMAP; empty SMTP host keeps the
+  account receive-only (sending says "no outgoing mail server"). Build clean, 25/25 tests, no lint
+  warnings in AccountSetupPage, offscreen start with a throw-away profile prints nothing. Not
+  checked: the page by eye on the desktop (user), and editing the SMTP server of an existing account
+  (still plasmamailrc; not planned).
+
 ## Execution Loop
 
 Execute the plan as a loop. Each iteration handles one task in a fresh context, then ends.

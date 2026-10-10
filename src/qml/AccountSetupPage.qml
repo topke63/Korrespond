@@ -37,7 +37,8 @@ Kirigami.ScrollablePage {
                                                                  : passwordField.text;
         MailController.setupAccount(providerCombo.currentValue, emailField.text.trim(),
                                     nameField.text.trim(), password,
-                                    isCustom ? hostField.text.trim() : "", portField.value);
+                                    isCustom ? hostField.text.trim() : "", portField.value,
+                                    isCustom ? smtpHostField.text.trim() : "", smtpPortField.value);
     }
 
     title: page.asLayer ? KI18n.i18nc("@title", "Add Account") : KI18n.i18nc("@title", "Set Up Account")
@@ -144,6 +145,35 @@ Kirigami.ScrollablePage {
             to: 65535
             value: 993
             textFromValue: (value, locale) => value.toString() // no thousands separator
+        }
+
+        QQC2.TextField {
+            id: smtpHostField
+
+            Kirigami.FormData.label: KI18n.i18nc("@label:textbox", "Outgoing server (SMTP):")
+            visible: page.isCustom
+            placeholderText: KI18n.i18nc("@info:placeholder", "smtp.example.com")
+            inputMethodHints: Qt.ImhUrlCharactersOnly | Qt.ImhNoAutoUppercase
+            onAccepted: page.connectAccount()
+        }
+
+        QQC2.SpinBox {
+            id: smtpPortField
+
+            Kirigami.FormData.label: KI18n.i18nc("@label:spinbox", "SMTP port:")
+            visible: page.isCustom
+            from: 1
+            to: 65535
+            value: 465
+            textFromValue: (value, locale) => value.toString() // no thousands separator
+        }
+
+        QQC2.Label {
+            visible: page.isCustom
+            Layout.maximumWidth: Kirigami.Units.gridUnit * 20
+            wrapMode: Text.Wrap
+            font: Kirigami.Theme.smallFont
+            text: KI18n.i18nc("@info", "Port 465 uses TLS, other ports (such as 587) use STARTTLS. Leave the outgoing server empty to only read mail with this account.")
         }
 
         RowLayout {

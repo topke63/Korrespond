@@ -5388,14 +5388,21 @@ Approach: thread ids are computed in the engine and stored, the list model group
   applied to the model at start and on change. Tests in messagelistmodeltest/appsettingstest.
 
 ### T222 — List row UI for conversations
-- status: todo
+- status: done
 - depends on: T221
 - parallel-safe with: T223
 - files: src/qml/MessageListPage.qml
 - output: participants instead of a single sender, count badge, unread dot / flag from the thread
   roles; settings toggle "Group messages into conversations".
 - verify: build; offscreen demo shots (demo data gains two threads) in both schemes.
-- notes:
+- notes: Done 2026-10-10 (no sub-agents). Row delegate uses participants, a count badge
+  (grey pill, only > 1), threadUnread dot and threadFlagged flag while MailController.conversationView
+  is on; the flag button on a conversation row flags the newest message. New Settings → "Message
+  List" page (ViewSettingsPage.qml, switch "Group messages into conversations", applies at once).
+  Demo data gained two conversations (alice: Project Alpha, 3 messages by subject; bob: Weekend
+  plans, 3 messages; in All Inboxes they show as "Carol, me" and "me, Dave, Alice" with a 3 badge).
+  Shots: t222-{BreezeLight,BreezeDark}.png (isolated config with ConversationView=true). Not verified:
+  the settings page shot, row context menu on a conversation, narrow window.
 
 ### T223 — Controller: open a conversation
 - status: todo

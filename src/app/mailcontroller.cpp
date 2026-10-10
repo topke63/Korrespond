@@ -1326,7 +1326,7 @@ void MailController::loadDemo()
         bool unread;
         bool flagged;
     };
-    const Demo rows[][4] = {
+    const Demo rows[][6] = {
         {{"alice@example.com",
           "Alice Example",
           "Bob Builder <bob@example.net>",
@@ -1357,6 +1357,23 @@ void MailController::loadDemo()
           "Meeting notes",
           "Here are the notes from Tuesday, in case you missed them.",
           120,
+          false,
+          false},
+         // Two earlier messages of the "Project Alpha" conversation (grouped by subject).
+         {"alice@example.com",
+          "Alice Example",
+          "Alice Example <alice@example.com>",
+          "Re: Project Alpha: schedule",
+          "Thanks, I will go through it today.",
+          18,
+          false,
+          false},
+         {"alice@example.com",
+          "Alice Example",
+          "Carol Demo <carol@example.org>",
+          "Project Alpha: schedule",
+          "First draft of the schedule, comments welcome.",
+          40,
           false,
           false}},
         {{"bob@example.com",
@@ -1390,7 +1407,9 @@ void MailController::loadDemo()
           "The pictures are finally sorted; link below.",
           200,
           false,
-          false}},
+          false},
+         {"bob@example.com", "Bob Example", "Dave Sample <dave@example.net>", "Re: Weekend plans", "Count me in as well.", 26, false, false},
+         {"bob@example.com", "Bob Example", "Bob Example <bob@example.com>", "Weekend plans", "Who is up for camping this weekend?", 40, false, false}},
     };
     const QDateTime now = QDateTime::currentDateTimeUtc();
     qint64 uid = 1;

@@ -199,6 +199,12 @@ StatefulApp.StatefulWindow {
                 page: () => notificationsPage
             },
             KirigamiSettings.ConfigurationModule {
+                moduleId: "view"
+                text: KI18n.i18nc("@action:button", "Message List")
+                icon.name: "view-list-details"
+                page: () => viewPage
+            },
+            KirigamiSettings.ConfigurationModule {
                 moduleId: "sending"
                 text: KI18n.i18nc("@action:button", "Sending")
                 icon.name: "mail-send"
@@ -271,6 +277,12 @@ StatefulApp.StatefulWindow {
         id: notificationsPage
 
         NotificationSettingsPage {}
+    }
+
+    Component {
+        id: viewPage
+
+        ViewSettingsPage {}
     }
 
     Component {

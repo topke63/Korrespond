@@ -129,7 +129,7 @@ static void scheduleScreenshot(QQmlApplicationEngine &engine)
             }
         });
     }
-    // PLASMAMAIL_SCREENSHOT_SETTINGS=<module id> (accounts, notifications, sending, shortcuts, storage, about) opens that settings page
+    // PLASMAMAIL_SCREENSHOT_SETTINGS=<module id> (accounts, notifications, view, sending, shortcuts, storage, about) opens that settings page
     // a third of the way in.
     const QString settingsModule = qEnvironmentVariable("PLASMAMAIL_SCREENSHOT_SETTINGS");
     if (!settingsModule.isEmpty()) {

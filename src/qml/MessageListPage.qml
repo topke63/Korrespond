@@ -242,6 +242,16 @@ Kirigami.ScrollablePage {
             required property bool unread
             required property bool flagged
             required property string preview
+            // Conversation rows (the list model's thread roles; a conversation of one in the flat view).
+            required property int threadCount
+            required property string participants
+            required property bool threadUnread
+            required property bool threadFlagged
+
+            // With conversations on, the row shows the whole conversation's state.
+            readonly property bool grouped: MailController.conversationView
+            readonly property bool rowUnread: grouped ? threadUnread : unread
+            readonly property bool rowFlagged: grouped ? threadFlagged : flagged
 
             width: list.width
             topInset: 1
@@ -315,7 +325,7 @@ Kirigami.ScrollablePage {
                     implicitHeight: 10
                     radius: width / 2
                     color: MimeTheme.readableOn(activePalette.highlight, Kirigami.Theme.backgroundColor, 3)
-                    opacity: row.unread ? 1 : 0
+                    opacity: row.rowUnread ? 1 : 0
                 }
 
                 ColumnLayout {
@@ -330,10 +340,10 @@ Kirigami.ScrollablePage {
                             id: senderLabel
 
                             Layout.fillWidth: true
-                            text: row.from
+                            text: row.grouped ? row.participants : row.from
                             textFormat: Text.PlainText
                             elide: Text.ElideRight
-                            font.weight: row.unread ? Font.Bold : Font.DemiBold
+                            font.weight: row.rowUnread ? Font.Bold : Font.DemiBold
                         }
                         // Orange when flagged; faint on hover so any row can be flagged with a click.
                         QQC2.ToolButton {
@@ -341,15 +351,33 @@ Kirigami.ScrollablePage {
                             implicitHeight: implicitWidth
                             padding: Kirigami.Units.smallSpacing
                             flat: true
-                            opacity: row.flagged ? 1 : row.hovered ? 0.5 : 0
-                            enabled: row.flagged || row.hovered
+                            opacity: row.rowFlagged ? 1 : row.hovered ? 0.5 : 0
+                            enabled: row.rowFlagged || row.hovered
                             icon.name: "flag"
-                            icon.color: row.flagged ? Kirigami.Theme.neutralTextColor : Kirigami.Theme.disabledTextColor
+                            icon.color: row.rowFlagged ? Kirigami.Theme.neutralTextColor : Kirigami.Theme.disabledTextColor
                             icon.width: Kirigami.Units.iconSizes.small
                             icon.height: Kirigami.Units.iconSizes.small
                             display: QQC2.AbstractButton.IconOnly
-                            text: row.flagged ? KI18n.i18nc("@action:button", "Unflag") : KI18n.i18nc("@action:button", "Flag")
+                            text: row.rowFlagged ? KI18n.i18nc("@action:button", "Unflag") : KI18n.i18nc("@action:button", "Flag")
+                            // The flag belongs to a message: on a conversation row it is the newest one.
                             onClicked: MailController.setFlagged(row.account, row.uid, !row.flagged)
+                        }
+                        // Number of messages in the conversation.
+                        Rectangle {
+                            visible: row.grouped && row.threadCount > 1
+                            implicitWidth: Math.max(implicitHeight, countLabel.implicitWidth + Kirigami.Units.smallSpacing * 2)
+                            implicitHeight: countLabel.implicitHeight + 2
+                            radius: height / 2
+                            color: Qt.alpha(Kirigami.Theme.textColor, 0.12)
+
+                            QQC2.Label {
+                                id: countLabel
+
+                                anchors.centerIn: parent
+                                text: row.threadCount
+                                font: Kirigami.Theme.smallFont
+                                color: Kirigami.Theme.disabledTextColor
+                            }
                         }
                         QQC2.Label {
                             text: row.dateText

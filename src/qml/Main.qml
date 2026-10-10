@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 import QtQuick
+import QtQml
 import org.kde.ki18n
 import org.kde.kirigami as Kirigami
 import org.kde.kirigamiaddons.settings as KirigamiSettings
@@ -14,6 +15,8 @@ StatefulApp.StatefulWindow {
     windowName: "Main"
     // The action collection (T211): ids and enabled state live in C++, see mailapplication.h.
     application: MailApplication {
+        id: mailApplication
+
         controller: MailController
     }
 
@@ -93,12 +96,31 @@ StatefulApp.StatefulWindow {
 
     // Closing the window only hides it; the controller quits when the last window closes (lastWindowClosed).
 
-    // Ctrl+Q runs the action collection's file_quit, which routes to MailController.requestQuit()
-    // (MailApplication::setupActions). Kept here until T212 binds the actions to the window, so there
-    // is only one Ctrl+Q binding (a second one would make the shortcut ambiguous).
-    Shortcut {
-        sequence: StandardKey.Quit
-        onActivated: mainWindow.application.action("file_quit").trigger()
+    // A QAction's shortcut is only active in a window through a Kirigami.Action built from it, so the
+    // actions with a default shortcut that no toolbar shows (compose and refresh are in the list
+    // page's toolbar) get one here.
+    Instantiator {
+        model: ["reply", "reply_all", "forward", "archive", "delete", "mark_read", "mark_unread",
+                "flag", "toggle_sidebar", "settings", "file_quit"]
+        delegate: Kirigami.Action {
+            required property string modelData
+
+            fromQAction: mailApplication.action(modelData)
+        }
+    }
+
+    // The actions that need the window (their keys are the action collection's default shortcuts,
+    // Ctrl+Q included: file_quit routes to MailController.requestQuit()). Compose, search, next and
+    // previous are handled by the pages. Move, Go to Folder and Keyboard Shortcuts have no UI yet (T214, T215).
+    Connections {
+        target: mailApplication
+
+        function onToggleSidebarRequested() {
+            sidebar.toggle();
+        }
+        function onSettingsRequested() {
+            settings.open();
+        }
     }
 
     globalDrawer: FolderSidebar {
@@ -213,18 +235,6 @@ StatefulApp.StatefulWindow {
         onActivated: MailController.undoSend(-1)
     }
 
-    Shortcut {
-        sequence: "Ctrl+,"
-        enabled: MailController.hasAccount
-        onActivated: settings.open()
-    }
-
-    Shortcut {
-        sequence: "Ctrl+B"
-        enabled: MailController.hasAccount
-        onActivated: sidebar.toggle()
-    }
-
     Component {
         id: setupPage
 
@@ -264,13 +274,16 @@ StatefulApp.StatefulWindow {
     Component {
         id: mailPage
 
-        MessageListPage {}
+        MessageListPage {
+            application: mailApplication
+        }
     }
 
     Component {
         id: messagePage
 
         MessagePage {
+            application: mailApplication
             Kirigami.ColumnView.fillWidth: true
             // The message column always keeps room for its toolbar; the panel widths are capped to leave it.
             Kirigami.ColumnView.minimumWidth: Kirigami.Units.gridUnit * 30

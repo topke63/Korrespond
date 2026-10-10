@@ -10,6 +10,7 @@
 #include <QAction>
 #include <QCoreApplication>
 #include <QIcon>
+#include <QKeySequence>
 
 using namespace Qt::StringLiterals;
 
@@ -38,6 +39,8 @@ void MailApplication::setController(MailController *controller)
         connect(m_controller, &MailController::currentMessageChanged, this, &MailApplication::updateEnabled);
         // canArchive, canDelete and canMove depend on the folder too.
         connect(m_controller, &MailController::currentFolderChanged, this, &MailApplication::updateEnabled);
+        // Check for Mail is off while a refresh runs.
+        connect(m_controller, &MailController::busyChanged, this, &MailApplication::updateEnabled);
     }
     updateEnabled();
     Q_EMIT controllerChanged();
@@ -66,8 +69,8 @@ void MailApplication::setupActions()
 {
     AbstractKirigamiApplication::setupActions();
 
-    // No default shortcuts yet: the QML Shortcut blocks still own the keys (T212 removes them,
-    // T213 sets the shortcuts here).
+    // The default shortcuts live here, so the toolbar, menus and keys share one definition (the
+    // rest of the set comes with T213). QML binds these actions with Kirigami.Action { fromQAction }.
     auto signalAction = [this](const QString &id, const QString &text, const QString &icon, auto signal, auto... args) {
         QAction *action = addMailAction(id, text, icon);
         connect(action, &QAction::triggered, this, [this, signal, args...] {
@@ -80,6 +83,8 @@ void MailApplication::setupActions()
         connect(action, &QAction::triggered, this, [this, call] {
             if (m_controller) {
                 call(m_controller.data());
+                // A checkable action has flipped by itself; show what the controller says.
+                updateEnabled();
             }
         });
         return action;
@@ -115,6 +120,28 @@ void MailApplication::setupActions()
     signalAction(u"next_message"_s, i18nc("@action", "Next Message"), u"go-down"_s, &MailApplication::nextMessageRequested);
     signalAction(u"previous_message"_s, i18nc("@action", "Previous Message"), u"go-up"_s, &MailApplication::previousMessageRequested);
     signalAction(u"go_to_folder"_s, i18nc("@action", "Go to Folder…"), u"folder"_s, &MailApplication::goToFolderRequested);
+
+    // Single keys do not fire while a text field has focus: the field accepts the ShortcutOverride.
+    // Mark as Read and Mark as Unread share U; only one of them is enabled at a time (a toggle).
+    const QList<std::pair<const char *, QKeySequence>> shortcuts = {
+        {"compose", QKeySequence(Qt::CTRL | Qt::Key_N)},
+        {"reply", QKeySequence(Qt::Key_R)},
+        {"reply_all", QKeySequence(Qt::SHIFT | Qt::Key_R)},
+        {"forward", QKeySequence(Qt::SHIFT | Qt::Key_F)},
+        {"archive", QKeySequence(Qt::Key_E)},
+        {"delete", QKeySequence(Qt::Key_Delete)},
+        {"mark_read", QKeySequence(Qt::Key_U)},
+        {"mark_unread", QKeySequence(Qt::Key_U)},
+        {"flag", QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_F)},
+        {"refresh", QKeySequence(Qt::Key_F5)},
+        {"toggle_sidebar", QKeySequence(Qt::CTRL | Qt::Key_B)},
+        {"settings", QKeySequence(Qt::CTRL | Qt::Key_Comma)},
+    };
+    for (const auto &[id, sequence] : shortcuts) {
+        if (QAction *action = mainCollection()->action(QString::fromLatin1(id))) {
+            KirigamiActionCollection::setDefaultShortcut(action, sequence);
+        }
+    }
 
     // The base's file_quit (KStandardActions::quit) calls QCoreApplication::quit directly, which skips
     // the wait for pending sends. Quitting goes through MailController::requestQuit() (T227).
@@ -155,7 +182,7 @@ void MailApplication::updateEnabled()
     set("mark_unread", message && !c->messageUnread());
     set("flag", message);
     set("search", account);
-    set("refresh", account);
+    set("refresh", account && !c->busy());
     set("toggle_sidebar", account);
     set("settings", account);
     set("next_message", account);

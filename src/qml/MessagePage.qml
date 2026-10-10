@@ -41,6 +41,14 @@ Kirigami.Page {
     }
 
     readonly property bool hasMessage: MailController.currentUid > 0
+
+    Connections {
+        target: page.application
+
+        function onComposeRequested(kind: string) {
+            page.openCompose(kind);
+        }
+    }
     // The open message has arrived (until then only the busy indicator shows).
     readonly property bool loaded: hasMessage && (html.length > 0 || MailController.messageFrom.length > 0
                                                   || MailController.messageSubject.length > 0)
@@ -54,24 +62,32 @@ Kirigami.Page {
         return { name: match[1].length > 0 ? match[1] : match[2], address: match[2] };
     }
 
-    // Opens a compose window prefilled for "reply", "replyAll" or "forward" (see composeFor()).
+    // The window's action collection (set by Main.qml); one definition serves the toolbar and the keys.
+    property MailApplication application
+
+    // Opens a compose window: blank for "new", else prefilled for "reply", "replyAll" or "forward"
+    // (see composeFor()). A separate window per message; it destroys itself when closed.
     // The initial values are passed to createObject() so ComposeWindow sees them when it completes.
     function openCompose(kind) {
-        const data = MailController.composeFor(kind);
-        // composeFor() answers an empty map when no message is open.
-        if (!data.kind) {
-            return;
+        let initial = {};
+        if (kind !== "new") {
+            const data = MailController.composeFor(kind);
+            // composeFor() answers an empty map when no message is open.
+            if (!data.kind) {
+                return;
+            }
+            initial = {
+                initialAccount: data.account,
+                initialTo: data.to,
+                initialCc: data.cc,
+                initialSubject: data.subject,
+                initialBody: data.body,
+                initialInReplyTo: data.inReplyTo,
+                initialReferences: data.references
+            };
         }
         const component = Qt.createComponent("PlasmaMail", "ComposeWindow");
-        const composer = component.createObject((page.QQC2.ApplicationWindow.window as Kirigami.ApplicationWindow), {
-            initialAccount: data.account,
-            initialTo: data.to,
-            initialCc: data.cc,
-            initialSubject: data.subject,
-            initialBody: data.body,
-            initialInReplyTo: data.inReplyTo,
-            initialReferences: data.references
-        });
+        const composer = component.createObject((page.QQC2.ApplicationWindow.window as Kirigami.ApplicationWindow), initial);
         if (composer) {
             (composer as Window).show();
         } else {
@@ -87,6 +103,15 @@ Kirigami.Page {
         Layout.fillWidth: true
         spacing: 0
 
+        // The search field is in this title bar.
+        Connections {
+            target: page.application
+
+            function onSearchRequested() {
+                searchField.forceActiveFocus();
+            }
+        }
+
         Repeater {
             model: [
                 { move: "archive" },
@@ -96,9 +121,9 @@ Kirigami.Page {
                 { move: "folder" },
                 { icon: "tag", text: KI18n.i18nc("@action:button", "Label"), tooltip: KI18n.i18nc("@info:tooltip", "Label") },
                 { separator: true },
-                { icon: "mail-reply-sender", kind: "reply", text: KI18n.i18nc("@action:button", "Reply"), tooltip: KI18n.i18nc("@info:tooltip", "Reply") + " (R)" },
-                { icon: "mail-reply-all", kind: "replyAll", text: KI18n.i18nc("@action:button", "Reply All"), tooltip: KI18n.i18nc("@info:tooltip", "Reply All") + " (Shift+R)" },
-                { icon: "mail-forward", kind: "forward", text: KI18n.i18nc("@action:button", "Forward"), tooltip: KI18n.i18nc("@info:tooltip", "Forward") + " (Shift+F)" }
+                { icon: "mail-reply-sender", action: "reply", text: KI18n.i18nc("@action:button", "Reply"), tooltip: KI18n.i18nc("@info:tooltip", "Reply") + " (R)" },
+                { icon: "mail-reply-all", action: "reply_all", text: KI18n.i18nc("@action:button", "Reply All"), tooltip: KI18n.i18nc("@info:tooltip", "Reply All") + " (Shift+R)" },
+                { icon: "mail-forward", action: "forward", text: KI18n.i18nc("@action:button", "Forward"), tooltip: KI18n.i18nc("@info:tooltip", "Forward") + " (Shift+F)" }
             ]
 
             delegate: Loader {
@@ -124,7 +149,7 @@ Kirigami.Page {
                         text: MailController.messageFlagged ? KI18n.i18nc("@action:button", "Unflag")
                                                             : KI18n.i18nc("@action:button", "Flag")
                         display: QQC2.AbstractButton.IconOnly
-                        onClicked: MailController.setFlagged(MailController.currentMessageAccount, MailController.currentUid, !MailController.messageFlagged)
+                        onClicked: page.application.action("flag").trigger()
 
                         QQC2.ToolTip.text: text + " (Ctrl+Shift+F)"
                         QQC2.ToolTip.visible: hovered
@@ -141,7 +166,7 @@ Kirigami.Page {
                         text: MailController.messageUnread ? KI18n.i18nc("@action:button", "Mark as Read")
                                                            : KI18n.i18nc("@action:button", "Mark as Unread")
                         display: QQC2.AbstractButton.IconOnly
-                        onClicked: MailController.setUnread(MailController.currentMessageAccount, MailController.currentUid, !MailController.messageUnread)
+                        onClicked: page.application.action(MailController.messageUnread ? "mark_read" : "mark_unread").trigger()
 
                         QQC2.ToolTip.text: text + " (U)"
                         QQC2.ToolTip.visible: hovered
@@ -158,7 +183,7 @@ Kirigami.Page {
                         text: KI18n.i18nc("@action:button", "Archive")
                         display: QQC2.AbstractButton.IconOnly
                         enabled: MailController.canArchive
-                        onClicked: MailController.archiveMessage()
+                        onClicked: page.application.action("archive").trigger()
 
                         QQC2.ToolTip.text: enabled ? text + " (E)" : KI18n.i18nc("@info:tooltip", "Archive is not available: this account has no archive folder, or the message is already there.")
                         QQC2.ToolTip.visible: hovered
@@ -174,7 +199,7 @@ Kirigami.Page {
                         text: KI18n.i18nc("@action:button", "Delete")
                         display: QQC2.AbstractButton.IconOnly
                         enabled: MailController.canDelete
-                        onClicked: MailController.deleteMessage()
+                        onClicked: page.application.action("delete").trigger()
 
                         QQC2.ToolTip.text: enabled ? KI18n.i18nc("@info:tooltip", "Move to Trash") + " (Delete)" : KI18n.i18nc("@info:tooltip", "Delete is not available: this account has no Trash folder, or the message is already there.")
                         QQC2.ToolTip.visible: hovered
@@ -214,7 +239,7 @@ Kirigami.Page {
                         text: toolLoader.modelData.text
                         display: QQC2.AbstractButton.IconOnly
                         enabled: MailController.canCompose // enable only when we can compose a message
-                        onClicked: page.openCompose(toolLoader.modelData.kind)
+                        onClicked: page.application.action(toolLoader.modelData.action).trigger()
 
                         QQC2.ToolTip.text: toolLoader.modelData.tooltip
                         QQC2.ToolTip.visible: hovered
@@ -394,42 +419,6 @@ Kirigami.Page {
         }
     }
 
-    Shortcut {
-        sequence: "Ctrl+Shift+F"
-        enabled: page.hasMessage
-        onActivated: MailController.setFlagged(MailController.currentMessageAccount, MailController.currentUid, !MailController.messageFlagged)
-    }
-    // Single-key shortcuts; a focused text field takes the key instead.
-    Shortcut {
-        sequence: "R"
-        enabled: page.hasMessage && MailController.canCompose
-        onActivated: page.openCompose("reply")
-    }
-    Shortcut {
-        sequence: "Shift+R"
-        enabled: page.hasMessage && MailController.canCompose
-        onActivated: page.openCompose("replyAll")
-    }
-    Shortcut {
-        sequence: "Shift+F"
-        enabled: page.hasMessage && MailController.canCompose
-        onActivated: page.openCompose("forward")
-    }
-    Shortcut {
-        sequence: "U"
-        enabled: page.hasMessage
-        onActivated: MailController.setUnread(MailController.currentMessageAccount, MailController.currentUid, !MailController.messageUnread)
-    }
-    Shortcut {
-        sequence: "E"
-        enabled: page.hasMessage && MailController.canArchive
-        onActivated: MailController.archiveMessage()
-    }
-    Shortcut {
-        sequence: "Delete"
-        enabled: page.hasMessage && MailController.canDelete
-        onActivated: MailController.deleteMessage()
-    }
     Component.onCompleted: {
         styleHeader();
         syncBodyColours();

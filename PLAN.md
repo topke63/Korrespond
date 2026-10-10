@@ -4971,7 +4971,7 @@ MessagePage.qml.
   message is marked read on open, and the hooks trigger one action per run); strace.
 
 ### T212 — Views use the actions
-- status: todo
+- status: done
 - depends on: T211, T230
 - parallel-safe with: none
 - files: src/qml/Main.qml, src/qml/MessagePage.qml, src/qml/MessageListPage.qml,
@@ -4980,7 +4980,39 @@ MessagePage.qml.
 - output: existing toolbar actions and `Shortcut {}` blocks replaced by `fromQAction` of the
   collection; behaviour and current shortcuts unchanged (Ctrl+B, Ctrl+,, R, Shift+R, …).
 - verify: build; ctest; offscreen shots unchanged; grep: no leftover `Shortcut {` duplicates.
-- notes:
+- notes: Done 2026-10-10. Default shortcuts moved into MailApplication::setupActions (static
+  KirigamiActionCollection::setDefaultShortcut): Ctrl+N compose, R reply, Shift+R reply_all, Shift+F
+  forward, E archive, Delete delete, U on BOTH mark_read and mark_unread (exactly one is enabled, so
+  U still toggles as before), Ctrl+Shift+F flag (it was the flag toggle, not search), F5 refresh,
+  Ctrl+B toggle_sidebar, Ctrl+, settings; Ctrl+Q stays file_quit's own shortcut. search has no key
+  (the old Ctrl+Shift+F was never search). Refresh is disabled while MailController.busy (as the old
+  toolbar action was); a checkable action re-syncs from the controller after each controller call.
+  A bare QAction's shortcut is NOT active in a window; a `Kirigami.Action { fromQAction }` registers
+  it. So Main.qml has an Instantiator of fromQAction actions for the ids with a key but no toolbar
+  button (reply, reply_all, forward, archive, delete, mark_read, mark_unread, flag, toggle_sidebar,
+  settings, file_quit); compose and refresh are the list page's toolbar actions (fromQAction, same
+  tooltips and IconOnly hint; the overflow text is now the action's "Check for Mail"). Handlers:
+  Main.qml (toggleSidebarRequested -> sidebar.toggle(), settingsRequested -> settings.open()),
+  MessagePage (composeRequested(kind) -> openCompose, which now also does "new"; searchRequested ->
+  focus the search field, handled inside the title bar delegate), MessageListPage (next/previous
+  message: opens the neighbouring row, Qt.UserRole + 1/2 are uid/account). The message toolbar
+  buttons and the row context menu keep their icons/tooltips but trigger the actions. Stubs (no UI
+  yet, T214/T215): move, go_to_folder, shortcuts_help. Single keys do not fire in a text field (the
+  field accepts the ShortcutOverride; same as the old Shortcut blocks); Ctrl+Z (undo send) is still a
+  QML Shortcut in Main.qml (no action for it, inactive in text fields as before). FolderSidebar.qml
+  unchanged (its Settings item still emits settingsRequested to Main). Dev hooks: with PLASMAMAIL_DEMO=1
+  every action that runs logs "demo: action triggered <id>"; with PLASMAMAIL_DEV_HOOKS=ON
+  PLASMAMAIL_DEMO_KEYS=<seq>@<ms>[,...] sends key presses ("Ctrl+B@3000,E@4000"; "Ctrl+Comma" for
+  Ctrl+,; "focus:search@<ms>" focuses the search field).
+- verification (2026-10-10, builder, offscreen, isolated XDG, timeout-bounded): build/ and the dev
+  build clean; ctest 19/19 in both. `grep "Shortcut {" src/qml` leaves only Main.qml Ctrl+Z. Keys with
+  a demo message open: Ctrl+B, U (twice: mark_unread then mark_read), Ctrl+Shift+F, R (opens the
+  reply composer), Ctrl+, , E, Delete, F5, Ctrl+N each log the matching action; Ctrl+Q runs file_quit
+  and exits rc 0; with the search field focused R, E and U do nothing (Ctrl+B still toggles, as the
+  old Shortcut did); Ctrl+Z still undoes a pending send. Actions via DEMO_TRIGGER: search focuses the
+  field, next_message opens the second row, compose opens a blank composer. No "ambiguous" log
+  lines. Shots (fresh XDG) t212-dark/light.png are pixel-identical to a same-environment baseline
+  built from the previous commit (t212-base-dark/light.png).
 
 ### T213 — Keyboard set
 - status: todo

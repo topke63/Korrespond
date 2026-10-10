@@ -18,6 +18,7 @@
 #include <QApplication>
 #include <QGuiApplication>
 #include <QIcon>
+#include <QKeySequence>
 #include <QQmlApplicationEngine>
 #include <QQuickItem>
 #include <QQuickStyle>
@@ -268,6 +269,17 @@ int main(int argc, char *argv[])
         // Dev check (T211): the action collection's ids.
         if (auto *application = demoRoot->property("application").value<MailApplication *>()) {
             qInfo().noquote() << "actions:" << application->actionNames().join(u' ');
+            // Dev check (T212): log every action that runs, whichever way it was started.
+            const auto actionIds = application->actionNames();
+            for (const QString &id : actionIds) {
+                QAction *action = application->action(id);
+                if (!action) {
+                    continue;
+                }
+                QObject::connect(action, &QAction::triggered, application, [action] {
+                    qInfo().noquote() << "demo: action triggered" << action->objectName();
+                });
+            }
             // Dev only: PLASMAMAIL_DEMO_TRIGGER=<action id>@<ms> triggers that action of the collection
             // (as if the user chose it) at <ms>, e.g. file_quit@3000.
             const QStringList trigger = qEnvironmentVariable("PLASMAMAIL_DEMO_TRIGGER").split(u'@');
@@ -469,6 +481,39 @@ int main(int argc, char *argv[])
                           qlonglong(controller->property("pendingSends").toList().size()));
                     QTest::keyClick(window, Qt::Key_Z, Qt::ControlModifier);
                     qInfo("demo: ctrl+z sent, pending after=%lld", qlonglong(controller->property("pendingSends").toList().size()));
+                });
+            });
+        }
+        // PLASMAMAIL_DEMO_KEYS=<seq>@<ms>[,<seq>@<ms>...]: key presses for the main window (same path
+        // as KEY_UNDO), e.g. "E@3000,Ctrl+B@4000". The sequence "focus:search" focuses the search field
+        // instead. Logs the focus item at each step (the window is activated at the first one).
+        const QStringList keySteps = qEnvironmentVariable("PLASMAMAIL_DEMO_KEYS").split(u',', Qt::SkipEmptyParts);
+        for (const QString &step : keySteps) {
+            const QString sequence = step.section(u'@', 0, 0);
+            const int ms = step.section(u'@', 1).toInt();
+            if (ms <= 0) {
+                continue;
+            }
+            QTimer::singleShot(ms, &engine, [&engine, sequence] {
+                auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
+                if (!window) {
+                    return;
+                }
+                window->requestActivate();
+                QTimer::singleShot(300, window, [window, sequence] {
+                    if (sequence == "focus:search"_L1) {
+                        if (auto *field = window->findChild<QQuickItem *>(u"searchField"_s)) {
+                            field->forceActiveFocus();
+                        }
+                    } else {
+                        const QKeyCombination key = QKeySequence(QString(sequence).replace("Comma"_L1, ","_L1))[0]; // "," separates the steps
+                        const QQuickItem *focus = window->activeFocusItem();
+                        qInfo("demo: key %s, active=%d focus item=%s",
+                              qPrintable(sequence),
+                              window->isActive() ? 1 : 0,
+                              focus ? focus->metaObject()->className() : "none");
+                        QTest::keyClick(window, key.key(), key.keyboardModifiers());
+                    }
                 });
             });
         }

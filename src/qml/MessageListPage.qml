@@ -150,32 +150,54 @@ Kirigami.ScrollablePage {
         }
     }
 
+    // The window's action collection (set by Main.qml); one definition serves the toolbar and the keys.
+    property MailApplication application
+
+    // Opens the message `delta` rows from the open one (Next and Previous Message); the list's
+    // order is the model's. Roles: Qt.UserRole + 1 is the uid, + 2 the account (MessageListModel).
+    function step(delta) {
+        const model = MailController.messageModel;
+        const count = model.rowCount();
+        if (count === 0) {
+            return;
+        }
+        let current = -1;
+        for (let i = 0; i < count; ++i) {
+            if (model.data(model.index(i, 0), Qt.UserRole + 1) == MailController.currentUid) {
+                current = i;
+                break;
+            }
+        }
+        const target = current < 0 ? (delta > 0 ? 0 : count - 1) : Math.max(0, Math.min(count - 1, current + delta));
+        if (target === current) {
+            return;
+        }
+        const index = model.index(target, 0);
+        MailController.openMessage(model.data(index, Qt.UserRole + 2), model.data(index, Qt.UserRole + 1));
+        list.positionViewAtIndex(target, ListView.Contain);
+    }
+
+    Connections {
+        target: page.application
+
+        function onNextMessageRequested() {
+            page.step(1);
+        }
+        function onPreviousMessageRequested() {
+            page.step(-1);
+        }
+    }
+
     actions: [
         Kirigami.Action {
-            text: KI18n.i18nc("@action:intoolbar", "New Message")
-            icon.name: "mail-message-new"
+            fromQAction: page.application?.action("compose") ?? null
             displayHint: Kirigami.DisplayHint.IconOnly
             tooltip: KI18n.i18nc("@info:tooltip", "Write a new message (Ctrl+N)")
-            shortcut: "Ctrl+N"
-            onTriggered: {
-                // A separate window per message; it destroys itself when closed.
-                const component = Qt.createComponent("PlasmaMail", "ComposeWindow");
-                const composer = component.createObject((page.QQC2.ApplicationWindow.window as Kirigami.ApplicationWindow));
-                if (composer) {
-                    (composer as Window).show();
-                } else {
-                    console.warn(component.errorString());
-                }
-            }
         },
         Kirigami.Action {
-            text: KI18n.i18nc("@action:intoolbar", "Refresh")
-            icon.name: "view-refresh"
+            fromQAction: page.application?.action("refresh") ?? null
             displayHint: Kirigami.DisplayHint.IconOnly
             tooltip: KI18n.i18nc("@info:tooltip", "Check for new mail (F5)")
-            shortcut: "F5"
-            enabled: !MailController.busy
-            onTriggered: MailController.refresh()
         }
     ]
 
@@ -231,25 +253,25 @@ Kirigami.ScrollablePage {
                 QQC2.MenuItem {
                     text: MailController.messageUnread ? KI18n.i18nc("@action:inmenu", "Mark as Read") : KI18n.i18nc("@action:inmenu", "Mark as Unread")
                     icon.name: MailController.messageUnread ? "mail-mark-read" : "mail-mark-unread"
-                    onTriggered: MailController.setUnread(MailController.currentMessageAccount, MailController.currentUid, !MailController.messageUnread)
+                    onTriggered: page.application.action(MailController.messageUnread ? "mark_read" : "mark_unread").trigger()
                 }
                 QQC2.MenuItem {
                     text: MailController.messageFlagged ? KI18n.i18nc("@action:inmenu", "Unflag") : KI18n.i18nc("@action:inmenu", "Flag")
                     icon.name: "flag"
-                    onTriggered: MailController.setFlagged(MailController.currentMessageAccount, MailController.currentUid, !MailController.messageFlagged)
+                    onTriggered: page.application.action("flag").trigger()
                 }
                 QQC2.MenuSeparator {}
                 QQC2.MenuItem {
                     text: KI18n.i18nc("@action:inmenu", "Archive")
                     icon.name: "archive-insert"
                     enabled: MailController.canArchive
-                    onTriggered: MailController.archiveMessage()
+                    onTriggered: page.application.action("archive").trigger()
                 }
                 QQC2.MenuItem {
                     text: KI18n.i18nc("@action:inmenu", "Delete")
                     icon.name: "edit-delete"
                     enabled: MailController.canDelete
-                    onTriggered: MailController.deleteMessage()
+                    onTriggered: page.application.action("delete").trigger()
                 }
                 MoveFolderMenu {
                     title: KI18n.i18nc("@action:inmenu", "Move to Folder")

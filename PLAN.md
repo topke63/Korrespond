@@ -4723,6 +4723,32 @@ first, then stop.
   hand-off fails), PLASMAMAIL_SCREENSHOT_NEWEST=1 (grab the newest visible window).
   Not verifiable headless: real clicks on Undo / Ctrl+Z keypress, the compose window closing on a real
   Send press, a real SMTP failure.
+- verification 2 (2026-10-10, offscreen, isolated XDG, timeout-bounded; hooks in commit "T208: UI:
+  verification hooks and fixes"): build clean, ctest 19/19. Screenshots (scratchpad): t208-pending-dark/light,
+  t208-undo-dark/light, t208-fail-dark viewed: status bar and composer readable in both schemes; no hex
+  colours in StatusBar.qml. Also viewed: t208-undo-attach-dark.png (reopened with attachment, fields and
+  body identical), t208-restored-close-dialog-light.png (Discard Message? on a restored composer).
+  Checks (logs from the demo hooks):
+  - queue closes the composer: 2 -> 1 visible windows, message window objects 1 -> 0 (no leak);
+    delay 0: composer stays open (waiting=1) until the demo hand-off, then closes (objects 0).
+  - Ctrl+Z through the platform key path: undoes ("send undone id=1"), the composer reopens with
+    to/subject/body and the attachment (attachments=1 initial=1 restored=1); with focus in the search
+    field (PLASMAMAIL_DEMO_KEY_UNDO_SEARCH=1) the field gets the key, the message stays pending and is handed off.
+  - delay 0 + PLASMAMAIL_DEMO_FAIL=1: composer stays open with "Demo: the server refused the message."
+    (waiting=0).
+  - two queued composers (delay 5 s, fail): each closes on queue; each failure reopens its own message
+    with its own subject, attachment and the error (message 1 then message 2).
+  - two composers, delay 0: the second gets "Another message is still being sent." and stays open;
+    the first closes at its own messageSent; the second is unaffected.
+  - restored composer closed by the window manager: refused (discard prompt shown, object kept).
+  Fixes: none to product code. Dev hooks added (above); the Ctrl+Z hook needs the Qt private
+  module (Qt6::GuiPrivate), since QCoreApplication::sendEvent does not reach the shortcut map.
+  Remaining (planner): (a) a restored composer whose attachment file was removed silently drops it
+  (MailController::fileInfo returns {} and addAttachments skips it); the user is not told.
+  (b) cosmetic: in the dark scheme the attach and Send icons of ComposeWindow are dark on dark in
+  the offscreen theme (same for a plain reply window, so not T208-specific). (c) Not verifiable
+  headless: a real click on Undo, a real Ctrl+Z through the window manager, the Send button press
+  closing the composer, real SMTP failure.
 
 ### T209 — Settings: undo-send choice
 - status: todo

@@ -4049,7 +4049,7 @@ Queued after the Mimestream palette tasks (T175–T186); same file (FolderSideba
 
 ### T188 — Account trees: persisted collapse, Collapse all / Expand all
 - status: todo
-- depends on: T187, T196 (Milestone 3k first)
+- depends on: T187, T194, T195 (Milestone 3k code first)
 - parallel-safe with: none
 - files: src/engine/appsettings.h, src/engine/appsettings.cpp, autotests/appsettingstest.cpp,
   src/app/mailcontroller.h, src/app/mailcontroller.cpp, src/qml/FolderSidebar.qml

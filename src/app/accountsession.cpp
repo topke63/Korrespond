@@ -225,9 +225,40 @@ void AccountSession::signInWithGoogle(bool withContacts)
     oauth()->signIn(m_account.email, withContacts);
 }
 
+void AccountSession::requestContactsAccess()
+{
+    if (m_demo) {
+        qInfo("demo: blocked network access in %s", __func__);
+        return;
+    }
+    if (!m_contactsOauth) {
+        // Its own client: the mail login keeps its tokens and its connection.
+        m_contactsOauth = new OAuthClient(this);
+        connect(m_contactsOauth, &OAuthClient::signedIn, this, [this](const QString &accessToken, const QString &refreshToken) {
+            if (!OAuthClient::hasContactsScope(m_contactsOauth->grantedScopes())) {
+                Q_EMIT contactsAuthFailed(i18n("Google did not allow access to contacts."));
+                return;
+            }
+            m_refreshToken = refreshToken; // the one to keep: it carries the contacts scopes
+            m_account.contacts = true;
+            m_contactsToken = accessToken;
+            Q_EMIT accessTokenChanged();
+            Q_EMIT contactsAuthorized();
+        });
+        connect(m_contactsOauth, &OAuthClient::accessTokenChanged, this, [this](const QString &accessToken) {
+            m_contactsToken = accessToken;
+            Q_EMIT accessTokenChanged();
+        });
+        connect(m_contactsOauth, &OAuthClient::failed, this, &AccountSession::contactsAuthFailed);
+    }
+    m_contactsOauth->signIn(m_account.email, true);
+}
+
 QString AccountSession::accessToken() const
 {
-    return m_accessToken;
+    // The sign-in made for contacts, when there was one; else the mail login's (which has the
+    // contacts scopes when the account was added with them).
+    return m_contactsToken.isEmpty() ? m_accessToken : m_contactsToken;
 }
 
 bool AccountSession::contactsGranted() const

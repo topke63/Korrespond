@@ -112,6 +112,21 @@ FormCard.FormCardPage {
         }
     }
 
+    // Dev only (PLASMAMAIL_DEMO_OPEN_ACCOUNT_DETAILS=<email>, demo mode): opens that account's page.
+    Component.onCompleted: {
+        const email = MailController.demoOption("OPEN_ACCOUNT_DETAILS");
+        if (email.length > 0) {
+            Qt.callLater(() => {
+                for (let i = 0; i < accountRepeater.count; ++i) {
+                    const row = accountRepeater.itemAt(i) as FormCard.AbstractFormDelegate;
+                    if (row && row.email === email) {
+                        row.clicked();
+                    }
+                }
+            });
+        }
+    }
+
     Component {
         id: detailsPage
 

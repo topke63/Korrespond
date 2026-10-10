@@ -1479,6 +1479,11 @@ void MailController::loadDemo()
         account.email = QLatin1StringView(accountRows[0].email);
         account.displayName = QLatin1StringView(accountRows[0].name);
         account.provider = u"custom"_s;
+        if (account.email == "bob@example.com"_L1) {
+            // One demo account is a Google one without the contacts permission (the settings page).
+            account.provider = u"gmail"_s;
+            account.authMethod = u"oauth"_s;
+        }
         account.imapHost = u"imap.example.com"_s;
         account.smtpHost = u"smtp.example.com"_s;
         AccountSession *session = createSession(account);
@@ -2909,6 +2914,102 @@ void MailController::backfillStep(AccountSession *session, std::shared_ptr<QList
     }
     m_contacts->setSyncToken(account, ContactStore::History, u"1"_s);
     m_backfilling.erase(session);
+}
+
+QVariantMap MailController::contactsStatus(const QString &account) const
+{
+    const AccountSession *session = sessionFor(account);
+    QVariantMap status;
+    const bool google = session && session->account().authMethod == "oauth"_L1;
+    status[u"google"_s] = google;
+    status[u"enabled"_s] = m_app.contactsEnabled;
+    status[u"granted"_s] = google && session->account().contacts;
+    status[u"lastSync"_s] = QString();
+    if (!google) {
+        status[u"state"_s] = u"none"_s;
+        status[u"text"_s] = i18n("Only Google accounts have contacts.");
+        return status;
+    }
+    const auto *sync = session->findChild<ContactSync *>();
+    if (!m_app.contactsEnabled) {
+        status[u"state"_s] = u"off"_s;
+        status[u"text"_s] = i18n("Contacts are switched off.");
+    } else if (!session->account().contacts || (sync && sync->state() == ContactSync::MissingScope)) {
+        status[u"state"_s] = u"needed"_s;
+        status[u"text"_s] = i18n("Permission needed: allow Plasma Mail to read your Google contacts.");
+    } else if (!sync) {
+        status[u"state"_s] = u"waiting"_s;
+        status[u"text"_s] = i18n("Waiting for the account to connect.");
+    } else if (sync->state() == ContactSync::Syncing) {
+        status[u"state"_s] = u"syncing"_s;
+        status[u"text"_s] = i18n("Syncing…");
+    } else if (sync->state() == ContactSync::ApiDisabled) {
+        status[u"state"_s] = u"disabled"_s;
+        status[u"text"_s] = i18n("The People API is not enabled for this app's Google project.");
+    } else if (sync->state() == ContactSync::Failed) {
+        status[u"state"_s] = u"failed"_s;
+        status[u"text"_s] = i18n("The last sync failed: %1", sync->errorText());
+    } else {
+        status[u"state"_s] = u"ok"_s;
+        status[u"text"_s] =
+            sync->lastSync().isValid() ? i18n("Synced %1.", QLocale().toString(sync->lastSync().toLocalTime(), QLocale::ShortFormat)) : i18n("Not synced yet.");
+        status[u"lastSync"_s] = sync->lastSync().isValid() ? QLocale().toString(sync->lastSync().toLocalTime(), QLocale::ShortFormat) : QString();
+    }
+    return status;
+}
+
+QString MailController::demoOption(const QString &name) const
+{
+    if (!m_demo) {
+        return {};
+    }
+    const QByteArray variable = QByteArray("PLASMAMAIL_DEMO_") + name.toLatin1();
+    return qEnvironmentVariable(variable.constData());
+}
+
+void MailController::allowContacts(const QString &account)
+{
+    AccountSession *session = sessionFor(account);
+    if (!session || session->account().authMethod != "oauth"_L1) {
+        return;
+    }
+    if (!m_googleConfigured) {
+        Q_EMIT errorOccurred(i18n("No Google OAuth client is set up. Add ClientId and ClientSecret to the [GoogleOAuth] group of plasmamailrc."));
+        return;
+    }
+    if (!session->property("contactsAuthConnected").toBool()) {
+        session->setProperty("contactsAuthConnected", true);
+        connect(session, &AccountSession::contactsAuthorized, this, [this, session] {
+            // Keep the new refresh token (it carries the contacts scopes), then start the sync.
+            const QString email = session->account().email;
+            connect(
+                m_secrets,
+                &SecretStore::passwordWritten,
+                this,
+                [this, session, email](const QString &key, const QString &error) {
+                    if (key != email) {
+                        return;
+                    }
+                    if (!error.isEmpty()) {
+                        Q_EMIT errorOccurred(i18n("Could not save the new sign-in for %1 in the keychain: %2", key, error));
+                    }
+                    saveAccounts();
+                    if (!m_app.contactsEnabled) {
+                        m_app.contactsEnabled = true; // asking for the permission means wanting contacts
+                        m_app.save();
+                    }
+                    startContactSync(session);
+                    Q_EMIT contactsChanged();
+                },
+                Qt::SingleShotConnection);
+            m_secrets->writePassword(email, session->refreshToken());
+        });
+        connect(session, &AccountSession::contactsAuthFailed, this, [this](const QString &message) {
+            Q_EMIT errorOccurred(message);
+            Q_EMIT contactsChanged();
+        });
+    }
+    session->requestContactsAccess();
 }
 
 void MailController::startContactSync(AccountSession *session)

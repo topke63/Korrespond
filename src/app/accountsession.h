@@ -73,6 +73,10 @@ public:
     [[nodiscard]] QString accessToken() const;
     // The last sign-in of this run was granted the contacts scopes (else the saved account says).
     [[nodiscard]] bool contactsGranted() const;
+    // Signs in with Google again, in the browser, asking for the contacts scopes too. The mail
+    // connection is not touched. Answers with contactsAuthorized() (refreshToken() is then the
+    // token to keep) or contactsAuthFailed().
+    void requestContactsAccess();
     // Push mail: an own connection in IDLE on INBOX (see ImapIdleWatcher). It logs in with the
     // secret the main connection uses now (kept in the client; renewed OAuth tokens included).
     // startWatcher() does nothing while a watcher runs; it is stopped whenever the main
@@ -100,6 +104,8 @@ public:
 Q_SIGNALS:
     // A new access token for a Google account (every renewal).
     void accessTokenChanged();
+    void contactsAuthorized();
+    void contactsAuthFailed(const QString &message);
     // Addresses of a message that was just stored (see SyncManager::addressesSeen).
     void addressesSeen(const QList<SeenAddress> &addresses, qint64 whenMs);
     // Emitted after the session saved the list and filled folderModel().
@@ -131,8 +137,10 @@ private:
 
     Account m_account;
     OAuthClient *m_oauth = nullptr; // created for Google accounts
+    OAuthClient *m_contactsOauth = nullptr; // the sign-in that asks for the contacts scopes
     QString m_refreshToken;
     QString m_accessToken;
+    QString m_contactsToken; // from m_contactsOauth
     ConnectionState m_connectionState = Idle;
     QString m_lastError;
     QString m_syncText;

@@ -254,6 +254,17 @@ public:
     Q_INVOKABLE void selectConversationMessage(int row);
     // Marks the open message, or with conversations on all messages of its conversation, read or unread.
     Q_INVOKABLE void setOpenUnread(bool unread);
+
+    // Contacts of a Google account for the settings page: {google, enabled, granted, state, text,
+    // lastSync}. state: "off", "none" (not a Google account), "needed" (no permission yet),
+    // "waiting", "syncing", "ok", "disabled" (People API off), "failed".
+    Q_INVOKABLE QVariantMap contactsStatus(const QString &account) const;
+    // Signs in with Google again in the browser, asking for the contacts scopes; the mail
+    // connection stays up. The new refresh token replaces the saved one when it worked.
+    Q_INVOKABLE void allowContacts(const QString &account);
+    // Dev only: the value of PLASMAMAIL_DEMO_<name> in demo mode, else empty (lets a screenshot run
+    // open a page that has no other way to be reached from outside).
+    Q_INVOKABLE QString demoOption(const QString &name) const;
     [[nodiscard]] int sidebarWidth() const;
     [[nodiscard]] int listWidth() const;
     [[nodiscard]] bool sidebarCollapsed() const;

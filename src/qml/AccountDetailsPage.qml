@@ -79,6 +79,45 @@ FormCard.FormCardPage {
         }
     }
 
+    // Google accounts: whether Plasma Mail may read the contacts (suggestions, sender names).
+    property var contacts: MailController.contactsStatus(email)
+
+    Connections {
+        target: MailController
+
+        function onContactsChanged() {
+            page.contacts = MailController.contactsStatus(page.email);
+        }
+    }
+
+    FormCard.FormHeader {
+        visible: page.contacts.google
+        title: KI18n.i18nc("@title:group", "Contacts")
+    }
+
+    FormCard.FormCard {
+        visible: page.contacts.google
+
+        FormCard.FormTextDelegate {
+            text: KI18n.i18nc("@label", "Google contacts")
+            description: page.contacts.text
+        }
+
+        FormCard.FormDelegateSeparator {
+            visible: allowContacts.visible
+        }
+
+        FormCard.FormButtonDelegate {
+            id: allowContacts
+
+            visible: page.contacts.state === "needed" || page.contacts.state === "off"
+            text: KI18n.i18nc("@action:button", "Allow Access to Contacts…")
+            description: KI18n.i18nc("@info", "Opens Google's sign-in in your browser. Mail stays connected. Plasma Mail only reads contacts.")
+            icon.name: "contact-new"
+            onClicked: MailController.allowContacts(page.email)
+        }
+    }
+
     FormCard.FormCard {
         Layout.topMargin: Kirigami.Units.largeSpacing
 

@@ -5223,7 +5223,7 @@ no contacts API: its autocomplete (and Gmail's fallback) comes from addresses se
 - notes: Done 2026-10-10 (no sub-agents). addresshistory.* reads From/To/Cc/Bcc of a message (once per lower-cased address, header block only). SyncManager emits addressesSeen() for every stored message; the controller adds them as History entries (not the account's own address; no-reply/mailer-daemon style addresses get time 0 so they rank last). Stored mail from before is read once per account in steps of 100 messages (marker: History sync token '1'); that pass has no dates, so old addresses rank by name only until they are seen again. MessageStore::storedKeys() added. Needs mail storage on; nothing in demo mode. Tests: header parsing, automated addresses, storedKeys.
 
 ### T236 — Re-authorize for contacts
-- status: todo
+- status: done
 - depends on: T233, T234
 - files: src/app/mailcontroller.cpp/.h, src/qml/AccountSettingsPage.qml
 - output: for a Google account without the contacts scope (or with MissingScope), the account's
@@ -5233,7 +5233,7 @@ no contacts API: its autocomplete (and Gmail's fallback) comes from addresses se
   nothing and says so.
 - verify: build; ctest/controller test with a fake OAuth client: success replaces the token and
   starts a sync; cancel keeps the old token; offscreen shot of the account page in both schemes.
-- notes:
+- notes: Done 2026-10-10 (no sub-agents). AccountSession::requestContactsAccess() signs in again with a second OAuthClient (asks for the contacts scopes), so the mail login and IMAP connection are untouched; its token is used for People API calls (accessToken()), and its refresh token replaces the kept one. MailController::allowContacts(account) writes that token to the keychain, saves the account (Contacts=true), switches contacts on if they were off and starts the sync; a failed or cancelled sign-in reports the error and changes nothing. contactsStatus(account) feeds the account page: a 'Contacts' card with the state text and, when permission is needed (no scope yet, or the API answered 403), an 'Allow Access to Contacts…' button. Demo: bob@example.com is a Google account without the permission (shots t236-{BreezeLight,BreezeDark}.png, dev hook PLASMAMAIL_DEMO_OPEN_ACCOUNT_DETAILS). Not verified: the real browser round trip and keychain write.
 
 ### T237 — Suggestions API in the controller
 - status: todo

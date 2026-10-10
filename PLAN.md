@@ -4086,7 +4086,7 @@ known light look and derive it (macOS light: sidebar `#e8e6ee`-ish, band `#f3f1f
   account row at folder scale.
 
 ### T202 — Hairline between sidebar and list
-- status: todo
+- status: done
 - depends on: T201
 - parallel-safe with: none
 - files: src/qml/FolderSidebar.qml (or src/qml/Main.qml)
@@ -4094,7 +4094,13 @@ known light look and derive it (macOS light: sidebar `#e8e6ee`-ish, band `#f3f1f
 - output: 1 px divider (text colour at `MimeTheme.columnDividerAlpha`) on the docked sidebar's right
   edge, like the list/reading divider; not shown when collapsed or modal.
 - verify: build; ctest; GUI shots in Breeze Dark and Light, divider ≥ 1.2:1.
-- notes:
+- notes: no code change: the divider T177 added in FolderSidebar.qml (1 px, right edge, full height
+  incl. header row, text colour at MimeTheme.columnDividerAlpha, `visible: !sidebar.modal`, drawn above the
+  content and under the PanelResizer, a transparent drag strip) is already on screen; the T196 "no
+  hairline" reading did not reproduce. Collapsed (T187) the drawer is closed, so none. Real-window shots
+  (sample-plain, 1350x810, x=266): Light 1.47:1 vs sidebar, 1.68:1 vs list (header row 1.45:1 both sides);
+  Dark 1.89:1 vs sidebar, 2.17:1 vs list; Light collapsed: no line at the edge. Build ok, ctest 19/19.
+  The desktop index changed between runs (outside them); no further runs made.
 
 # Milestone 3j — Sidebar control (user request 2026-10-10: "a collapse option for the left panel;
 # I don't need to see the whole tree of each account, I'd like to choose")

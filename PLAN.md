@@ -4096,6 +4096,10 @@ Queued after the Mimestream palette tasks (T175–T186); same file (FolderSideba
   MessageListPage's titleDelegate, only while wide and collapsed. Dev env
   PLASMAMAIL_SIDEBAR_COLLAPSED=0|1 overrides for one run without saving. Screenshots: scratchpad
   t187-{expanded,collapsed}-{dark,light}.png. ctest 19/19.
+  visual check done 2026-10-10: real window on Desktop 2 (runs via desktop3-run.sh). Expanded
+  shows the sidebar and logo in dark, light and Breeze Classic; collapsed (dark and light) hides
+  the sidebar and logo and shows the show-sidebar icon at the top left of the list band. Light
+  collapsed captured during "Loading..." (busy stripe under the band), transient.
 
 ### T188 — Account trees: persisted collapse, Collapse all / Expand all
 - status: todo
@@ -4236,7 +4240,7 @@ screenshot checks stay `todo`.
   ColorScheme key count unchanged (1, pre-existing).
 
 ### T196 — Check: two real schemes (screenshots)
-- status: todo
+- status: done (real-window check 2026-10-10, see notes; unread dot not visible, no unread rows)
 - depends on: T194, T195, and open question 2 (GUI runs paused)
 - parallel-safe with: none
 - files: none (fixes become new tasks)
@@ -4272,6 +4276,29 @@ screenshot checks stay `todo`.
     default). Planner decision: band fallback to Window for schemes without [Colors:Header].
     Newsletter dark: the mail's own white/grey HTML backgrounds are kept (readable, not inverted).
   - Remaining: the real-window check (screenshots by eye), T196 status stays todo.
+  - Real-window check done 2026-10-10 via scripts/desktop3-run.sh, six sequential runs, desktop 2
+    before and after each, no plasma-mail left running. Screenshots in the scratchpad:
+    gui-dark-plain, gui-dark-newsletter, gui-dark-collapsed, gui-light-plain, gui-light-newsletter,
+    gui-light-collapsed, gui-classic-plain. Pixel ratios measured from the PNGs:
+    - text: title band 13.7 / 11.5 / 13.4, sidebar item 15.4 / 13.3 / 13.4, list text 17.7 / 15.2 /
+      14.9 (dark / light / classic) all >= 7.
+    - secondary: dark sidebar 6.6, list preview 7.6; light sidebar 3.7, list preview 4.2; classic
+      3.1, 3.4. Light and classic below 4.5 are Breeze's own ForegroundInactive, report-only.
+    - links in reading pane: 6.0 / 5.1 / 5.0; newsletter links 5.9 (blue), 5.9 (magenta),
+      5.7 (on yellow) all >= 4.5. Newsletter body keeps its own white HTML background, readable.
+    - selected row vs sidebar: 1.73 dark, 1.27 light, 1.27 classic (>= 1.2).
+    - dividers: reading header rule 1.31 / 1.21 / 1.22 (>= 1.2, light marginal); list/reading
+      column 1.85 dark, 1.49 light. Sidebar/list edge has no hairline (background step only,
+      light 1.14 lum ratio), so it is not a divider measure: flagged, not a failure.
+    - unread dot: NOT visible (status bar shows 0 unread, and clicking is not allowed). Covered
+      only by the numeric T199 result (readableOn to 3:1), not by a screenshot.
+    - Not verified: the logo fallback ":/icons/sc-apps-plasma-mail.svg" (the theme icon
+      `plasma-mail` is installed, so the theme path was used).
+    - Issue (design, planner): Breeze Classic's sidebar body and title band are both (239,240,241),
+      so sidebar and band are not told apart; sidebar vs list 1.11 lum (only bg). Expected from
+      T200's fix, but it misses the "sidebar vs list vs band distinct" check.
+    - Issue (design, planner): light and classic secondary text (sidebar account labels, list
+      preview) is 3.1-4.2, below 4.5, as Breeze ships it.
 
 ### T197 — Dev script: GUI runs on Desktop 3
 - status: done
@@ -4289,7 +4316,7 @@ screenshot checks stay `todo`.
   window during the run.
 
 ### T198 — App logo in the sidebar header
-- status: done (visual check todo: GUI runs not yet allowed; confirm the fallback ":/icons/..." renders when run from build/bin)
+- status: done
 - depends on: T187
 - parallel-safe with: none
 - files: src/qml/FolderSidebar.qml (src/app/main.cpp only if the icon needs exposing to QML)
@@ -4299,8 +4326,10 @@ screenshot checks stay `todo`.
   `:/icons/sc-apps-plasma-mail.svg` (as main.cpp's QIcon::fromTheme fallback), so it works when run
   from build/bin. Hidden with the sidebar when collapsed (T187's "Show Sidebar" button in the list
   band stays the way back). Correct in light and dark.
-- verify: build; ctest; offscreen start without new QML warnings. Visual check `todo` until GUI runs
-  are allowed (open question 2 of Milestone 3k).
+- verify: build; ctest; offscreen start without new QML warnings. Visual check done 2026-10-10
+  (open question 2 of Milestone 3k): the logo is drawn top-left in dark, light and Breeze Classic
+  with no new QML warnings in the run logs. It came from the theme icon `plasma-mail`; the bundled
+  fallback was not exercised in this run.
 - notes: the title bar icon is a separate matter: `_NET_WM_ICON` and `_KDE_NET_WM_DESKTOP_FILE` are
   already correct, so a generic title-bar icon would be a KWin/panel cache issue, not an app bug.
 

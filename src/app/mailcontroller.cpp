@@ -769,7 +769,10 @@ void MailController::setShowHiddenFolders(bool show)
 
 bool MailController::isFolderHidden(const QString &account, const QString &path) const
 {
-    return m_app.hiddenFolders.value(account).contains(path);
+    // Keys are the session's own email, whatever the case of the argument (sessionFor ignores case).
+    const AccountSession *session = sessionFor(account);
+    const QString email = session ? session->account().email : account;
+    return m_app.hiddenFolders.value(email).contains(path);
 }
 
 bool MailController::setFolderHidden(const QString &account, const QString &path, bool hidden)
@@ -778,14 +781,15 @@ bool MailController::setFolderHidden(const QString &account, const QString &path
     if (!session) {
         return false;
     }
+    const QString email = session->account().email;
     // Showing again is always allowed; hiding is refused for the inbox.
     if (hidden && !canHideFolder(session->folders(), path)) {
         return false;
     }
-    if (hidden == isFolderHidden(account, path)) {
+    if (hidden == isFolderHidden(email, path)) {
         return true;
     }
-    QStringList &list = m_app.hiddenFolders[account];
+    QStringList &list = m_app.hiddenFolders[email];
     if (hidden) {
         list.append(path);
     } else {

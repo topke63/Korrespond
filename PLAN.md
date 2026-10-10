@@ -4243,6 +4243,27 @@ scripts/desktop3-run.sh or a visible window; never act on the user's real folder
   account; hidden=false always allowed). Display-only: counts, sync, IDLE, notifications and the
   All Inboxes / Unread / Flagged views are untouched. removeAccount drops the account's list. Saved
   at once. No UI yet. ctest 19/19; offscreen demo start shows only the usual offscreen messages.
+- verification (2026-10-10, check of c6153d2):
+  - build clean; ctest 19/19 (also after the fixes below).
+  - Fixed: `setFolderHidden`/`isFolderHidden` keyed the map by the raw argument, but `sessionFor`
+    matches the email case-insensitively, so "Bob@Example.com" stored a key the view (canonical
+    email) never found, and removeAccount left it behind. Both now use the session's email.
+  - Fixed: `canHideFolder` refuses everything while the folder list is empty (not loaded yet), since
+    an inbox with a non-standard name cannot be recognised then. Test added in folderutilstest.
+  - Checked by reading: `hiddenFolders` is not consulted by counts, sync, IDLE, notifications or the
+    shared views (grep); removeAccount clears the list (and saves); setFolderHidden and
+    setShowHiddenFolders emit only on an actual change; save() rewrites the whole subgroup, so stale
+    keys go; keys decode back to the same email (percent-encoding round trip covered by the test);
+    unknown account returns false without touching state.
+  - Not covered by ctest: MailController itself has no harness (needs sessions), so the case fix is
+    checked by reading only.
+  - Offscreen demo start (`QT_QPA_PLATFORM=offscreen PLASMAMAIL_DEMO=1`, isolated XDG, timeout 20),
+    once without and once with a seeded `[General][HiddenFolders]` (incl. a bad key): only the usual
+    offscreen messages in both logs, and the seeded file was not rewritten. Isolated config removed.
+  - Remaining, for T190/later: a folder list is only known after the account connects, so the sidebar
+    can offer hiding only once folders are shown (matches the guard above). A path like "INBOX/" or
+    a server with another delimiter is not refused (not the inbox path, so allowed); decide if that
+    matters.
 
 ### T190 — Hidden folders: sidebar UI
 - status: todo

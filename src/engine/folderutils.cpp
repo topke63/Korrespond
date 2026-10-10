@@ -75,7 +75,8 @@ QString archiveTarget(const QList<FolderInfo> &folders)
 
 bool canHideFolder(const QList<FolderInfo> &folders, const QString &path)
 {
-    if (path.isEmpty() || path.compare(QStringLiteral("INBOX"), Qt::CaseInsensitive) == 0) {
+    // Without the folder list the inbox cannot be told apart by its role, so nothing is hidden yet.
+    if (folders.isEmpty() || path.isEmpty() || path.compare(QStringLiteral("INBOX"), Qt::CaseInsensitive) == 0) {
         return false;
     }
     return path != folderForRole(folders, QStringLiteral("inbox"));

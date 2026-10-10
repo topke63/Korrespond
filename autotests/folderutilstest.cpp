@@ -209,6 +209,9 @@ private Q_SLOTS:
         QVERIFY(canHideFolder(folders, u"Archive"_s));
         QVERIFY(canHideFolder(folders, u"Projects/Alpha"_s));
         QVERIFY(canHideFolder(folders, u"INBOX/Sub"_s));
+        // Folder list not loaded yet: the inbox cannot be recognised by role, so refuse.
+        QVERIFY(!canHideFolder({}, u"Posteingang"_s));
+        QVERIFY(!canHideFolder({}, u"Archive"_s));
     }
 
     void testArchiveTarget()

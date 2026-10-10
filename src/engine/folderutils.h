@@ -30,5 +30,6 @@ QString folderForRole(const QList<FolderInfo> &folders, const QString &role);
 QString archiveTarget(const QList<FolderInfo> &folders);
 
 // Whether the user may hide this folder from the sidebar: never the inbox (path "INBOX" in any
-// case, or the folder whose role is "inbox"), and never an empty path.
+// case, or the folder whose role is "inbox"), and never an empty path. Nothing may be hidden
+// while the folder list is still unknown (empty), as the inbox could not be recognised.
 bool canHideFolder(const QList<FolderInfo> &folders, const QString &path);

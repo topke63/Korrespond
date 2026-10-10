@@ -53,14 +53,34 @@ Kirigami.ApplicationWindow {
     minimumHeight: Kirigami.Units.gridUnit * 16
     pageStack.globalToolBar.style: Kirigami.ApplicationHeaderStyle.None
 
+    // A restored attachment is a plain path, not a URL: encode each segment so that % and # in a file
+    // name survive the QUrl conversion done by fileInfo().
+    function asFileUrl(entry) {
+        const text = String(entry);
+        return text.startsWith("/") ? "file://" + text.split("/").map(encodeURIComponent).join("/") : entry;
+    }
+
+    function displayName(entry) {
+        const text = String(entry);
+        const last = text.split("/").pop();
+        if (text.startsWith("/")) {
+            return last;
+        }
+        try {
+            return decodeURIComponent(last);
+        } catch (error) {
+            return last;
+        }
+    }
+
     // Returns the file names that could not be read (deleted, unreadable).
     function addAttachments(urls) {
         const list = attachments.slice();
         const missing = [];
         for (const url of urls) {
-            const info = MailController.fileInfo(url);
+            const info = MailController.fileInfo(asFileUrl(url));
             if (info.path === undefined) {
-                missing.push(String(url).split("/").pop());
+                missing.push(displayName(url));
             } else if (!list.some(file => file.path === info.path)) {
                 list.push(info);
             }

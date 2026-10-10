@@ -4798,6 +4798,13 @@ first, then stop.
   Kirigami.InlineMessage (Warning, i18np plural) at the top of the window. Shots (scratchpad)
   t229-dark/light.png show the warning naming the file; t229-present.png (file kept) shows the chip and
   no warning. Drag/drop and file-dialog adds ignore the return value (unchanged).
+- verification notes (2026-10-10, review + ctest): build clean, ctest 19/19. Reviewed: return value used
+  only on the restore path (Main.qml demo hook and drop/dialog ignore it); i18np plural form correct;
+  warning dismissable (showCloseButton); no warning for non-restored composers (missingAttachments stays
+  []); no hex colours. Bug fixed: a restored path went through QUrl, so a file name containing `%`
+  (e.g. `100%.pdf`) became `100%25.pdf`, existed as nothing, and was reported as missing (false warning).
+  Restored paths are now sent to fileInfo() as encoded file URLs (asFileUrl), and the warning shows
+  decoded names (displayName). Checked with a Qt6 QUrl probe and node; no GUI run needed.
 
 ### T210 — Check: undo send
 - status: done (headless checks pass; real-app checks listed below remain for the user)

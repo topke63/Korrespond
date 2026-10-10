@@ -3749,7 +3749,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   (not hoverable offscreen; binding read). ctest 19/19, lint 2. Non-"off" texts need a server (T173).
 
 ### T173 — Manual check: push mail
-- status: waiting (manual check with the user)
+- status: done
 - depends on: T172
 - parallel-safe with: none
 - files: none
@@ -3761,6 +3761,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
   push come back by itself; the setting off falls back to polling.
 - verify: manual, with the user.
 - notes:
+  Confirmed by the user 2026-10-10 on the installed build: 'it is working' (reported for push and conversations together; no single step was listed).
 
 ### T174 — Push follow-ups found in T171
 - status: done
@@ -5469,7 +5470,7 @@ Approach: thread ids are computed in the engine and stored, the list model group
   path for several moves in a row (many MOVE commands) and a failure in the middle of a batch.
 
 ### T226 — Check: conversations
-- status: todo
+- status: done
 - depends on: T222, T224, T225, T218
 - parallel-safe with: none
 - files: none
@@ -5481,6 +5482,7 @@ Approach: thread ids are computed in the engine and stored, the list model group
   shots); ctest 21/21 in build and build-release. Status stays "todo": the manual check on the real
   Gmail and Yahoo accounts needs the user (reinstall, Settings → Message List → switch on; browse
   only, no actions) and X-GM-THRID has never been seen from a real server.
+  Confirmed by the user 2026-10-10 on the real accounts: 'it is working' (reported for push and conversations together; no single step was listed).
 
 # Fix — remember the window size (user request 2026-10-10: "app should remember size i chose")
 

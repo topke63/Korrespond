@@ -136,6 +136,15 @@ Kirigami.OverlayDrawer {
                             }
                             QQC2.MenuSeparator {
                             }
+                            // Display only: hidden folders still count and sync.
+                            QQC2.MenuItem {
+                                text: KI18n.i18nc("@action:inmenu", "Show Hidden Folders")
+                                checkable: true
+                                checked: MailController.showHiddenFolders
+                                onToggled: MailController.showHiddenFolders = checked
+                            }
+                            QQC2.MenuSeparator {
+                            }
                             QQC2.MenuItem {
                                 text: KI18n.i18nc("@action:inmenu", "Settings…")
                                 icon.name: "settings-configure"
@@ -247,6 +256,12 @@ Kirigami.OverlayDrawer {
 
                                     account: accountSection.email
                                     path: model.path
+                                    // Inbox can't be hidden. Hiding a folder hides only its own row; its
+                                    // subfolders stay, at their usual indent. The selected folder stays
+                                    // listed so the selection doesn't vanish.
+                                    canHide: model.folderRole !== "inbox" && model.path.toUpperCase() !== "INBOX"
+                                    hidden: (MailController.hiddenFolders[accountSection.email] || []).indexOf(model.path) >= 0
+                                    visible: !hidden || MailController.showHiddenFolders || highlighted
                                     // Indented under the account header.
                                     leftPadding: Kirigami.Units.gridUnit * 1.5 + model.depth * Kirigami.Units.gridUnit
                                     text: model.name
@@ -309,6 +324,9 @@ Kirigami.OverlayDrawer {
         // The account a folder belongs to; empty for the shared views.
         property string account
         property string path
+        // Only account folders can be hidden from the sidebar (not the shared views, not Inbox).
+        property bool canHide: false
+        property bool hidden: false
 
         Layout.fillWidth: true
         Layout.leftMargin: Kirigami.Units.smallSpacing
@@ -324,6 +342,22 @@ Kirigami.OverlayDrawer {
             }
         }
 
+        TapHandler {
+            acceptedButtons: Qt.RightButton
+            enabled: folderRow.canHide || folderRow.hidden
+            onTapped: rowMenu.popup()
+        }
+        QQC2.Menu {
+            id: rowMenu
+
+            QQC2.MenuItem {
+                text: folderRow.hidden ? KI18n.i18nc("@action:inmenu", "Show in Sidebar")
+                                       : KI18n.i18nc("@action:inmenu", "Hide from Sidebar")
+                icon.name: folderRow.hidden ? "view-visible" : "view-hidden"
+                onTriggered: MailController.setFolderHidden(folderRow.account, folderRow.path, !folderRow.hidden)
+            }
+        }
+
         background: Rectangle {
             radius: Kirigami.Units.cornerRadius
             color: folderRow.highlighted ? Qt.alpha(Kirigami.Theme.highlightColor, MimeTheme.selectedAlpha)
@@ -336,14 +370,14 @@ Kirigami.OverlayDrawer {
                 implicitWidth: Kirigami.Units.iconSizes.small
                 implicitHeight: Kirigami.Units.iconSizes.small
                 source: folderRow.icon.name
-                color: Kirigami.Theme.textColor
+                color: folderRow.hidden ? Kirigami.Theme.disabledTextColor : Kirigami.Theme.textColor
                 isMask: true
             }
             QQC2.Label {
                 Layout.fillWidth: true
                 text: folderRow.text
                 font: folderRow.font
-                color: Kirigami.Theme.textColor
+                color: folderRow.hidden ? Kirigami.Theme.disabledTextColor : Kirigami.Theme.textColor
                 elide: Text.ElideRight
             }
         }

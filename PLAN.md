@@ -4266,7 +4266,7 @@ scripts/desktop3-run.sh or a visible window; never act on the user's real folder
     matters.
 
 ### T190 — Hidden folders: sidebar UI
-- status: todo
+- status: done
 - depends on: T189
 - parallel-safe with: none
 - files: src/qml/FolderSidebar.qml
@@ -4276,7 +4276,17 @@ scripts/desktop3-run.sh or a visible window; never act on the user's real folder
   on, then shown dimmed (`secondaryText`).
 - verify: build; ctest; screenshots in both schemes with show-hidden on and off (use a throwaway
   hide on a harmless folder and undo it afterwards; that is local UI state only, not a mail change).
-- notes:
+- notes: FolderSidebar.qml only. FolderRow got `canHide` / `hidden`; right-click (TapHandler) opens a
+  menu with "Hide from Sidebar" (view-hidden) or "Show in Sidebar" (view-visible); no menu for the
+  shared views or Inbox (folderRole "inbox" or path INBOX, as canHideFolder). "Show Hidden Folders"
+  (checkable) sits in the hamburger menu under Expand All, bound to MailController.showHiddenFolders.
+  `hidden` reads MailController.hiddenFolders[email], so the view re-evaluates. Hidden rows have
+  `visible: false` (the ColumnLayout skips them) unless show-hidden is on, then icon and text use
+  disabledTextColor. Parent rule: hiding a folder hides only its own row; subfolders stay at their
+  usual depth-based indent. The currently selected folder stays listed even when hidden (dimmed), so
+  the selection never jumps. Offscreen demo shots with alice hiding Receipts, Projects, Projects/Beta:
+  scratchpad t190-{hidden,showhidden}-{dark,light}.png; only the usual offscreen "not placed in the
+  graphics scene" messages. ctest 19/19.
 
 ### T191 — Check: sidebar control in both schemes
 - status: todo

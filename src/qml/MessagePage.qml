@@ -436,7 +436,7 @@ Kirigami.Page {
             Layout.rightMargin: Kirigami.Units.gridUnit * 1.5
             Layout.topMargin: Kirigami.Units.gridUnit
             Layout.bottomMargin: Kirigami.Units.gridUnit
-            visible: page.loaded
+            visible: page.loaded && !MailController.conversationOpen
             spacing: Kirigami.Units.gridUnit * 0.75
 
             Kirigami.Heading {
@@ -569,14 +569,14 @@ Kirigami.Page {
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 1
-            visible: page.loaded
+            visible: page.loaded && !MailController.conversationOpen
             color: Qt.alpha(Kirigami.Theme.textColor, MimeTheme.dividerAlpha)
         }
 
         Kirigami.InlineMessage {
             Layout.fillWidth: true
             type: Kirigami.MessageType.Information
-            visible: page.loaded && MailController.messageHasRemoteImages
+            visible: page.loaded && !MailController.conversationOpen && MailController.messageHasRemoteImages
             text: KI18n.i18nc("@info", "This message has images that were not loaded.")
             actions: Kirigami.Action {
                 text: KI18n.i18nc("@action:button", "Load images")
@@ -595,7 +595,7 @@ Kirigami.Page {
                 id: view
 
                 anchors.fill: parent
-                visible: page.loaded
+                visible: page.loaded && !MailController.conversationOpen
                 backgroundColor: Kirigami.Theme.backgroundColor
                 settings.javascriptEnabled: false
                 settings.autoLoadImages: false
@@ -615,6 +615,23 @@ Kirigami.Page {
                 onNewWindowRequested: request => Qt.openUrlExternally(request.requestedUrl)
                 // Mail pages log every blocked remote image/font; blocking is intended, so stay quiet.
                 onJavaScriptConsoleMessage: (level, message, lineNumber, sourceID) => {}
+            }
+
+            // A conversation of more than one message (conversation view on): the stacked messages.
+            Loader {
+                anchors.fill: parent
+                active: MailController.conversationOpen
+
+                sourceComponent: ConversationView {
+                    onComposeRequested: (row, kind) => {
+                        MailController.selectConversationMessage(row);
+                        page.openCompose(kind);
+                    }
+                    onAttachmentRequested: (row, index) => {
+                        MailController.selectConversationMessage(row);
+                        page.openAttachment(index);
+                    }
+                }
             }
 
             Kirigami.PlaceholderMessage {

@@ -247,6 +247,7 @@ Kirigami.ScrollablePage {
             required property string participants
             required property bool threadUnread
             required property bool threadFlagged
+            required property var threadUids
 
             // With conversations on, the row shows the whole conversation's state.
             readonly property bool grouped: MailController.conversationView
@@ -262,7 +263,9 @@ Kirigami.ScrollablePage {
             bottomPadding: Kirigami.Units.smallSpacing * 2
             leftPadding: Kirigami.Units.largeSpacing * 1.5 + Kirigami.Units.smallSpacing
             rightPadding: Kirigami.Units.largeSpacing * 1.5 + Kirigami.Units.smallSpacing
-            highlighted: uid === MailController.currentUid && account === MailController.currentMessageAccount
+            // A conversation row stays selected while any of its messages is the open one.
+            highlighted: account === MailController.currentMessageAccount
+                         && (grouped ? threadUids.indexOf(MailController.currentUid) >= 0 : uid === MailController.currentUid)
             onClicked: page.openMessage(account, uid)
 
             // Right click selects the message, then offers the same actions as the toolbar.

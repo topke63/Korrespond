@@ -5427,14 +5427,25 @@ Approach: thread ids are computed in the engine and stored, the list model group
   other open one loaded and logged). Not verified: the fetch path on a real server.
 
 ### T224 — Reading pane: stacked messages
-- status: todo
+- status: done
 - depends on: T223
 - parallel-safe with: none
 - files: src/qml/MessagePage.qml (+ new src/qml/ConversationView.qml)
 - output: stacked cards as in the approach; one WebEngine view per expanded message (or one view
   with all expanded bodies — pick by memory cost); Reply/Reply all/Forward per card.
 - verify: build; offscreen demo shots in both schemes.
-- notes: watch WebEngine memory with many expanded messages.
+- notes: watch WebEngine memory with many expanded messages. Done 2026-10-10 (no sub-agents). New ConversationView.qml (a ListView over
+  MailController.conversationModel, loaded by MessagePage while conversationOpen): subject as the
+  header; per message a head line (unread dot, avatar, name, date, flag; the start of the text
+  while closed; click toggles), and when open: Reply / Reply All / Forward buttons (select the
+  message, then the usual openCompose), attachment chips (select, then page.openAttachment), a
+  per-message "Load images" bar and one WebEngineView (JS off, same navigation rules) sized by
+  contentsSize inside a Loader, so the list scrolls as one page (a WheelHandler on the view
+  forwards the wheel). The single-message header, bar and view are hidden meanwhile. The list row
+  stays highlighted while any message of its conversation is open (threadUids). Shots:
+  t224-{BreezeLight,BreezeDark}.png (uid 2 of the demo: Project Alpha, first message collapsed).
+  Not verified: wheel forwarding with real input, a body that grows after load (images), many open
+  messages (memory), keyboard focus in the cards, narrow window.
 
 ### T225 — Conversation actions
 - status: todo

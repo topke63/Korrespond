@@ -4195,7 +4195,33 @@ screenshot checks stay `todo`.
   selected row and dividers ≥ 1.2:1, unread dot ≥ 3:1; HTML newsletter readable in dark.
   Replaces the pending T181/T184/T185 checks (they measured the fixed palette).
 - verify: as output.
-- notes: waits until GUI runs are allowed again.
+- notes: waits until GUI runs are allowed again. Numeric part done 2026-10-10 (offscreen only,
+  no window): colours from /usr/share/color-schemes, alphas from MimeTheme.qml, WCAG ratios.
+  Results (dark / light / Breeze Classic):
+  - text on View 17.7 / 15.2 / 14.9 (>=7 ok); on Window 15.4 / 13.3 / 13.4 ok.
+  - secondary (ForegroundInactive) on View 7.6 / 4.2 / 3.4; on Window 6.6 / 3.7 / 3.1. Breeze's
+    own value, below 4.5 on the light schemes: theme's choice, reported only.
+  - link on View: raw 6.0 / 4.3 / 4.2; readableLinkColour gives 6.0 / 5.2 (10% towards black) /
+    5.0 (10%). All >= 4.5 after the app's floor.
+  - selected row (highlight@0.3 on View): bg vs View 1.75 / 1.30 / 1.29 (>=1.2 ok); row text
+    (View text) on selected 10.1 / 11.7 / 11.5 ok. Folder selection vs Window 1.75 / 1.26 / 1.26.
+  - dividers (text@0.10 on View): 1.31 / 1.21 / 1.21 (>=1.2 ok, light is marginal); column
+    hairline (0.2) 1.85-1.90 / 1.45-1.49 / 1.47-1.49 ok.
+  - hover (0.06, reported only): 1.17-1.19 dark, 1.12 light/classic.
+  - unread dot (highlightColor) vs View: 7.3 dark ok; 2.49 light and 2.43 classic: BELOW 3:1.
+    Design issue, not fixed: the dot is the raw highlight (not an alpha), so no alpha tweak can fix
+    it; needs a planner decision (e.g. a darker dot tint on light schemes).
+  - distinctness: sidebar (Window) vs list (View) dE76 6.5 / 5.3 / 4.3 (lum ratio 1.15 / 1.14 /
+    1.11); band (Header) vs list 10.8 / 11.0 / 4.3; band vs sidebar 4.4 / 5.7 / 0.0.
+    Breeze Classic has no [Colors:Header] section, so band = Window there.
+  - Offscreen screenshots render (PLASMAMAIL_SCREENSHOT works offscreen):
+    dark: title band (41,44,48), list (20,22,24), selection visible; light; Breeze Classic;
+    newsletter dark. Logo (T198) drawn top-left in all runs, no fallback needed.
+  - Observed, not fixed: in Breeze Classic the title bands stay dark (41,44,48) while sidebar
+    and list are light (the scheme has no Header set, so Kirigami's Header falls back to a dark
+    default). Planner decision: band fallback to Window for schemes without [Colors:Header].
+    Newsletter dark: the mail's own white/grey HTML backgrounds are kept (readable, not inverted).
+  - Remaining: the real-window check (screenshots by eye), T196 status stays todo.
 
 ### T197 — Dev script: GUI runs on Desktop 3
 - status: done

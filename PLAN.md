@@ -3829,7 +3829,7 @@ Light mode has no reference; derive it (macOS light: sidebar `#e8e6ee`-ish, band
 - notes: committed as-is 2026-10-10; build clean, ctest 19/19.
 
 ### T176 — Palette: sampled Mimestream colours
-- status: todo
+- status: done
 - depends on: T175
 - parallel-safe with: none
 - files: src/qml/MimeTheme.qml
@@ -3839,7 +3839,7 @@ Light mode has no reference; derive it (macOS light: sidebar `#e8e6ee`-ish, band
   ≥ 4.5:1 on `#1e1e1e`); new tokens `headerBackground`, `columnDivider`, `sectionText`,
   `previewText`, `iconTint`, `toolbarIcon`; light values derived. Existing token names kept.
 - verify: build; ctest; screenshot shows neutral list/reading background and grey sidebar.
-- notes:
+- notes: committed 2026-10-10; text #ececec, secondary #a4a4a4, section #8c8991, preview #aaaaaa, iconTint #cfc8ba, toolbarIcon #9f99a2, header #251e2c, columnDivider #050505; light: header #f3f1f6, listSelected #dcdcdc, columnDivider #d0d0d4. Tokens not used elsewhere yet. Build clean, ctest 19/19.
 
 ### T177 — Title bar band and column dividers
 - status: todo

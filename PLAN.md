@@ -4913,9 +4913,24 @@ MessagePage.qml.
   Unverifiable headless: a real window-manager close, tray Quit, Ctrl+Q with a real keyboard, the
   Kirigami shortcut editor, and the T213 default shortcuts (none set yet, so no ambiguity today).
 
-### T212 — Views use the actions
+### T230 — Fix: demo mode never touches the network for message actions
 - status: todo
 - depends on: T211
+- parallel-safe with: none
+- files: src/app/mailcontroller.cpp (+ src/app/accountsession.cpp if the guard fits better there)
+- inputs: T211 verification: with a demo message open, archive, delete, mark read/unread, flag,
+  move and refresh reach KIMAP (DNS lookup of imap.example.com, HostNotFoundError).
+- output: in demo mode these actions change the in-memory demo data instead (move/archive/delete
+  remove the message from the demo folder, flags/unread toggle, refresh is a no-op with a log line)
+  and update the list; opening a demo message renders from the demo data without a fetch; no
+  ImapClient/KIMAP session is created in demo mode at all (assert/log if one would be).
+- verify: build; ctest; demo runs with PLASMAMAIL_DEMO_OPEN + PLASMAMAIL_DEMO_TRIGGER for each
+  action: no "Connection to server lost"/HostNotFound lines, list updates as expected.
+- notes:
+
+### T212 — Views use the actions
+- status: todo
+- depends on: T211, T230
 - parallel-safe with: none
 - files: src/qml/Main.qml, src/qml/MessagePage.qml, src/qml/MessageListPage.qml,
   src/qml/FolderSidebar.qml

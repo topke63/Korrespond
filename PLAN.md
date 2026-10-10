@@ -5013,6 +5013,20 @@ MessagePage.qml.
   field, next_message opens the second row, compose opens a blank composer. No "ambiguous" log
   lines. Shots (fresh XDG) t212-dark/light.png are pixel-identical to a same-environment baseline
   built from the previous commit (t212-base-dark/light.png).
+- T212: verification notes (2026-10-10, tester, offscreen, isolated XDG, dev build with
+  PLASMAMAIL_DEV_HOOKS=ON, timeout-bounded): build/ and dev build clean, ctest 19/19 in both. Old
+  (920828c^, same hooks) vs new key map: U toggles mark_unread then mark_read then mark_unread (both
+  directions); Ctrl+Shift+F flag; E archive; Delete delete; R/Shift+R/Shift+F compose replies/forward;
+  Ctrl+N compose; Ctrl+, settings; Ctrl+B toggle_sidebar (also with search focused, as before); F5
+  refresh; Ctrl+Q file_quit exits. Search field focused: Delete, E, U, R, Shift+R, Shift+F, Ctrl+Z are
+  inert for the message (Delete edits the text); Ctrl+Z with a pending send is inert in the field and
+  undoes it outside. Reply composer focused (TextArea): E, U, Delete, Shift+R, Shift+F do nothing.
+  No "ambiguous" lines. Fix: the refresh action's text was "Check for Mail" (overflow menu); back to
+  "Refresh" (commit "T212: fix"). Not verified at runtime: the row right-click context menu (the
+  offscreen hook could not open it); its items were checked by reading: Archive/Delete gated by
+  canArchive/canDelete, Mark as Read/Unread and Flag call the actions, which are enabled for an open
+  message. Known, same as before T212: F5 and Ctrl+B and Ctrl+N still reach the main window's actions
+  while a composer that was just opened is the focus window (offscreen has no real window switch).
 
 ### T213 — Keyboard set
 - status: todo

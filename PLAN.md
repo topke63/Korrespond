@@ -5476,7 +5476,11 @@ Approach: thread ids are computed in the engine and stored, the list model group
 - output: offscreen demo checks in both schemes; then a manual check with the user on the real
   Gmail and Yahoo accounts (read-only browsing, no actions) that threads group sensibly.
 - verify: as output.
-- notes:
+- notes: Offscreen part done 2026-10-10 (no sub-agents): list rows, stacked pane, archive and
+  mark-unread on a conversation checked in demo runs in BreezeLight and BreezeDark (t222, t224, t225
+  shots); ctest 21/21 in build and build-release. Status stays "todo": the manual check on the real
+  Gmail and Yahoo accounts needs the user (reinstall, Settings → Message List → switch on; browse
+  only, no actions) and X-GM-THRID has never been seen from a real server.
 
 ## Execution Loop
 

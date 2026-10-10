@@ -36,6 +36,9 @@ struct AppSettings {
     QMap<QString, QStringList> hiddenFolders;
     // Show the hidden folders anyway (dimmed).
     bool showHiddenFolders = false;
+    // Seconds a sent message waits (undoable) before it is handed to SMTP; 0 = off. One of
+    // 0, 5, 10, 20, 30: other values snap to the nearest choice on load.
+    int undoSendSeconds = 10;
 
     // Missing or out-of-range values fall back to the defaults / the nearest allowed value.
     static AppSettings load();

@@ -47,6 +47,7 @@ private Q_SLOTS:
         QVERIFY(settings.collapsedAccounts.isEmpty());
         QVERIFY(settings.hiddenFolders.isEmpty());
         QVERIFY(!settings.showHiddenFolders);
+        QCOMPARE(settings.undoSendSeconds, 10);
     }
 
     void testRoundTrip()
@@ -62,6 +63,36 @@ private Q_SLOTS:
         settings.collapsedAccounts = {u"bob@example.com"_s, u"we,ird\\x@example.com"_s};
         settings.save();
         QCOMPARE(AppSettings::load(), settings);
+    }
+
+    void testUndoSendRoundTrip()
+    {
+        for (const int seconds : {0, 5, 10, 20, 30}) {
+            AppSettings settings;
+            settings.undoSendSeconds = seconds;
+            settings.save();
+            QCOMPARE(AppSettings::load().undoSendSeconds, seconds);
+        }
+    }
+
+    void testUndoSendSnapsToTheNearestChoice()
+    {
+        // Nearest choice wins; a tie (15, 25) goes to the smaller one.
+        const QList<QPair<int, int>> cases = {{7, 5}, {8, 10}, {3, 5}, {2, 0}, {14, 10}, {15, 10}, {16, 20}, {25, 20}, {26, 30}, {100, 30}, {-3, 0}, {-100, 0}};
+        for (const auto &[stored, expected] : cases) {
+            KConfigGroup g = group();
+            g.writeEntry("UndoSendSeconds", stored);
+            g.sync();
+            QCOMPARE(AppSettings::load().undoSendSeconds, expected);
+        }
+    }
+
+    void testGarbageUndoSendFallsBackToTheDefault()
+    {
+        KConfigGroup g = group();
+        g.writeEntry("UndoSendSeconds", "later");
+        g.sync();
+        QCOMPARE(AppSettings::load().undoSendSeconds, 10);
     }
 
     void testHiddenFoldersRoundTrip()

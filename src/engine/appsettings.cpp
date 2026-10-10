@@ -9,6 +9,7 @@
 #include <QUrl>
 
 #include <algorithm>
+#include <cstdlib>
 
 using namespace Qt::StringLiterals;
 
@@ -32,6 +33,20 @@ static int clampList(int width)
     return std::clamp(width, AppSettings::minListWidth, AppSettings::maxListWidth);
 }
 
+// The allowed undo-send delays snap to the nearest choice; negative -> 0 (off). Ascending order and a
+// strict "<" make a tie (15 between 10 and 20, 25 between 20 and 30) go to the smaller choice.
+static int snapUndoSend(int seconds)
+{
+    static constexpr int choices[] = {0, 5, 10, 20, 30};
+    int best = choices[0];
+    for (const int choice : choices) {
+        if (std::abs(seconds - choice) < std::abs(seconds - best)) {
+            best = choice;
+        }
+    }
+    return best;
+}
+
 // Subgroup of [General]: one key per account, the email percent-encoded (so no character of it can
 // clash with the config file syntax), the value a list of folder paths (KConfig escapes the commas
 // and backslashes in a list).
@@ -52,6 +67,7 @@ AppSettings AppSettings::load()
     settings.sidebarCollapsed = group.readEntry("SidebarCollapsed", settings.sidebarCollapsed);
     settings.collapsedAccounts = group.readEntry("CollapsedAccounts", settings.collapsedAccounts);
     settings.showHiddenFolders = group.readEntry("ShowHiddenFolders", settings.showHiddenFolders);
+    settings.undoSendSeconds = snapUndoSend(group.readEntry("UndoSendSeconds", settings.undoSendSeconds));
     const KConfigGroup hidden = hiddenGroup();
     const QStringList keys = hidden.keyList();
     for (const QString &key : keys) {
@@ -75,6 +91,7 @@ void AppSettings::save() const
     group.writeEntry("SidebarCollapsed", sidebarCollapsed);
     group.writeEntry("CollapsedAccounts", collapsedAccounts);
     group.writeEntry("ShowHiddenFolders", showHiddenFolders);
+    group.writeEntry("UndoSendSeconds", snapUndoSend(undoSendSeconds));
     KConfigGroup hidden = hiddenGroup();
     for (const QString &key : hidden.keyList()) {
         hidden.deleteEntry(key);

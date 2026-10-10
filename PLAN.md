@@ -4588,7 +4588,7 @@ first, then stop.
 ## a. Undo send
 
 ### T206 — Setting: undo-send delay
-- status: todo
+- status: done
 - depends on: none
 - parallel-safe with: T211, T217
 - files: src/engine/appsettings.h, src/engine/appsettings.cpp, autotests/appsettingstest.cpp
@@ -4596,7 +4596,10 @@ first, then stop.
 - output: `AppSettings::undoSendSeconds` (0 = off; default 10), key `UndoSendSeconds`; values
   outside {0,5,10,20,30} snap to the nearest choice on load.
 - verify: build; ctest (defaults, round trip, snapping).
-- notes:
+- notes: `int undoSendSeconds = 10`, key `UndoSendSeconds`. Snapping (load and save): nearest of
+  {0,5,10,20,30}, negative -> 0, above 30 -> 30, ties -> the smaller (7 -> 5,
+  8 -> 10, 15 -> 10, 25 -> 20); an unparsable value -> the default 10. Tests: default, round trip per
+  choice, snapping, garbage.
 
 ### T207 — Controller: delayed hand-off and undo
 - status: todo

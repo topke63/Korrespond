@@ -5029,7 +5029,7 @@ MessagePage.qml.
   while a composer that was just opened is the focus window (offscreen has no real window switch).
 
 ### T213 — Keyboard set
-- status: todo
+- status: done
 - depends on: T212
 - parallel-safe with: none
 - files: src/app/mailapplication.cpp, src/qml/MessageListPage.qml
@@ -5038,7 +5038,29 @@ MessagePage.qml.
 - output: default shortcuts set; single-key shortcuts don't fire while a text field (search,
   compose) has focus; list navigation moves the selection without marking read until opened.
 - verify: build; ctest; review the focus guard; offscreen start without "ambiguous shortcut" logs.
-- notes:
+- notes: Done 2026-10-10. Key map (single keys on by default, no two-key sequences; first is primary):
+  compose Ctrl+N, C; reply R; reply_all Shift+R, A; forward Shift+F, F; archive E; delete Delete, #;
+  mark_read / mark_unread U (toggle); flag Ctrl+Shift+F, S; search /; refresh F5; toggle_sidebar
+  Ctrl+B; settings Ctrl+,; shortcuts_help ?; next_message J, Down; previous_message K, Up;
+  open_kcommand_bar Ctrl+Alt+I, Ctrl+K; file_quit Ctrl+Q; undo send Ctrl+Z (Main.qml). Set with
+  KirigamiActionCollection::setDefaultShortcuts in MailApplication::setupActions. Main.qml's
+  Instantiator now also binds search, next_message, previous_message, shortcuts_help and
+  open_kcommand_bar (a Kirigami.Action fromQAction is what registers the key; the base's command
+  bar opens only once its action has a bound key). Up/Down are NOT window shortcuts (they would
+  grab the sidebar's and the text fields' arrows): MessageListPage's ListView handles
+  Keys.onUp/DownPressed when the list has focus. Reading pane: Up/Down keep scrolling the body
+  (j/k move messages there). Choice: next/previous select AND open the message, the same as a
+  click (there is no select-without-open state in the list; opening is the selection). ?
+  currently logs "shortcuts help requested" (dialog is T215). Focus guard: text inputs accept
+  ShortcutOverride, so the single keys are inert there.
+- verification (offscreen, isolated XDG, dev build): build/ and dev build clean, ctest 19/19 in
+  both. With a demo message open each of c, a, f, s, Delete, #, ?, j, k logs "demo: action
+  triggered <id>"; j/k/Down/Up step the open message; Ctrl+K opens the command bar (screenshot
+  t213-commandbar-dark.png, lists the keys). Search field focused: j, k, Down, Up, c, a, f, s, #, /,
+  ? trigger nothing (Left/Right/Down/Up reach the field; Down/Up do not step the list); Ctrl+K still
+  opens the command bar there; with the command bar open, j, k, Down, c, # do nothing to the
+  message. A composer is its own window, so main-window shortcuts cannot fire in it. No
+  "ambiguous shortcut" lines.
 
 ### T214 — Command bar (Ctrl+K)
 - status: todo

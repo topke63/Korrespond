@@ -211,6 +211,23 @@ Kirigami.ScrollablePage {
 
         model: MailController.messageModel
 
+        // Up and Down open the previous or next message, like a click on that row (same as k and j).
+        // Handled here, not as window shortcuts, so the sidebar and the text fields keep their arrows.
+        Keys.onUpPressed: event => {
+            // Only with the list itself in focus (a key from elsewhere in the page is not ours).
+            if (list.activeFocus) {
+                page.step(-1);
+                event.accepted = true;
+            }
+        }
+        Keys.onDownPressed: event => {
+            // Only with the list itself in focus (a key from elsewhere in the page is not ours).
+            if (list.activeFocus) {
+                page.step(1);
+                event.accepted = true;
+            }
+        }
+
         // Mimestream-like rows: unread dot, sender + date, subject, one-line preview of stored mail; no dividers, and
         // selection and hover as rounded rects inset from the list edges (avatars are only in the message view).
         delegate: QQC2.ItemDelegate {

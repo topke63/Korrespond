@@ -123,23 +123,31 @@ void MailApplication::setupActions()
 
     // Single keys do not fire while a text field has focus: the field accepts the ShortcutOverride.
     // Mark as Read and Mark as Unread share U; only one of them is enabled at a time (a toggle).
-    const QList<std::pair<const char *, QKeySequence>> shortcuts = {
-        {"compose", QKeySequence(Qt::CTRL | Qt::Key_N)},
-        {"reply", QKeySequence(Qt::Key_R)},
-        {"reply_all", QKeySequence(Qt::SHIFT | Qt::Key_R)},
-        {"forward", QKeySequence(Qt::SHIFT | Qt::Key_F)},
-        {"archive", QKeySequence(Qt::Key_E)},
-        {"delete", QKeySequence(Qt::Key_Delete)},
-        {"mark_read", QKeySequence(Qt::Key_U)},
-        {"mark_unread", QKeySequence(Qt::Key_U)},
-        {"flag", QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_F)},
-        {"refresh", QKeySequence(Qt::Key_F5)},
-        {"toggle_sidebar", QKeySequence(Qt::CTRL | Qt::Key_B)},
-        {"settings", QKeySequence(Qt::CTRL | Qt::Key_Comma)},
+    // The first sequence is the primary one (menus, tooltips). No two-key sequences. Up and Down are
+    // not here: a window-wide Down would also grab the arrows of the sidebar and the text fields, so
+    // the message list handles them itself (MessageListPage.qml).
+    const QList<std::pair<const char *, QList<QKeySequence>>> shortcuts = {
+        {"compose", {QKeySequence(Qt::CTRL | Qt::Key_N), QKeySequence(Qt::Key_C)}},
+        {"reply", {QKeySequence(Qt::Key_R)}},
+        {"reply_all", {QKeySequence(Qt::SHIFT | Qt::Key_R), QKeySequence(Qt::Key_A)}},
+        {"forward", {QKeySequence(Qt::SHIFT | Qt::Key_F), QKeySequence(Qt::Key_F)}},
+        {"archive", {QKeySequence(Qt::Key_E)}},
+        {"delete", {QKeySequence(Qt::Key_Delete), QKeySequence(Qt::Key_NumberSign)}},
+        {"mark_read", {QKeySequence(Qt::Key_U)}},
+        {"mark_unread", {QKeySequence(Qt::Key_U)}},
+        {"flag", {QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_F), QKeySequence(Qt::Key_S)}},
+        {"search", {QKeySequence(Qt::Key_Slash)}},
+        {"refresh", {QKeySequence(Qt::Key_F5)}},
+        {"toggle_sidebar", {QKeySequence(Qt::CTRL | Qt::Key_B)}},
+        {"settings", {QKeySequence(Qt::CTRL | Qt::Key_Comma)}},
+        {"shortcuts_help", {QKeySequence(Qt::Key_Question)}},
+        {"next_message", {QKeySequence(Qt::Key_J)}},
+        {"previous_message", {QKeySequence(Qt::Key_K)}},
+        {"open_kcommand_bar", {QKeySequence(Qt::CTRL | Qt::ALT | Qt::Key_I), QKeySequence(Qt::CTRL | Qt::Key_K)}},
     };
-    for (const auto &[id, sequence] : shortcuts) {
+    for (const auto &[id, sequences] : shortcuts) {
         if (QAction *action = mainCollection()->action(QString::fromLatin1(id))) {
-            KirigamiActionCollection::setDefaultShortcut(action, sequence);
+            KirigamiActionCollection::setDefaultShortcuts(action, sequences);
         }
     }
 

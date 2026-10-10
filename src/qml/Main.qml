@@ -101,7 +101,8 @@ StatefulApp.StatefulWindow {
     // page's toolbar) get one here.
     Instantiator {
         model: ["reply", "reply_all", "forward", "archive", "delete", "mark_read", "mark_unread",
-                "flag", "toggle_sidebar", "settings", "file_quit"]
+                "flag", "toggle_sidebar", "settings", "file_quit", "search", "next_message",
+                "previous_message", "shortcuts_help", "open_kcommand_bar"]
         delegate: Kirigami.Action {
             required property string modelData
 
@@ -120,6 +121,10 @@ StatefulApp.StatefulWindow {
         }
         function onSettingsRequested() {
             settings.open();
+        }
+        function onShortcutsHelpRequested() {
+            // The help dialog comes with T215.
+            console.info("shortcuts help requested");
         }
     }
 

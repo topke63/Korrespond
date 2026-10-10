@@ -335,6 +335,11 @@ public:
     // Cancels the queued message id (-1 = the newest) and emits sendUndone(original map). False when
     // there is no such pending message.
     Q_INVOKABLE bool undoSend(int id = -1);
+    // The one way to quit the app (tray, Ctrl+Q, window close): sends pending messages at once, waits
+    // in the normal event loop (at most 60 s) until every hand-off finished or failed, then quits.
+    // Calls while waiting are ignored.
+    Q_INVOKABLE void requestQuit();
+
     // Ends the delay of every pending message now (what quitting does), handing them to SMTP in turn.
     void flushPendingSends();
     [[nodiscard]] QVariantList pendingSends() const;
@@ -482,7 +487,7 @@ private:
     std::set<AccountSession *> m_sharedRequested;
     SmtpClient *m_smtp = nullptr; // the running send, if any
     bool m_demoBusy = false; // demo only: the simulated hand-off is running
-    bool m_quitting = false; // the quit handler has run (a second aboutToQuit is ignored)
+    bool m_quitting = false; // requestQuit() is waiting for the hand-offs
     // Messages in the undo-send delay, and those whose delay ended while another send was running.
     struct PendingSend {
         int id = 0;
@@ -492,6 +497,8 @@ private:
     };
     // A hand-off is running: the SMTP send, or the demo's simulated one.
     [[nodiscard]] bool handingOff() const;
+    [[nodiscard]] bool quitReady() const;
+    void continueQuit();
     void handOff(int id, const QVariantMap &message);
     void startNextHandOff();
     void finishPendingSend(int id);

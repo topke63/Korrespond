@@ -23,17 +23,14 @@
 #include <KNotifyConfigWidget>
 
 #include <QCoreApplication>
-#include <QDeadlineTimer>
 #include <QDesktopServices>
 #include <QDir>
-#include <QEventLoop>
 #include <QFileInfo>
 #include <QGuiApplication>
 #include <QMetaEnum>
 #include <QPalette>
 #include <QSaveFile>
 #include <QStandardPaths>
-#include <QThread>
 #include <QTime>
 #include <QUrl>
 
@@ -82,22 +79,10 @@ MailController::MailController(QObject *parent)
     // owning it is torn down after the event loop, which may not be reached on every exit path).
     if (QCoreApplication *app = QCoreApplication::instance()) {
         connect(app, &QCoreApplication::aboutToQuit, this, [this] {
-            // A second quit request while this runs is ignored: it would end the event loop of the
-            // wait below, and Qt then stops dispatching events in any new loop.
-            if (std::exchange(m_quitting, true)) {
-                return;
-            }
-            // Quitting during the undo-send delay sends at once: wait (at most 60 s) until every SMTP
-            // hand-off finished or failed. Events are pumped by hand, not by a nested QEventLoop.
-            flushPendingSends();
-            if (handingOff() || !m_handOffQueue.isEmpty()) {
-                qInfo("quit: waiting for %lld message(s) to be sent", qlonglong(m_handOffQueue.size() + (handingOff() ? 1 : 0)));
-                QDeadlineTimer limit(std::chrono::seconds(60));
-                while ((handingOff() || !m_handOffQueue.isEmpty()) && !limit.hasExpired()) {
-                    QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
-                    QThread::msleep(20);
-                }
-                qInfo(handingOff() || !m_handOffQueue.isEmpty() ? "quit: timed out, some messages were not sent" : "quit: all messages handed off");
+            // Quitting normally goes through requestQuit(), which waited for the hand-offs; this is
+            // only a last resort (another quit path) and cannot wait here.
+            if (handingOff() || !m_handOffQueue.isEmpty() || !m_pendingSends.isEmpty()) {
+                qWarning("quit: exiting with message(s) not yet sent");
             }
             m_attachmentDir.reset();
             for (AccountSession *session : std::as_const(m_sessions)) {
@@ -634,6 +619,49 @@ void MailController::finishPendingSend(int id)
             startNextHandOff();
             return;
         }
+    }
+}
+
+// Every quit path comes here: pending sends are flushed, the normal event loop keeps running until
+// every hand-off finished or failed (at most 60 s), then the application quits. Further calls while
+// waiting are ignored: a second quit() would end the loop the hand-offs run in.
+void MailController::requestQuit()
+{
+    if (m_quitting) {
+        qInfo("quit: already waiting for the messages to be sent, request ignored");
+        return;
+    }
+    m_quitting = true;
+    flushPendingSends();
+    if (quitReady()) {
+        QCoreApplication::quit();
+        return;
+    }
+    qInfo("quit: waiting for %lld message(s) to be sent", qlonglong(m_handOffQueue.size() + (handingOff() ? 1 : 0)));
+    connect(this, &MailController::messageSent, this, &MailController::continueQuit);
+    connect(this, &MailController::sendFailed, this, &MailController::continueQuit);
+    auto limit = new QTimer(this);
+    limit->setSingleShot(true);
+    connect(limit, &QTimer::timeout, this, [] {
+        qWarning("quit: timed out, some messages were not sent");
+        QCoreApplication::quit();
+    });
+    limit->start(std::chrono::seconds(60));
+}
+
+bool MailController::quitReady() const
+{
+    return !handingOff() && m_handOffQueue.isEmpty() && m_pendingSends.isEmpty();
+}
+
+void MailController::continueQuit()
+{
+    if (m_quitting && quitReady()) {
+        qInfo("quit: all messages handed off");
+        // Not from inside the messageSent/sendFailed emission: let the hand-off code unwind first.
+        QTimer::singleShot(0, this, [] {
+            QCoreApplication::quit();
+        });
     }
 }
 

@@ -215,7 +215,7 @@ int main(int argc, char *argv[])
 
     // Dev only, with PLASMAMAIL_DEMO=1 (never any SMTP): PLASMAMAIL_DEMO_SEND=1 queues a fictional
     // message ~1 s after start, PLASMAMAIL_DEMO_UNDO=1 also undoes it ~2 s after start, and
-    // PLASMAMAIL_DEMO_QUIT_AFTER=<ms> quits then (to check that quitting flushes pending sends).
+    // PLASMAMAIL_DEMO_QUIT_AFTER=<ms> calls requestQuit() then (to check that quitting flushes pending sends).
     if (controller && qEnvironmentVariableIntValue("PLASMAMAIL_DEMO") == 1) {
         if (qEnvironmentVariableIntValue("PLASMAMAIL_DEMO_SEND") == 1) {
             QTimer::singleShot(1000, controller, [controller] {
@@ -233,7 +233,15 @@ int main(int argc, char *argv[])
         bool ok = false;
         const int quitAfter = qEnvironmentVariableIntValue("PLASMAMAIL_DEMO_QUIT_AFTER", &ok);
         if (ok && quitAfter > 0) {
-            QTimer::singleShot(quitAfter, &app, &QCoreApplication::quit);
+            QTimer::singleShot(quitAfter, controller, [controller] {
+                controller->requestQuit();
+            });
+            // PLASMAMAIL_DEMO_QUIT_TWICE=1: a second request 300 ms later (must be ignored).
+            if (qEnvironmentVariableIntValue("PLASMAMAIL_DEMO_QUIT_TWICE") == 1) {
+                QTimer::singleShot(quitAfter + 300, controller, [controller] {
+                    controller->requestQuit();
+                });
+            }
         }
     }
 

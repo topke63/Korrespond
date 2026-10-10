@@ -4649,7 +4649,7 @@ first, then stop.
   disables the tray); a real sendFailed.
 
 ### T227 — Fix: the controller owns quitting
-- status: todo
+- status: done
 - depends on: T207
 - parallel-safe with: none
 - files: src/app/mailcontroller.h, src/app/mailcontroller.cpp, src/app/trayicon.cpp, src/app/main.cpp,
@@ -4664,7 +4664,17 @@ first, then stop.
   (close-to-tray unchanged). aboutToQuit keeps only a last-resort synchronous flush log.
 - verify: build; ctest; demo runs: PLASMAMAIL_DEMO_SEND=1 + PLASMAMAIL_DEMO_QUIT_AFTER=3000 → flush,
   wait, exit 0; same with a second quit request 300 ms later (dev hook) → exit 0, no crash.
-- notes:
+- notes: `MailController::requestQuit()` (Q_INVOKABLE): flushes pending sends,
+  waits in the normal event loop via messageSent/sendFailed (60 s QTimer cap), then quits (the
+  final quit() is deferred with singleShot(0): quitting from inside the signal emission hung the
+  shutdown); repeat calls are ignored and logged. Routed: KStatusNotifierItem::quitRequested
+  (abortQuit() + requestQuit), Ctrl+Q Shortcut (StandardKey.Quit) in Main.qml, Main window
+  onClosing when keepInTray is off; close-to-tray unchanged. aboutToQuit only warns if something is
+  still pending. Dev hooks: PLASMAMAIL_DEMO_QUIT_AFTER calls requestQuit();
+  PLASMAMAIL_DEMO_QUIT_TWICE=1 calls it again 300 ms later. Verified headless: send+quit 3 s exits
+  rc 0 in ~5 s (also with QUIT_TWICE, second ignored), no-pending quit rc 0. Unverified headless:
+  tray menu Quit and a real window close. Note: with keepInTray off, closing the main window now
+  quits even if a compose window is still open.
 
 ### T208 — UI: "Sending… Undo" and reopening the message
 - status: todo

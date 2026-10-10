@@ -41,6 +41,12 @@ TrayIcon::TrayIcon(MailController *controller, QWindow *window, QObject *parent)
     menu->insertAction(actions.value(1), check); // after the title entry, if there is one
     menu->insertSeparator(actions.value(1));
 
+    // The standard Quit entry goes through the controller, which sends pending messages first.
+    connect(m_item, &KStatusNotifierItem::quitRequested, m_controller, [this] {
+        m_item->abortQuit();
+        m_controller->requestQuit();
+    });
+
     connect(m_controller, &MailController::unreadCountChanged, this, &TrayIcon::update);
     update();
 }

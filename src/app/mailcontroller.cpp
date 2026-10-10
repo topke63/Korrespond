@@ -2183,6 +2183,7 @@ void MailController::onInboxChecked(AccountSession *session, const QString &fold
     const QList<MessageSummary> fresh = m_newMail.newMessages(email, folder, 0, newestUnread, QDateTime::currentDateTimeUtc());
     // Counts only, never message content.
     qInfo("Inbox check for %s: %d unread, %d new", qPrintable(email), unreadTotal, int(fresh.size()));
+    m_lastConnectionError.clear(); // a connection works again: the next failure is news
     // New mail should show up in the list that is open, not only in a notification.
     if (unreadChanged || !fresh.isEmpty()) {
         refreshInboxView(session, folder);
@@ -2959,12 +2960,12 @@ void MailController::onSessionError(AccountSession *session, const QString &mess
 
 void MailController::reportConnectionError(const QString &text)
 {
-    if (text == m_lastConnectionError && m_lastConnectionErrorAge.isValid() && m_lastConnectionErrorAge.elapsed() < 30000) {
+    if (text == m_lastConnectionError) {
         qInfo("Same connection error again: %s", qPrintable(text));
         return;
     }
+    qInfo("Connection error: %s", qPrintable(text));
     m_lastConnectionError = text;
-    m_lastConnectionErrorAge.start();
     Q_EMIT errorOccurred(text);
 }
 

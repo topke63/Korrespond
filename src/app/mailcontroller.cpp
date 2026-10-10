@@ -1870,6 +1870,12 @@ void MailController::refresh()
     if (!session) {
         return;
     }
+    if (session->connectionState() == AccountSession::Failed) {
+        reconnect(session->account().email); // the connection is known to be gone: F5 is the retry
+        return;
+    }
+    // An idle connection that the server closed shows only now; this refresh then reconnects once by itself.
+    m_refreshRetry.insert(session);
     if (m_awaitingFolders.insert(session).second) {
         beginRequest();
     }
@@ -1882,6 +1888,7 @@ void MailController::refresh()
 void MailController::onHeadersFetched(AccountSession *session, const QString &folder, ImapClient::HeaderFilter filter, const QList<MessageSummary> &messages)
 {
     endRequest();
+    m_refreshRetry.erase(session); // the connection works
     // What was asked for this answer? Without a record (a failure cleared them), assume the current mode.
     Inflight asked{m_searchActive, m_searchGeneration};
     const auto queue = m_inflight.find(session);
@@ -2909,6 +2916,15 @@ void MailController::onSessionError(AccountSession *session, const QString &mess
         return;
     }
     m_inflight.erase(session); // its queued answers will not come
+    if (m_refreshRetry.erase(session) > 0 && session != m_pending && !session->client()->hasSession()) {
+        qInfo("Connection of %s was lost during a refresh; reconnecting", qPrintable(session->account().email));
+        m_awaitingFolders.erase(session);
+        m_checking.erase(session);
+        m_checkQueued.erase(session);
+        resetRequests();
+        reconnect(session->account().email);
+        return;
+    }
     // A failed background check is only logged: offline, it would complain every few minutes.
     const bool quiet = m_checking.erase(session) > 0;
     if (quiet) {

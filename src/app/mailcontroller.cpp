@@ -94,6 +94,13 @@ MailController::MailController(QObject *parent)
     m_checkTimer->start(std::chrono::seconds(30));
 
     m_storage = StorageSettings::load();
+    m_demo = qEnvironmentVariableIntValue("PLASMAMAIL_DEMO") == 1;
+    if (m_demo) {
+        // The real accounts are not loaded; no timer, keychain read or connection starts.
+        m_checkTimer->stop();
+        loadDemo();
+        return;
+    }
     const QList<Account> accounts = Account::loadAll();
     // The single store of the first version belongs to the first account.
     if (!accounts.isEmpty() && !MessageStore::moveLegacyStore(m_dataDir, MessageStore::accountDir(m_dataDir, accounts.first().email))) {
@@ -174,7 +181,7 @@ QString MailController::currentAccount() const
 
 AccountSession *MailController::createSession(const Account &account)
 {
-    auto session = new AccountSession(account, MessageStore::accountDir(m_dataDir, account.email), m_storage, this);
+    auto session = new AccountSession(account, MessageStore::accountDir(m_dataDir, account.email), m_storage, this, m_demo);
     connect(session, &AccountSession::foldersListed, this, [this, session] {
         onSessionFolders(session);
     });
@@ -887,6 +894,139 @@ void MailController::showStoredMail()
     Q_EMIT currentFolderChanged();
 }
 
+void MailController::loadDemo()
+{
+    const auto folder = [](const QString &path, const QString &role = {}) {
+        FolderInfo info;
+        info.path = path;
+        info.name = path.section(u'/', -1);
+        info.role = role;
+        info.depth = path.count(u'/');
+        return info;
+    };
+    const QList<FolderInfo> folders = {folder(u"INBOX"_s, u"inbox"_s),
+                                       folder(u"Drafts"_s, u"drafts"_s),
+                                       folder(u"Sent"_s, u"sent"_s),
+                                       folder(u"Trash"_s, u"trash"_s),
+                                       folder(u"Archive"_s, u"archive"_s),
+                                       folder(u"Projects"_s),
+                                       folder(u"Projects/Alpha"_s),
+                                       folder(u"Projects/Beta"_s),
+                                       folder(u"Receipts"_s)};
+    struct Demo {
+        const char *email;
+        const char *name;
+        const char *from;
+        const char *subject;
+        const char *preview;
+        int hoursAgo;
+        bool unread;
+        bool flagged;
+    };
+    const Demo rows[][4] = {
+        {{"alice@example.com",
+          "Alice Example",
+          "Bob Builder <bob@example.net>",
+          "Lunch on Friday?",
+          "Are you free around noon? The new place near the station has a",
+          2,
+          true,
+          false},
+         {"alice@example.com",
+          "Alice Example",
+          "Carol Demo <carol@example.org>",
+          "Project Alpha: schedule",
+          "Attached is the revised schedule for the next two sprints.",
+          20,
+          true,
+          true},
+         {"alice@example.com",
+          "Alice Example",
+          "Fictional Shop <orders@shop.example>",
+          "Your receipt",
+          "Thank you for your order. Your receipt is attached.",
+          50,
+          false,
+          false},
+         {"alice@example.com",
+          "Alice Example",
+          "Dave Sample <dave@example.net>",
+          "Meeting notes",
+          "Here are the notes from Tuesday, in case you missed them.",
+          120,
+          false,
+          false}},
+        {{"bob@example.com",
+          "Bob Example",
+          "Alice Example <alice@example.com>",
+          "Re: Weekend plans",
+          "Sounds good, I will bring the tent and the stove.",
+          5,
+          true,
+          false},
+         {"bob@example.com",
+          "Bob Example",
+          "Eve Placeholder <eve@example.org>",
+          "Invoice 2026-041",
+          "Please find the invoice for September enclosed.",
+          30,
+          false,
+          false},
+         {"bob@example.com",
+          "Bob Example",
+          "Newsletter <news@list.example>",
+          "This month in open source",
+          "A roundup of releases and events.",
+          72,
+          true,
+          false},
+         {"bob@example.com",
+          "Bob Example",
+          "Frank Demo <frank@example.net>",
+          "Photos from the trip",
+          "The pictures are finally sorted; link below.",
+          200,
+          false,
+          false}},
+    };
+    const QDateTime now = QDateTime::currentDateTimeUtc();
+    qint64 uid = 1;
+    for (const auto &accountRows : rows) {
+        Account account;
+        account.email = QLatin1StringView(accountRows[0].email);
+        account.displayName = QLatin1StringView(accountRows[0].name);
+        account.provider = u"custom"_s;
+        account.imapHost = u"imap.example.com"_s;
+        account.smtpHost = u"smtp.example.com"_s;
+        AccountSession *session = createSession(account);
+        session->showDemoFolders(folders);
+        m_sessions.append(session);
+        int unread = 0;
+        for (const Demo &row : accountRows) {
+            MessageSummary message;
+            message.account = account.email;
+            message.uid = uid++;
+            message.subject = QLatin1StringView(row.subject);
+            message.from = QLatin1StringView(row.from);
+            message.preview = QLatin1StringView(row.preview);
+            message.date = now.addSecs(-row.hoursAgo * 3600);
+            message.unread = row.unread;
+            message.flagged = row.flagged;
+            unread += row.unread ? 1 : 0;
+            m_demoMessages[account.email][u"INBOX"_s].append(message);
+        }
+        m_unreadByAccount[account.email] = unread;
+    }
+    m_accounts->setSessions(m_sessions);
+    m_currentFolder = QLatin1StringView(allInboxesPath);
+    for (const AccountSession *session : std::as_const(m_sessions)) {
+        m_sharedParts.insert_or_assign(session->account().email, m_demoMessages[session->account().email][u"INBOX"_s]);
+    }
+    mergeSharedParts();
+    Q_EMIT currentFolderChanged();
+    Q_EMIT unreadCountChanged();
+}
+
 void MailController::updateStorageUsage()
 {
     qint64 used = 0;
@@ -940,6 +1080,27 @@ void MailController::selectFolder(const QString &account, const QString &path)
         m_messageModel->clear();
         clearMessage(true); // the open message belongs to the folder being left
         Q_EMIT currentFolderChanged();
+    }
+    if (m_demo) {
+        // Dev hook: lists come from the demo data, never from a server.
+        QList<MessageSummary> shown;
+        for (const AccountSession *each : std::as_const(m_sessions)) {
+            if (isSharedView(path) || each == session) {
+                for (const MessageSummary &message : m_demoMessages[each->account().email][isSharedView(path) ? u"INBOX"_s : path]) {
+                    const bool wanted = path == QLatin1StringView(unreadPath) ? message.unread
+                        : path == QLatin1StringView(flaggedPath)              ? message.flagged
+                                                                              : true;
+                    if (wanted) {
+                        shown.append(message);
+                    }
+                }
+            }
+        }
+        std::stable_sort(shown.begin(), shown.end(), [](const MessageSummary &a, const MessageSummary &b) {
+            return a.date > b.date;
+        });
+        m_messageModel->setMessages(shown);
+        return;
     }
     if (isSharedView(path)) {
         // Every account's inbox, merged; the accounts whose folders are not known yet join

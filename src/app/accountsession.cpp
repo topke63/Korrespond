@@ -13,7 +13,7 @@
 
 #include <QDateTime>
 
-AccountSession::AccountSession(const Account &account, const QString &storeDir, const StorageSettings &storage, QObject *parent)
+AccountSession::AccountSession(const Account &account, const QString &storeDir, const StorageSettings &storage, QObject *parent, bool demo)
     : QObject(parent)
     , m_account(account)
     , m_client(new ImapClient(this))
@@ -66,8 +66,8 @@ AccountSession::AccountSession(const Account &account, const QString &storeDir, 
     });
 
     m_sync->setSettings(m_storage);
-    m_storeReady = m_store->open();
-    if (!m_storeReady) {
+    m_storeReady = !demo && m_store->open();
+    if (!m_storeReady && !demo) {
         qWarning("Cannot open the local message store of %s: %s", qPrintable(m_account.email), qPrintable(m_store->lastError()));
     }
     updateStorageUsage();
@@ -292,6 +292,12 @@ bool AccountSession::showStoredFolders()
     // Not m_folders: sync waits for the server's own list.
     m_folderModel->setFolders(stored);
     return true;
+}
+
+void AccountSession::showDemoFolders(const QList<FolderInfo> &folders)
+{
+    m_folders = folders;
+    m_folderModel->setFolders(folders);
 }
 
 void AccountSession::onFoldersListed(const QList<FolderInfo> &folders)

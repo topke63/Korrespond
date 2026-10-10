@@ -4143,7 +4143,7 @@ scripts/desktop3-run.sh or a visible window; never act on the user's real folder
   collapsed captured during "Loading..." (busy stripe under the band), transient.
 
 ### T205 — Dev hook: demo accounts for headless checks
-- status: todo
+- status: done
 - depends on: T202
 - parallel-safe with: none
 - files: src/app/main.cpp, src/app/mailcontroller.h, src/app/mailcontroller.cpp (models it fills)
@@ -4160,7 +4160,17 @@ scripts/desktop3-run.sh or a visible window; never act on the user's real folder
 - verify: build; ctest; offscreen shot (`QT_QPA_PLATFORM=offscreen`, isolated XDG dirs,
   `PLASMAMAIL_COLOR_SCHEME=BreezeDark`/`BreezeLight`) shows both demo accounts; no
   `org.kde.StatusNotifierItem` registration from the test process.
-- notes: if this is more than ~150 lines, split (model fill vs tray/notification guard).
+- notes: done in one piece (~130 lines). `PLASMAMAIL_DEMO=1`: MailController::loadDemo() builds two
+  demo sessions (AccountSession got a `demo` ctor flag: the store is never opened, so no files),
+  fills their folder models and a per-account demo message map; `loadAll`, legacy store move,
+  check timer, keychain reads and connections are skipped. selectFolder() in demo mode lists from
+  the demo map (INBOX only has messages; Unread/Flagged/All Inboxes filter it). Opening a message or
+  other actions still reach for a server: not covered. main.cpp: tray and notifier are not created
+  while PLASMAMAIL_DEMO=1 or PLASMAMAIL_SCREENSHOT is set. How to run a check: `QT_QPA_PLATFORM=offscreen`
+  + isolated XDG_* dirs + `PLASMAMAIL_DEMO=1 PLASMAMAIL_COLOR_SCHEME=dark|light
+  PLASMAMAIL_SCREENSHOT=<png>`; use the names `dark`/`light` (or "Breeze Dark" with the space):
+  `BreezeDark` is an unknown scheme and silently falls back to the system one.
+
 
 ### T188 — Account trees: persisted collapse, Collapse all / Expand all
 - status: todo

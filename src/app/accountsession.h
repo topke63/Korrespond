@@ -27,7 +27,8 @@ class AccountSession : public QObject
     Q_OBJECT
 public:
     // storeDir is this account's own store folder (see MessageStore::accountDir()).
-    AccountSession(const Account &account, const QString &storeDir, const StorageSettings &storage, QObject *parent = nullptr);
+    // demo: dev hook (PLASMAMAIL_DEMO); the store is never opened, so nothing is written.
+    AccountSession(const Account &account, const QString &storeDir, const StorageSettings &storage, QObject *parent = nullptr, bool demo = false);
     ~AccountSession() override;
 
     // Where the connection to the server stands: Idle until a connect starts, Connecting while the
@@ -77,6 +78,8 @@ public:
     // Fills the folder model from the stored folder list, before connecting. False when storage
     // is off or nothing is stored.
     bool showStoredFolders();
+    // Dev hook: shows these folders as if the server had listed them (no signal, no store).
+    void showDemoFolders(const QList<FolderInfo> &folders);
 
     // Applies new settings to the local copies (turning storage off deletes nothing here; see
     // clearStore()) and starts a sync when storage is on.

@@ -183,11 +183,12 @@ int main(int argc, char *argv[])
     engine.loadFromModule("PlasmaMail", "Main");
     scheduleScreenshot(engine);
 
-    // The tray icon; not in the screenshot runs (they must not put icons on the desktop), unless
-    // PLASMAMAIL_SCREENSHOT_TRAY=1.
+    // The tray icon and notifications; not in the screenshot and demo runs (they must not put icons
+    // or popups on the desktop), unless PLASMAMAIL_SCREENSHOT_TRAY=1 for a screenshot run.
     std::unique_ptr<TrayIcon> tray;
     std::unique_ptr<MailNotifier> notifier;
-    const bool screenshotRun = !qEnvironmentVariableIsEmpty("PLASMAMAIL_SCREENSHOT") && qEnvironmentVariableIntValue("PLASMAMAIL_SCREENSHOT_TRAY") != 1;
+    const bool screenshotRun = (!qEnvironmentVariableIsEmpty("PLASMAMAIL_SCREENSHOT") && qEnvironmentVariableIntValue("PLASMAMAIL_SCREENSHOT_TRAY") != 1)
+        || qEnvironmentVariableIntValue("PLASMAMAIL_DEMO") == 1;
     auto controller = engine.singletonInstance<MailController *>("PlasmaMail", "MailController");
     if (!screenshotRun && controller && !engine.rootObjects().isEmpty()) {
         tray = std::make_unique<TrayIcon>(controller, qobject_cast<QWindow *>(engine.rootObjects().constFirst()));

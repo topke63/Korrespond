@@ -425,6 +425,8 @@ private:
     void clearMessage(bool clearUid);
     // With storage on: shows the stored folder list and All Inboxes before connecting.
     void showStoredMail();
+    // Dev hook PLASMAMAIL_DEMO: fictional accounts, folders and messages, in memory only.
+    void loadDemo();
     void updateStorageUsage();
     void updateSyncing();
     // Recomputes activityText(); emits activityChanged() when it or lastCheckedAt changed.
@@ -490,6 +492,8 @@ private:
     StorageSettings m_storage;
     qint64 m_storageUsedBytes = 0;
     bool m_syncing = false;
+    bool m_demo = false; // PLASMAMAIL_DEMO: no network, keychain or store
+    std::map<QString, std::map<QString, QList<MessageSummary>>> m_demoMessages; // account -> folder -> messages
     bool m_showingStored = false; // the view came from the store; refresh it once connected
     int m_requests = 0;
     // Search results are only shown, never stored. Replies of each session come in the order asked,

@@ -136,16 +136,38 @@ int main(int argc, char *argv[])
         QQuickStyle::setStyle(u"org.kde.desktop"_s);
     }
 
-    // Dev only: PLASMAMAIL_COLOR_SCHEME=light|dark forces the whole app into that scheme: Qt's
-    // colour scheme (the KDE platform theme may ignore this one) and the matching Breeze palette,
-    // which the Kirigami colour sets (sidebar, lists, headers, buttons, menus, dialogs)
-    // follow. Unset: system scheme.
-    const QString scheme = qEnvironmentVariable("PLASMAMAIL_COLOR_SCHEME").toLower();
-    if (scheme == "light"_L1 || scheme == "dark"_L1) {
-        const bool light = scheme == "light"_L1;
-        QGuiApplication::styleHints()->setColorScheme(light ? Qt::ColorScheme::Light : Qt::ColorScheme::Dark);
+    // Dev only: PLASMAMAIL_COLOR_SCHEME=light|dark|<installed scheme name> forces the whole app into
+    // that KDE colour scheme (light/dark = Breeze Light/Dark; names match case-insensitively, e.g.
+    // "Breeze Classic"), which the Kirigami colour sets (sidebar, lists, headers, buttons, menus,
+    // dialogs) follow. This process only: autosave is off, so nothing is written to the config.
+    // Unset: system scheme.
+    const QString wanted = qEnvironmentVariable("PLASMAMAIL_COLOR_SCHEME").trimmed();
+    if (!wanted.isEmpty()) {
         auto *manager = KColorSchemeManager::instance();
-        manager->activateScheme(manager->indexForScheme(light ? u"Breeze Light"_s : u"Breeze Dark"_s));
+        manager->setAutosaveChanges(false);
+        const QString name = wanted.compare("light"_L1, Qt::CaseInsensitive) == 0 ? u"Breeze Light"_s
+            : wanted.compare("dark"_L1, Qt::CaseInsensitive) == 0                 ? u"Breeze Dark"_s
+                                                                                  : wanted;
+        QAbstractItemModel *model = manager->model();
+        QModelIndex found;
+        QStringList available;
+        for (int row = 0; row < model->rowCount(); ++row) {
+            const QModelIndex index = model->index(row, 0);
+            const QString schemeName = index.data(Qt::DisplayRole).toString();
+            available << schemeName;
+            if (!found.isValid() && schemeName.compare(name, Qt::CaseInsensitive) == 0) {
+                found = index;
+            }
+        }
+        if (found.isValid()) {
+            manager->activateScheme(found);
+            // Qt's own hint follows the scheme's window lightness (the KDE platform theme may ignore it).
+            const bool light = QGuiApplication::palette().window().color().lightnessF() >= 0.5;
+            QGuiApplication::styleHints()->setColorScheme(light ? Qt::ColorScheme::Light : Qt::ColorScheme::Dark);
+            qInfo().noquote() << "PLASMAMAIL_COLOR_SCHEME: activated" << manager->activeSchemeName() << (light ? "(light)" : "(dark)");
+        } else {
+            qWarning().noquote() << "PLASMAMAIL_COLOR_SCHEME: unknown scheme" << wanted << "- available:" << available.join(u", "_s);
+        }
     }
 
     QQmlApplicationEngine engine;

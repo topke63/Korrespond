@@ -4166,7 +4166,7 @@ screenshot checks stay `todo`.
   ctest 19/19, offscreen start only the two known graphics-scene lines. Not seen in a window.
 
 ### T195 — Colour-scheme hook forces a real scheme
-- status: todo
+- status: done
 - depends on: T193
 - parallel-safe with: T194
 - files: src/app/main.cpp, src/qml/MimeTheme.qml
@@ -4176,7 +4176,14 @@ screenshot checks stay `todo`.
   kdeglobals); nothing depends on MimeTheme's own dark flag.
 - verify: build; ctest; offscreen start with two scheme names logs the activated scheme, no
   warnings; `~/.config/kdeglobals` unchanged (compare mtime before/after).
-- notes:
+- notes: Done 2026-10-10. main.cpp: `light`/`dark` map to Breeze Light/Dark, any other value is
+  matched case-insensitively against the KColorSchemeManager model's display names; unknown names
+  warn on stderr with the available list and change nothing. `setAutosaveChanges(false)` so the
+  choice is never written to config. QStyleHints colour scheme is set from the active palette's
+  window lightness after activation. One qInfo line logs the activated scheme. MimeTheme.qml needed
+  no change (no dark flag left, T193). Verified: build, ctest 19/19, offscreen runs for light,
+  "Breeze Classic", nosuchscheme; kdeglobals and plasma-mailrc mtimes unchanged, plasma-mailrc
+  ColorScheme key count unchanged (1, pre-existing).
 
 ### T196 — Check: two real schemes (screenshots)
 - status: todo

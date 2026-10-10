@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: 2026 topke <topke63@gmail.com>
 // SPDX-License-Identifier: GPL-2.0-or-later
 
+#include <limits>
+
 #include <KConfigGroup>
 #include <KSharedConfig>
 
@@ -78,7 +80,20 @@ private Q_SLOTS:
     void testUndoSendSnapsToTheNearestChoice()
     {
         // Nearest choice wins; a tie (15, 25) goes to the smaller one.
-        const QList<QPair<int, int>> cases = {{7, 5}, {8, 10}, {3, 5}, {2, 0}, {14, 10}, {15, 10}, {16, 20}, {25, 20}, {26, 30}, {100, 30}, {-3, 0}, {-100, 0}};
+        const QList<QPair<int, int>> cases = {{7, 5},
+                                              {8, 10},
+                                              {3, 5},
+                                              {2, 0},
+                                              {14, 10},
+                                              {15, 10},
+                                              {16, 20},
+                                              {25, 20},
+                                              {26, 30},
+                                              {100, 30},
+                                              {-3, 0},
+                                              {-100, 0},
+                                              {std::numeric_limits<int>::min(), 0},
+                                              {std::numeric_limits<int>::max(), 30}};
         for (const auto &[stored, expected] : cases) {
             KConfigGroup g = group();
             g.writeEntry("UndoSendSeconds", stored);

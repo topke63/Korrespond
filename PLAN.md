@@ -4600,6 +4600,7 @@ first, then stop.
   {0,5,10,20,30}, negative -> 0, above 30 -> 30, ties -> the smaller (7 -> 5,
   8 -> 10, 15 -> 10, 25 -> 20); an unparsable value -> the default 10. Tests: default, round trip per
   choice, snapping, garbage.
+- verification (2026-10-10): build clean, ctest 19/19 pass; added an early clamp in `snapUndoSend` so INT_MIN/INT_MAX cannot overflow, with tests.
 
 ### T207 — Controller: delayed hand-off and undo
 - status: todo

@@ -37,6 +37,13 @@ static int clampList(int width)
 // strict "<" make a tie (15 between 10 and 20, 25 between 20 and 30) go to the smaller choice.
 static int snapUndoSend(int seconds)
 {
+    // Clamp first: the distance computed below would overflow for values near INT_MIN.
+    if (seconds <= 0) {
+        return 0;
+    }
+    if (seconds >= 30) {
+        return 30;
+    }
     static constexpr int choices[] = {0, 5, 10, 20, 30};
     int best = choices[0];
     for (const int choice : choices) {

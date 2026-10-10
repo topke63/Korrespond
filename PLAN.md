@@ -5568,6 +5568,24 @@ Approach: thread ids are computed in the engine and stored, the list model group
   "lost during a refresh" line in the log), and no automated test covers it. No background reconnect
   while idle: a lost connection is still found out by the next command or the next push/poll check.
 
+# Fix — five identical "Connection to the server was lost" toasts at startup (user report 2026-10-10)
+
+### T247 — Show a repeated connection error once
+- status: done
+- depends on: T246
+- files: src/app/mailcontroller.cpp, src/app/mailcontroller.h
+- inputs: the user opened the app and got five stacked toasts "topke63@yahoo.com: Connection to the server
+  was lost."; the Yahoo chip was red. `ImapClient::fail()` fires once per session generation, and each
+  queued call after a failure opens a new session that can fail again, so each attempt produced a toast.
+- output: `MailController::reportConnectionError()`; `onSessionError` uses it for the UI-session and
+  other-account toasts. The same text within 30 s is not shown again (it is logged at info level).
+- verify: build; launch the app with logging.
+- notes: Done 2026-10-10 (commit 9e98749, pushed). Build clean. The relaunch with logging connected both
+  accounts and idled with no error, so the toasts were not reproduced and the cause of the Yahoo drop is
+  still unknown (idle close, network not ready at launch, or a limit on simultaneous Yahoo connections).
+  Only the repeat is fixed. No automated test covers the dedupe. If the red chip returns, read the log
+  around that time before changing the connection logic.
+
 ## Execution Loop
 
 Execute the plan as a loop. Each iteration handles one task in a fresh context, then ends.

@@ -20,7 +20,10 @@ QtObject {
     readonly property color headerBackground: dark ? "#251e2c" : "#f3f1f6"
 
     readonly property color text: dark ? "#ececec" : "#1c1b22"
-    readonly property color secondaryText: dark ? "#a4a4a4" : "#6e6e73"
+    // Sidebar folder and account names (Mimestream's are a touch brighter than the list text).
+    readonly property color sidebarText: dark ? "#f3eff5" : "#1c1b22"
+    // Dates and addresses; between the list dates (#a4a4a4) and the reading pane dates (#ababab).
+    readonly property color secondaryText: dark ? "#a8a8a8" : "#6e6e73"
     // Sidebar section headings and the message preview line.
     readonly property color sectionText: dark ? "#8c8991" : "#8a8790"
     readonly property color previewText: dark ? "#aaaaaa" : "#6e6e73"
@@ -36,7 +39,8 @@ QtObject {
     readonly property color sidebarSelected: dark ? "#68656b" : "#d4d1df"
     readonly property color listSelected: dark ? "#464646" : "#dcdcdc"
     readonly property color hover: dark ? Qt.rgba(1, 1, 1, 0.06) : Qt.rgba(0, 0, 0, 0.05)
-    readonly property color divider: dark ? Qt.rgba(1, 1, 1, 0.08) : Qt.rgba(0, 0, 0, 0.08)
+    // Light alpha 0.10 (not 0.08): 0.08 gave #ebebeb on white, 1.19:1, under the 1.2:1 floor.
+    readonly property color divider: dark ? Qt.rgba(1, 1, 1, 0.08) : Qt.rgba(0, 0, 0, 0.10)
     // Hairline between the three columns.
     readonly property color columnDivider: dark ? "#050505" : "#d0d0d4"
 

@@ -4005,6 +4005,17 @@ known light look and derive it (macOS light: sidebar `#e8e6ee`-ish, band `#f3f1f
   #e8e6ee, band #f3f1f6, status #e8e6ee, list/reading #ffffff. Header text keeps Breeze Header
   text colours, readable in both. Screenshots: scratchpad t186-dark.png, t186-light.png.
 
+### T192 — Palette: sidebar text and light divider
+- status: done
+- depends on: T179
+- parallel-safe with: none
+- files: src/qml/MimeTheme.qml, src/qml/FolderSidebar.qml
+- inputs: tweak left uncommitted by the interrupted T181/T184 check run.
+- output: `sidebarText` token (dark #f3eff5, as sampled) used for sidebar names; `secondaryText`
+  dark #a8a8a8; light `divider` alpha 0.10 (0.08 gave 1.19:1 on white, under the 1.2:1 floor).
+- verify: build; ctest 19/19; screenshots in both schemes (t192-dark/light.png) clean, no QML warnings.
+- notes: reviewed and committed 2026-10-10 by the planner.
+
 # Milestone 3j — Sidebar control (user request 2026-10-10: "a collapse option for the left panel;
 # I don't need to see the whole tree of each account, I'd like to choose")
 

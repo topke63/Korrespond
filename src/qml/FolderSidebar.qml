@@ -41,7 +41,7 @@ Kirigami.OverlayDrawer {
 
     Kirigami.Theme.inherit: false
     Kirigami.Theme.backgroundColor: MimeTheme.sidebarBackground
-    Kirigami.Theme.textColor: MimeTheme.text
+    Kirigami.Theme.textColor: MimeTheme.sidebarText
     Kirigami.Theme.disabledTextColor: MimeTheme.secondaryText
     Kirigami.Theme.highlightColor: MimeTheme.accent
 
@@ -290,7 +290,7 @@ Kirigami.OverlayDrawer {
                 Layout.fillWidth: true
                 text: folderRow.text
                 font: folderRow.font
-                color: MimeTheme.text
+                color: MimeTheme.sidebarText
                 elide: Text.ElideRight
             }
         }

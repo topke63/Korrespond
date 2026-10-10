@@ -77,6 +77,7 @@ qt_add_qml_module(plasma-mail
         qml/StatusBar.qml
         qml/StorageSettingsPage.qml
         qml/NotificationSettingsPage.qml
+        qml/SendingSettingsPage.qml
         qml/FolderSidebar.qml
         qml/SenderAvatar.qml
         qml/AccountSettingsPage.qml

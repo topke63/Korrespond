@@ -133,6 +133,8 @@ class MailController : public QObject
     Q_PROPERTY(bool keepInTray READ keepInTray NOTIFY appSettingsChanged)
     Q_PROPERTY(int checkMinutes READ checkMinutes NOTIFY appSettingsChanged)
     Q_PROPERTY(bool pushEnabled READ pushEnabled NOTIFY appSettingsChanged)
+    // Seconds a sent message waits before the hand-off (0 = off); applies to messages sent afterwards.
+    Q_PROPERTY(int undoSendSeconds READ undoSendSeconds WRITE setUndoSendSeconds NOTIFY appSettingsChanged)
     // Widths of the folder sidebar and the message list column (logical pixels), and their limits.
     Q_PROPERTY(int sidebarWidth READ sidebarWidth NOTIFY panelWidthsChanged)
     Q_PROPERTY(int listWidth READ listWidth NOTIFY panelWidthsChanged)
@@ -220,6 +222,8 @@ public:
     [[nodiscard]] bool keepInTray() const;
     [[nodiscard]] int checkMinutes() const;
     [[nodiscard]] bool pushEnabled() const;
+    [[nodiscard]] int undoSendSeconds() const;
+    void setUndoSendSeconds(int seconds);
     [[nodiscard]] int sidebarWidth() const;
     [[nodiscard]] int listWidth() const;
     [[nodiscard]] bool sidebarCollapsed() const;

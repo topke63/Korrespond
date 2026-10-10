@@ -159,6 +159,12 @@ Kirigami.ApplicationWindow {
                 page: () => notificationsPage
             },
             KirigamiSettings.ConfigurationModule {
+                moduleId: "sending"
+                text: KI18n.i18nc("@action:button", "Sending")
+                icon.name: "mail-send"
+                page: () => sendingPage
+            },
+            KirigamiSettings.ConfigurationModule {
                 moduleId: "storage"
                 text: KI18n.i18nc("@action:button", "Local Storage")
                 icon.name: "drive-harddisk"
@@ -231,6 +237,12 @@ Kirigami.ApplicationWindow {
         id: notificationsPage
 
         NotificationSettingsPage {}
+    }
+
+    Component {
+        id: sendingPage
+
+        SendingSettingsPage {}
     }
 
     Component {

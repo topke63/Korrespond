@@ -4751,14 +4751,14 @@ first, then stop.
   closing the composer, real SMTP failure.
 
 ### T209 — Settings: undo-send choice
-- status: todo
+- status: done
 - depends on: T206
 - parallel-safe with: T208
 - files: src/qml/Main.qml (settings modules), new src/qml/SendingSettingsPage.qml (+ CMake/qrc)
 - inputs: KirigamiSettings modules as used for notifications/storage.
 - output: a "Sending" settings page with "Undo send: Off / 5 / 10 / 20 / 30 seconds".
 - verify: build; ctest; offscreen shot via `PLASMAMAIL_SCREENSHOT_SETTINGS=sending`.
-- notes:
+- notes: new `SendingSettingsPage.qml` (FormCard, `FormComboBoxDelegate` Off/5/10/20/30 seconds, explanation as description), module id `sending` (icon mail-send) between Notifications and Storage in Main.qml; `MailController.undoSendSeconds` read/write property (saves AppSettings, snaps via its save/load, emits appSettingsChanged; pending sends keep their deadline). Build clean, ctest 19/19; offscreen shots dark/light, seeded UndoSendSeconds=20 shows "20 seconds".
 
 ### T228 — Dev key hook without Qt private API
 - status: todo

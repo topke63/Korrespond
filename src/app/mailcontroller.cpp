@@ -914,6 +914,25 @@ int MailController::checkMinutes() const
     return m_app.checkMinutes;
 }
 
+int MailController::undoSendSeconds() const
+{
+    return m_app.undoSendSeconds;
+}
+
+void MailController::setUndoSendSeconds(int seconds)
+{
+    // Messages already waiting keep their deadline; only later sends use the new value.
+    AppSettings settings = m_app;
+    settings.undoSendSeconds = seconds;
+    settings.save();
+    settings = AppSettings::load();
+    if (settings.undoSendSeconds == m_app.undoSendSeconds) {
+        return;
+    }
+    m_app.undoSendSeconds = settings.undoSendSeconds;
+    Q_EMIT appSettingsChanged();
+}
+
 bool MailController::pushEnabled() const
 {
     return m_app.pushEnabled;

@@ -80,6 +80,13 @@ ecm_add_test(
     LINK_LIBRARIES plasmamail_engine Qt6::Test
 )
 
+# Test for ThreadBuilder (conversation grouping)
+ecm_add_test(
+    threadbuildertest.cpp
+    TEST_NAME threadbuildertest
+    LINK_LIBRARIES plasmamail_engine Qt6::Test
+)
+
 # Test for messageDate (Date header and Received fallback)
 ecm_add_test(
     messagedatetest.cpp

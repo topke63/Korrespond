@@ -5352,7 +5352,7 @@ Approach: thread ids are computed in the engine and stored, the list model group
   Tests: round trip, from raw, setThreadIds, upgrade from a version 3 database.
 
 ### T220 — ThreadBuilder
-- status: todo
+- status: done
 - depends on: T217
 - parallel-safe with: T218, T219
 - files: new src/engine/threadbuilder.h/.cpp, autotests/threadbuildertest.cpp
@@ -5360,7 +5360,12 @@ Approach: thread ids are computed in the engine and stored, the list model group
   References/In-Reply-To union-find, then subject fallback within 30 days); stable ids.
 - verify: build; ctest with fixtures (broken References, missing parents, same subject months
   apart, Re:/Fwd: variants).
-- notes:
+- notes: Done 2026-10-10 (no sub-agents). ThreadBuilder::build(messages) → uid → thread id
+  (src/engine/threadbuilder.*): Gmail thread id first (id "g:<thrid>"; a Gmail message is placed by
+  that id only), then union-find over Message-ID/In-Reply-To/References (a missing shared ancestor
+  still joins two replies), then subject fallback only for messages with no link, within 30 days of
+  the newest earlier message of the same normalised subject, needing dates. Ids "m:<Message-ID>" or
+  "u:<uid>" of the oldest member, independent of input order. 12 test cases in threadbuildertest.
 
 ### T221 — List model: conversation rows
 - status: todo

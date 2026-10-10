@@ -93,9 +93,12 @@ StatefulApp.StatefulWindow {
 
     // Closing the window only hides it; the controller quits when the last window closes (lastWindowClosed).
 
+    // Ctrl+Q runs the action collection's file_quit, which routes to MailController.requestQuit()
+    // (MailApplication::setupActions). Kept here until T212 binds the actions to the window, so there
+    // is only one Ctrl+Q binding (a second one would make the shortcut ambiguous).
     Shortcut {
         sequence: StandardKey.Quit
-        onActivated: MailController.requestQuit()
+        onActivated: mainWindow.application.action("file_quit").trigger()
     }
 
     globalDrawer: FolderSidebar {

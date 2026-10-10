@@ -8,6 +8,7 @@
 #include <KLocalizedString>
 
 #include <QAction>
+#include <QCoreApplication>
 #include <QIcon>
 
 using namespace Qt::StringLiterals;
@@ -35,6 +36,8 @@ void MailApplication::setController(MailController *controller)
     if (m_controller) {
         connect(m_controller, &MailController::accountChanged, this, &MailApplication::updateEnabled);
         connect(m_controller, &MailController::currentMessageChanged, this, &MailApplication::updateEnabled);
+        // canArchive, canDelete and canMove depend on the folder too.
+        connect(m_controller, &MailController::currentFolderChanged, this, &MailApplication::updateEnabled);
     }
     updateEnabled();
     Q_EMIT controllerChanged();
@@ -113,6 +116,19 @@ void MailApplication::setupActions()
     signalAction(u"previous_message"_s, i18nc("@action", "Previous Message"), u"go-up"_s, &MailApplication::previousMessageRequested);
     signalAction(u"go_to_folder"_s, i18nc("@action", "Go to Folder…"), u"folder"_s, &MailApplication::goToFolderRequested);
 
+    // The base's file_quit (KStandardActions::quit) calls QCoreApplication::quit directly, which skips
+    // the wait for pending sends. Quitting goes through MailController::requestQuit() (T227).
+    if (QAction *quit = mainCollection()->action(u"file_quit"_s)) {
+        disconnect(quit, &QAction::triggered, nullptr, nullptr);
+        connect(quit, &QAction::triggered, this, [this] {
+            if (m_controller) {
+                m_controller->requestQuit();
+            } else {
+                QCoreApplication::quit();
+            }
+        });
+    }
+
     readSettings();
     updateEnabled();
 }
@@ -127,7 +143,8 @@ void MailApplication::updateEnabled()
             action->setEnabled(enabled);
         }
     };
-    set("compose", account && c->canCompose());
+    // New Message needs no open message (T62 opens a blank composer with no selection).
+    set("compose", account);
     set("reply", message && c->canCompose());
     set("reply_all", message && c->canCompose());
     set("forward", message && c->canCompose());

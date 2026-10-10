@@ -14,6 +14,7 @@
 #include "trayicon.h"
 
 #include <QAbstractItemModel>
+#include <QAction>
 #include <QApplication>
 #include <QGuiApplication>
 #include <QIcon>
@@ -267,6 +268,25 @@ int main(int argc, char *argv[])
         // Dev check (T211): the action collection's ids.
         if (auto *application = demoRoot->property("application").value<MailApplication *>()) {
             qInfo().noquote() << "actions:" << application->actionNames().join(u' ');
+            // Dev only: PLASMAMAIL_DEMO_TRIGGER=<action id>@<ms> triggers that action of the collection
+            // (as if the user chose it) at <ms>, e.g. file_quit@3000.
+            const QStringList trigger = qEnvironmentVariable("PLASMAMAIL_DEMO_TRIGGER").split(u'@');
+            bool triggerOk = false;
+            const int triggerMs = trigger.size() == 2 ? trigger.at(1).toInt(&triggerOk) : 0;
+            if (triggerOk && triggerMs > 0) {
+                const QString id = trigger.at(0);
+                QTimer::singleShot(triggerMs, application, [application, id] {
+                    QAction *action = application->action(id);
+                    if (!action) {
+                        qInfo().noquote() << "trigger: no action" << id;
+                    } else if (!action->isEnabled()) {
+                        qInfo().noquote() << "trigger: action disabled" << id;
+                    } else {
+                        qInfo().noquote() << "trigger:" << id << "shortcut:" << action->shortcut().toString();
+                        action->trigger();
+                    }
+                });
+            }
         }
     }
 
@@ -299,6 +319,15 @@ int main(int argc, char *argv[])
                     controller->undoSend(-1);
                 });
             }
+        }
+        // PLASMAMAIL_DEMO_OPEN=<ms>: opens the first demo message (INBOX of alice@example.com) at <ms>,
+        // so the message actions (archive, mark read, ...) are enabled for PLASMAMAIL_DEMO_TRIGGER.
+        const int openAt = qEnvironmentVariableIntValue("PLASMAMAIL_DEMO_OPEN");
+        if (openAt > 0) {
+            QTimer::singleShot(openAt, controller, [controller] {
+                controller->selectFolder(u"alice@example.com"_s, u"INBOX"_s);
+                controller->openMessage(u"alice@example.com"_s, 1);
+            });
         }
         bool ok = false;
         const int quitAfter = qEnvironmentVariableIntValue("PLASMAMAIL_DEMO_QUIT_AFTER", &ok);
@@ -424,6 +453,21 @@ int main(int argc, char *argv[])
                           qlonglong(controller->property("pendingSends").toList().size()));
                     QTest::keyClick(window, Qt::Key_Z, Qt::ControlModifier);
                     qInfo("demo: ctrl+z sent, pending after=%lld", qlonglong(controller->property("pendingSends").toList().size()));
+                });
+            });
+        }
+        // PLASMAMAIL_DEMO_KEY_QUIT=<ms>: a Ctrl+Q key press for the main window at <ms>, same path as KEY_UNDO.
+        const int keyQuit = qEnvironmentVariableIntValue("PLASMAMAIL_DEMO_KEY_QUIT");
+        if (keyQuit > 0) {
+            QTimer::singleShot(keyQuit, &engine, [&engine] {
+                auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
+                if (!window) {
+                    return;
+                }
+                window->requestActivate();
+                QTimer::singleShot(300, window, [window] {
+                    qInfo("demo: ctrl+q sent, active=%d", window->isActive() ? 1 : 0);
+                    QTest::keyClick(window, Qt::Key_Q, Qt::ControlModifier);
                 });
             });
         }

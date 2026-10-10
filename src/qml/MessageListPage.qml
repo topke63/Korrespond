@@ -5,6 +5,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Controls as QQC2
+import QtQuick.Templates as T
 import QtQuick.Layouts
 import org.kde.ki18n
 import org.kde.kirigami as Kirigami
@@ -67,10 +68,56 @@ Kirigami.ScrollablePage {
         onResetRequested: MailController.savePanelWidths(MailController.sidebarWidth, MailController.listDefaultWidth)
     }
 
+    // The column divider on the right edge, over the title bar band and the list (Main.qml turns the page row's own
+    // separators off).
+    Rectangle {
+        parent: page.overlay
+        visible: resizer.visible
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        width: 1
+        color: MimeTheme.columnDivider
+    }
+
+    // The title bar band: the page row's header gets the deep purple instead of the theme's header colour.
+    function styleHeader() {
+        const header = (page.Kirigami.ColumnView.globalHeader as Loader)?.item as T.Control;
+        if (header) {
+            header.background = headerBand.createObject(header);
+        }
+    }
+    Component.onCompleted: styleHeader()
+    Connections {
+        target: page.Kirigami.ColumnView.globalHeader as Loader
+        ignoreUnknownSignals: true
+
+        function onLoaded() {
+            page.styleHeader();
+        }
+    }
+    Component {
+        id: headerBand
+
+        Rectangle {
+            color: MimeTheme.headerBackground
+
+            Rectangle {
+                visible: resizer.visible
+                anchors.right: parent.right
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
+                width: 1
+                color: MimeTheme.columnDivider
+            }
+        }
+    }
+
     actions: [
         Kirigami.Action {
             text: KI18n.i18nc("@action:intoolbar", "New Message")
             icon.name: "mail-message-new"
+            icon.color: MimeTheme.toolbarIcon
             displayHint: Kirigami.DisplayHint.IconOnly
             tooltip: KI18n.i18nc("@info:tooltip", "Write a new message (Ctrl+N)")
             shortcut: "Ctrl+N"
@@ -88,6 +135,7 @@ Kirigami.ScrollablePage {
         Kirigami.Action {
             text: KI18n.i18nc("@action:intoolbar", "Refresh")
             icon.name: "view-refresh"
+            icon.color: enabled ? MimeTheme.toolbarIcon : Qt.alpha(MimeTheme.toolbarIcon, 0.4)
             displayHint: Kirigami.DisplayHint.IconOnly
             tooltip: KI18n.i18nc("@info:tooltip", "Check for new mail (F5)")
             shortcut: "F5"

@@ -3842,7 +3842,7 @@ Light mode has no reference; derive it (macOS light: sidebar `#e8e6ee`-ish, band
 - notes: committed 2026-10-10; text #ececec, secondary #a4a4a4, section #8c8991, preview #aaaaaa, iconTint #cfc8ba, toolbarIcon #9f99a2, header #251e2c, columnDivider #050505; light: header #f3f1f6, listSelected #dcdcdc, columnDivider #d0d0d4. Tokens not used elsewhere yet. Build clean, ctest 19/19.
 
 ### T177 — Title bar band and column dividers
-- status: todo
+- status: done
 - depends on: T176
 - parallel-safe with: none
 - files: src/qml/MessageListPage.qml, src/qml/MessagePage.qml, src/qml/FolderSidebar.qml,
@@ -3852,7 +3852,7 @@ Light mode has no reference; derive it (macOS light: sidebar `#e8e6ee`-ish, band
   header stays on the sidebar colour (as in Mimestream); 1 px `columnDivider` between the three
   columns; toolbar icons tinted `toolbarIcon`.
 - verify: build; ctest; screenshot: purple band across list and reading headers only, black hairlines.
-- notes:
+- notes: list and message pages replace the page row header's background (ToolBarPageHeader, via the ColumnView.globalHeader loader) with a headerBackground rectangle; page row separators off, own 1 px columnDivider on sidebar and list right edges (list also in the header band); Action/ToolButton icon.color toolbarIcon, 40% alpha when disabled, flag keeps orange. Not checked on screen.
 
 ### T178 — Message list rows like Mimestream
 - status: todo

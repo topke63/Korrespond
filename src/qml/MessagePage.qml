@@ -6,6 +6,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtCore
 import QtQuick.Controls as QQC2
+import QtQuick.Templates as T
 import QtQuick.Dialogs
 import QtQuick.Layouts
 import QtWebEngine
@@ -120,7 +121,7 @@ Kirigami.Page {
 
                     QQC2.ToolButton {
                         icon.name: "flag"
-                        icon.color: MailController.messageFlagged ? "#f67400" : Kirigami.Theme.textColor
+                        icon.color: MailController.messageFlagged ? "#f67400" : MimeTheme.toolbarIcon
                         text: MailController.messageFlagged ? KI18n.i18nc("@action:button", "Unflag")
                                                             : KI18n.i18nc("@action:button", "Flag")
                         display: QQC2.AbstractButton.IconOnly
@@ -138,6 +139,7 @@ Kirigami.Page {
 
                     QQC2.ToolButton {
                         icon.name: MailController.messageUnread ? "mail-mark-read" : "mail-mark-unread"
+                        icon.color: enabled ? MimeTheme.toolbarIcon : Qt.alpha(MimeTheme.toolbarIcon, 0.4)
                         text: MailController.messageUnread ? KI18n.i18nc("@action:button", "Mark as Read")
                                                            : KI18n.i18nc("@action:button", "Mark as Unread")
                         display: QQC2.AbstractButton.IconOnly
@@ -155,6 +157,7 @@ Kirigami.Page {
 
                     QQC2.ToolButton {
                         icon.name: "archive-insert"
+                        icon.color: enabled ? MimeTheme.toolbarIcon : Qt.alpha(MimeTheme.toolbarIcon, 0.4)
                         text: KI18n.i18nc("@action:button", "Archive")
                         display: QQC2.AbstractButton.IconOnly
                         enabled: MailController.canArchive
@@ -171,6 +174,7 @@ Kirigami.Page {
 
                     QQC2.ToolButton {
                         icon.name: "edit-delete"
+                        icon.color: enabled ? MimeTheme.toolbarIcon : Qt.alpha(MimeTheme.toolbarIcon, 0.4)
                         text: KI18n.i18nc("@action:button", "Delete")
                         display: QQC2.AbstractButton.IconOnly
                         enabled: MailController.canDelete
@@ -190,6 +194,7 @@ Kirigami.Page {
                         id: moveButton
 
                         icon.name: "folder"
+                        icon.color: enabled ? MimeTheme.toolbarIcon : Qt.alpha(MimeTheme.toolbarIcon, 0.4)
                         text: KI18n.i18nc("@action:button", "Move to Folder")
                         display: QQC2.AbstractButton.IconOnly
                         enabled: MailController.canMove
@@ -211,6 +216,7 @@ Kirigami.Page {
 
                     QQC2.ToolButton {
                         icon.name: toolLoader.modelData.icon
+                        icon.color: enabled ? MimeTheme.toolbarIcon : Qt.alpha(MimeTheme.toolbarIcon, 0.4)
                         text: toolLoader.modelData.text
                         display: QQC2.AbstractButton.IconOnly
                         enabled: MailController.canCompose // enable only when we can compose a message
@@ -270,6 +276,29 @@ Kirigami.Page {
     }
     padding: 0
     onHtmlChanged: showHtml()
+
+    // The title bar band: the page row's header gets the deep purple instead of the theme's header colour.
+    function styleHeader() {
+        const header = (page.Kirigami.ColumnView.globalHeader as Loader)?.item as T.Control;
+        if (header) {
+            header.background = headerBand.createObject(header);
+        }
+    }
+    Connections {
+        target: page.Kirigami.ColumnView.globalHeader as Loader
+        ignoreUnknownSignals: true
+
+        function onLoaded() {
+            page.styleHeader();
+        }
+    }
+    Component {
+        id: headerBand
+
+        Rectangle {
+            color: MimeTheme.headerBackground
+        }
+    }
 
     // Attachment currently being asked about / saved (never logged).
     property int pendingIndex: -1
@@ -385,6 +414,7 @@ Kirigami.Page {
         onActivated: MailController.deleteMessage()
     }
     Component.onCompleted: {
+        styleHeader();
         syncBodyColours();
         showHtml();
     }

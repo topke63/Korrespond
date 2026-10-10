@@ -227,6 +227,16 @@ Kirigami.OverlayDrawer {
             }
         }
 
+        // The column divider on the right edge, over the header and the folders.
+        Rectangle {
+            visible: !sidebar.modal
+            anchors.right: parent.right
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            width: 1
+            color: MimeTheme.columnDivider
+        }
+
         PanelResizer {
             id: resizer
 

@@ -64,6 +64,8 @@ Kirigami.ApplicationWindow {
     }
     // Inside the page row, so the sidebar's header lines up with the pages' title bars.
     pageStack.leftSidebar: sidebar
+    // The columns draw their own dividers (MimeTheme.columnDivider).
+    pageStack.separatorVisible: false
 
     // In a wide window the page row's default (fixed) mode gives every column the same width;
     // the dynamic mode uses each page's own width hints, which the resizable list column needs.

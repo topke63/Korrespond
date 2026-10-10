@@ -5548,6 +5548,26 @@ Approach: thread ids are computed in the engine and stored, the list model group
   lists them), the user's KWin rule `plasmamail-desktop3` (class was `plasma-mail`; the window
   class is now `io.github.topke63.korrespond`).
 
+# Fix — F5 loses the Gmail connection (user report 2026-10-10: "i pressed F5 and i lost connection on gmail")
+
+### T246 — Refresh reconnects a failed or silently closed connection
+- status: done
+- depends on: none
+- files: src/app/mailcontroller.cpp, src/app/mailcontroller.h
+- inputs: the journal showed Yahoo going to Failed on its own after about five minutes idle and Gmail's push
+  stopping at the F5; the server closes idle connections, KIMAP only notices when a command is sent, so F5
+  was the first command on a dead socket: the account went to Failed and push stopped until the status-bar
+  chip was clicked.
+- output: `refresh()` on an account in the Failed state reconnects it (keychain, then the Google refresh
+  token) instead of sending commands. Otherwise the session is remembered in `m_refreshRetry`; if its
+  connection is lost before a listing arrives, `onSessionError` reconnects once without a toast. The entry
+  is cleared by the first headers answer.
+- verify: build; the real app after a long idle (the user), F5 refreshes without an error.
+- notes: Done 2026-10-10 (commit 6573bc9, pushed). Build clean. Confirmed by the user the same day: F5 was
+  "good" on the new build. The retry path itself was not exercised (the connection had not dropped; no
+  "lost during a refresh" line in the log), and no automated test covers it. No background reconnect
+  while idle: a lost connection is still found out by the next command or the next push/poll check.
+
 ## Execution Loop
 
 Execute the plan as a loop. Each iteration handles one task in a fresh context, then ends.

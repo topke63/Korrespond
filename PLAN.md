@@ -5601,6 +5601,26 @@ Approach: thread ids are computed in the engine and stored, the list model group
 - notes: the Yahoo chip is red while its push connection is stopped; why Yahoo drops it every ~5 min
   is still unknown.
 
+### T247b — Reconnect quietly when the server closes an idle connection
+- status: done
+- depends on: T247a
+- files: src/app/mailcontroller.cpp, src/app/mailcontroller.h
+- inputs: the Yahoo chip stayed red until the next 5-minute check after the server closed the idle
+  connection (user: "it looks bad").
+- output: `onSessionError` reconnects at once when the lost session had no job, check or folder request
+  in flight; a second loss within 60 s falls through to the normal error and toast.
+- verify: build, ctest 26/26; log line "Idle connection of … was closed by the server; reconnecting".
+- notes: done 2026-10-10 (commit da58e63). Not yet watched through a real Yahoo drop.
+
+### T247c — Status bar chips only for accounts that are not connected
+- status: done
+- depends on: T247b
+- files: src/qml/StatusBar.qml
+- inputs: user chose "quiet when healthy" over removing the connection info.
+- output: a chip (and the separator) is visible only while an account's state is "failed"; clicking
+  reconnects. Healthy accounts show nothing.
+- verify: user looked at the running app: "looks good". Commit 7450c80.
+
 # Milestone 9 — Flatpak package (user request 2026-10-10: "is it possible to create flatpak package" / "it has to be fully functional")
 
 - **Goal**: `flatpak-builder` builds `io.github.topke63.korrespond` from this repository into a Flatpak

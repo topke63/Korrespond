@@ -155,6 +155,7 @@ void SyncManager::onRawMessageFetched(const QString &folder, const MessageSummar
     }
     m_bytes += raw.size();
     ++m_done;
+    Q_EMIT addressesSeen(seenAddressesInRaw(raw), summary.date.isValid() ? summary.date.toMSecsSinceEpoch() : 0);
     Q_EMIT progress(folder, m_done, m_total);
 }
 

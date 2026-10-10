@@ -4,6 +4,7 @@
 # Engine: accounts and IMAP access, no UI dependencies.
 add_library(plasmamail_engine STATIC
     engine/account.cpp
+    engine/addresshistory.cpp
     engine/appsettings.cpp
     engine/contactstore.cpp
     engine/contactsync.cpp

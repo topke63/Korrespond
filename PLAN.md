@@ -5211,7 +5211,7 @@ no contacts API: its autocomplete (and Gmail's fallback) comes from addresses se
 - notes: Done 2026-10-10 (no sub-agents). ContactSync (src/engine/contactsync.*): per Google account, both sources one after the other; full sync without a token, incremental with one; entries upserted page by page, deleted/address-less ones removed; the sync token is saved only after the last page; an expired token clears that source and starts it over once; a temporary failure retries once after 60 s then ends the run; 401 emits tokenRejected (the controller reruns it 30 s later with the session's newest token); 403 gives MissingScope / ApiDisabled; the periodic timer runs it every 6 h. Only GET requests. MailController owns the ContactStore (dataDir/contacts; a throw-away folder in demo mode) and starts a sync per session with account.contacts, in onSessionFolders and after a new account is saved (never in demo mode or with contacts switched off). 10 tests against a fake server. Not verified with Google itself.
 
 ### T235 — Addresses from cached mail (all accounts)
-- status: todo
+- status: done
 - depends on: T232
 - files: src/engine/contactstore.cpp, src/app/accountsession.cpp, tests
 - output: source `history`: From/To/Cc addresses of the cached messages (with display names) are
@@ -5220,7 +5220,7 @@ no contacts API: its autocomplete (and Gmail's fallback) comes from addresses se
   autocomplete for Yahoo and the fallback for Gmail.
 - verify: build; ctest: a stored message adds its addresses once, own address skipped, display name
   taken from the newest message.
-- notes:
+- notes: Done 2026-10-10 (no sub-agents). addresshistory.* reads From/To/Cc/Bcc of a message (once per lower-cased address, header block only). SyncManager emits addressesSeen() for every stored message; the controller adds them as History entries (not the account's own address; no-reply/mailer-daemon style addresses get time 0 so they rank last). Stored mail from before is read once per account in steps of 100 messages (marker: History sync token '1'); that pass has no dates, so old addresses rank by name only until they are seen again. MessageStore::storedKeys() added. Needs mail storage on; nothing in demo mode. Tests: header parsing, automated addresses, storedKeys.
 
 ### T236 — Re-authorize for contacts
 - status: todo

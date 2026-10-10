@@ -45,6 +45,13 @@ ecm_add_test(
     LINK_LIBRARIES plasmamail_models Qt6::Test
 )
 
+# Test for addresses seen in message headers
+ecm_add_test(
+    addresshistorytest.cpp
+    TEST_NAME addresshistorytest
+    LINK_LIBRARIES plasmamail_engine Qt6::Test
+)
+
 # Test for the contact cache
 ecm_add_test(
     contactstoretest.cpp

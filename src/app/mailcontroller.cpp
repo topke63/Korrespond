@@ -215,6 +215,9 @@ AccountSession *MailController::createSession(const Account &account)
     connect(session, &AccountSession::foldersListed, this, [this, session] {
         onSessionFolders(session);
     });
+    connect(session, &AccountSession::addressesSeen, this, [this, session](const QList<SeenAddress> &addresses, qint64 whenMs) {
+        rememberAddresses(session->account().email, addresses, whenMs);
+    });
     connect(session,
             &AccountSession::headersFetched,
             this,
@@ -2855,8 +2858,62 @@ void MailController::onSessionError(AccountSession *session, const QString &mess
     }
 }
 
+void MailController::rememberAddresses(const QString &account, const QList<SeenAddress> &addresses, qint64 whenMs)
+{
+    if (m_demo || !m_contacts || !m_contacts->isOpen() || !m_app.contactsEnabled) {
+        return;
+    }
+    for (const SeenAddress &address : addresses) {
+        if (address.email.compare(account, Qt::CaseInsensitive) == 0) {
+            continue; // the user's own address is not a suggestion
+        }
+        // Addresses nobody writes to are kept (they name senders) but come last.
+        m_contacts->addHistory(account, address.email, address.name, isAutomatedAddress(address.email) ? 0 : whenMs);
+    }
+}
+
+void MailController::startHistoryBackfill(AccountSession *session)
+{
+    const QString account = session->account().email;
+    if (m_demo || !m_app.contactsEnabled || !m_contacts || !m_contacts->isOpen() || !session->storageActive()
+        || m_contacts->syncToken(account, ContactStore::History) == "1"_L1) {
+        return;
+    }
+    if (!m_backfilling.insert(session).second) {
+        return; // already running
+    }
+    auto keys = std::make_shared<QList<std::pair<QString, qint64>>>(session->store()->storedKeys());
+    backfillStep(session, keys, 0);
+}
+
+void MailController::backfillStep(AccountSession *session, std::shared_ptr<QList<std::pair<QString, qint64>>> keys, qsizetype next)
+{
+    if (!isKnown(session) || !session->storageActive() || !m_contacts) {
+        m_backfilling.erase(session);
+        return;
+    }
+    const QString account = session->account().email;
+    const qsizetype end = qMin(next + 100, keys->size());
+    for (qsizetype i = next; i < end; ++i) {
+        const auto &[folder, uid] = keys->at(i);
+        const QByteArray raw = session->store()->rawMessage(folder, uid);
+        if (!raw.isEmpty()) {
+            rememberAddresses(account, seenAddressesInRaw(raw.left(64 * 1024)), 0);
+        }
+    }
+    if (end < keys->size()) {
+        QTimer::singleShot(0, this, [this, session, keys, end] {
+            backfillStep(session, keys, end);
+        });
+        return;
+    }
+    m_contacts->setSyncToken(account, ContactStore::History, u"1"_s);
+    m_backfilling.erase(session);
+}
+
 void MailController::startContactSync(AccountSession *session)
 {
+    startHistoryBackfill(session);
     if (m_demo || !m_app.contactsEnabled || !m_contacts || !m_contacts->isOpen() || !session->account().contacts
         || session->account().authMethod != "oauth"_L1) {
         return;

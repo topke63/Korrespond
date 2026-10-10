@@ -4,6 +4,7 @@
 #pragma once
 
 #include "account.h"
+#include "addresshistory.h"
 #include "appsettings.h"
 #include "folderutils.h"
 #include "imapclient.h"
@@ -507,6 +508,10 @@ private:
     // Starts the contacts sync of a Google account that has the contacts scopes (a no-op for the
     // others, with contacts switched off, or in demo mode). Safe to call again.
     void startContactSync(AccountSession *session);
+    // Remembers the addresses in the mail already stored, once per account, in small steps.
+    void startHistoryBackfill(AccountSession *session);
+    void backfillStep(AccountSession *session, std::shared_ptr<QList<std::pair<QString, qint64>>> keys, qsizetype next);
+    void rememberAddresses(const QString &account, const QList<SeenAddress> &addresses, qint64 whenMs);
     // Fills the stacked conversation from the list's conversation of (account, uid), or empties it.
     void openConversationFor(AccountSession *session, qint64 uid);
     // Loads the body of one conversation message (store, demo data or server).
@@ -533,6 +538,7 @@ private:
     QString m_dataDir; // AppDataLocation
     std::unique_ptr<QTemporaryDir> m_demoContactsDir; // demo mode keeps its contacts out of the real data
     std::unique_ptr<ContactStore> m_contacts;
+    std::set<AccountSession *> m_backfilling; // sessions whose stored mail is being read for addresses
     QList<AccountSession *> m_sessions; // saved accounts, in order
     AccountSession *m_pending = nullptr; // being verified by setupAccount()
     QString m_pendingPassword;

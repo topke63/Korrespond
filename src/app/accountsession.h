@@ -4,6 +4,7 @@
 #pragma once
 
 #include "account.h"
+#include "addresshistory.h"
 #include "folderutils.h"
 #include "imapclient.h"
 #include "imapidlewatcher.h"
@@ -99,6 +100,8 @@ public:
 Q_SIGNALS:
     // A new access token for a Google account (every renewal).
     void accessTokenChanged();
+    // Addresses of a message that was just stored (see SyncManager::addressesSeen).
+    void addressesSeen(const QList<SeenAddress> &addresses, qint64 whenMs);
     // Emitted after the session saved the list and filled folderModel().
     void foldersListed(const QList<FolderInfo> &folders);
     void headersFetched(const QString &folder, ImapClient::HeaderFilter filter, const QList<MessageSummary> &messages);

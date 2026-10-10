@@ -430,6 +430,23 @@ QHash<qint64, QString> MessageStore::previews(const QString &folder) const
     return result;
 }
 
+QList<std::pair<QString, qint64>> MessageStore::storedKeys() const
+{
+    QList<std::pair<QString, qint64>> keys;
+    if (!isOpen()) {
+        return keys;
+    }
+    QSqlQuery query(QSqlDatabase::database(m_connectionName, false));
+    if (!query.exec(u"SELECT folder, uid FROM messages"_s)) {
+        m_lastError = query.lastError().text();
+        return keys;
+    }
+    while (query.next()) {
+        keys.append({query.value(0).toString(), query.value(1).toLongLong()});
+    }
+    return keys;
+}
+
 QByteArray MessageStore::rawMessage(const QString &folder, qint64 uid) const
 {
     const QString relPath = storedPath(folder, uid);

@@ -37,6 +37,8 @@ public:
     // Up to limit stored messages of folder, newest date first; messages without a date come
     // last. limit < 0 means all of them.
     [[nodiscard]] QList<MessageSummary> messages(const QString &folder, int limit) const;
+    // (folder, uid) of every stored message, in no particular order.
+    [[nodiscard]] QList<std::pair<QString, qint64>> storedKeys() const;
     // The stored .eml bytes; empty when the message isn't stored or its file can't be read.
     [[nodiscard]] QByteArray rawMessage(const QString &folder, qint64 uid) const;
     // uid → preview text (see messagePreview()) of the stored messages of folder.

@@ -48,6 +48,7 @@ AccountSession::AccountSession(const Account &account, const QString &storeDir, 
 
     // Store errors are logged, not shown: the mail itself still works from the server.
     connect(m_sync, &SyncManager::progress, this, &AccountSession::updateStorageUsage);
+    connect(m_sync, &SyncManager::addressesSeen, this, &AccountSession::addressesSeen);
     connect(m_sync, &SyncManager::progress, this, [this](const QString &folder, int done, int total) {
         setSyncText(i18nc("@info:status sync progress: folder, messages done of total", "Syncing %1 %2 / %3", m_folderModel->displayName(folder), done, total));
     });

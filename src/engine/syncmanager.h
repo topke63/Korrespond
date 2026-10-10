@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "addresshistory.h"
 #include "folderutils.h"
 #include "storagesettings.h"
 
@@ -50,6 +51,9 @@ Q_SIGNALS:
     // done of total messages downloaded so far in this run.
     void progress(const QString &folder, int done, int total);
     void folderSynced(const QString &folder);
+    // A message was stored: the addresses in its headers and when it was sent (ms since the epoch,
+    // 0 when it has no date).
+    void addressesSeen(const QList<SeenAddress> &addresses, qint64 whenMs);
     void syncFinished();
     // A local storage error stopped the run.
     void errorOccurred(const QString &message);

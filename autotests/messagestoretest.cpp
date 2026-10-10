@@ -680,6 +680,21 @@ private Q_SLOTS:
         QCOMPARE(back.references, (QStringList{u"r@example.org"_s, u"p@example.org"_s}));
     }
 
+    void testStoredKeys()
+    {
+        QTemporaryDir dir;
+        MessageStore store(dir.path());
+        QVERIFY(store.open());
+        QVERIFY(store.storedKeys().isEmpty());
+        QVERIFY(store.addMessage(u"INBOX"_s, 1, summary(1), rawMessage("a")));
+        QVERIFY(store.addMessage(u"Sent"_s, 1, summary(7), rawMessage("b")));
+        QList<std::pair<QString, qint64>> keys = store.storedKeys();
+        std::sort(keys.begin(), keys.end());
+        QCOMPARE(keys.size(), 2);
+        QCOMPARE(keys.at(0), (std::pair<QString, qint64>{u"INBOX"_s, 1}));
+        QCOMPARE(keys.at(1), (std::pair<QString, qint64>{u"Sent"_s, 7}));
+    }
+
     void testSetThreadIds()
     {
         QTemporaryDir dir;

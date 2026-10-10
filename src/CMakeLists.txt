@@ -87,13 +87,16 @@ qt_add_qml_module(plasma-mail
 # The icon also lives in the executable, for runs from the build folder where the themed icon
 # is not installed.
 qt_add_resources(plasma-mail app_icon PREFIX "/icons" BASE ${CMAKE_SOURCE_DIR}/data/icons FILES ${CMAKE_SOURCE_DIR}/data/icons/sc-apps-org.topke.plasmamail.svg ${CMAKE_SOURCE_DIR}/data/icons/sc-apps-org.topke.plasmamail.unread.svg)
+if(PLASMAMAIL_DEV_HOOKS)
+    # Dev hook only (PLASMAMAIL_DEMO_KEY_UNDO): QTest::keyClick runs the window's shortcut map.
+    target_compile_definitions(plasma-mail PRIVATE PLASMAMAIL_DEV_HOOKS)
+    target_link_libraries(plasma-mail PRIVATE Qt6::Test)
+endif()
 install(TARGETS plasma-mail ${KDE_INSTALL_TARGETS_DEFAULT_ARGS})
 # The generated QML type registration includes headers by file name.
 target_include_directories(plasma-mail PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
 target_link_libraries(plasma-mail PRIVATE
     plasmamail_models
-    # Dev hook only (PLASMAMAIL_DEMO_KEY_UNDO): the QPA key injection that runs the shortcut map.
-    Qt6::GuiPrivate
     Qt6::Qml
     Qt6::WebEngineQuick
     Qt6::Quick

@@ -29,7 +29,9 @@
 #include <QFileInfo>
 #include <QTextStream>
 #include <memory>
-#include <qpa/qwindowsysteminterface.h>
+#ifdef PLASMAMAIL_DEV_HOOKS
+#include <QTest>
+#endif
 
 using namespace Qt::StringLiterals;
 
@@ -386,8 +388,10 @@ int main(int argc, char *argv[])
                 });
             });
         }
-        // PLASMAMAIL_DEMO_KEY_UNDO=<ms>: a Ctrl+Z key press for the main window at <ms>, through the platform
-        // key path (QWindowSystemInterface), so the window shortcuts see it as a real key press.
+#ifdef PLASMAMAIL_DEV_HOOKS
+        // PLASMAMAIL_DEMO_KEY_UNDO=<ms>: a Ctrl+Z key press for the main window at <ms>, through
+        // QTest::keyClick (public API; only with -DPLASMAMAIL_DEV_HOOKS=ON), so the window shortcuts see it
+        // as a real key press. A plain sendEvent does not reach the shortcut map (QGuiApplicationPrivate).
         // PLASMAMAIL_DEMO_KEY_UNDO_SEARCH=1 focuses the message list's search field first. Logs the focus
         // item and the pending sends before and after. The window is activated first (the key path
         // needs the focus window; the activation is processed a little later, hence the second timer).
@@ -411,15 +415,12 @@ int main(int argc, char *argv[])
                           window->isActive() ? 1 : 0,
                           focus ? focus->metaObject()->className() : "none",
                           qlonglong(controller->property("pendingSends").toList().size()));
-                    QWindowSystemInterface::handleKeyEvent<QWindowSystemInterface::SynchronousDelivery>(window,
-                                                                                                        QEvent::KeyPress,
-                                                                                                        Qt::Key_Z,
-                                                                                                        Qt::ControlModifier,
-                                                                                                        QString(QChar(0x1a)));
+                    QTest::keyClick(window, Qt::Key_Z, Qt::ControlModifier);
                     qInfo("demo: ctrl+z sent, pending after=%lld", qlonglong(controller->property("pendingSends").toList().size()));
                 });
             });
         }
+#endif
     }
 
     return app.exec();

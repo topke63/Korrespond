@@ -4762,7 +4762,7 @@ first, then stop.
 - verification (2026-10-10): build up to date; ctest 19/19 (appsettingstest 16/16, incl. new testUndoSendSnapsWhenSaved). Shots t209-dark/light show default "10 seconds", t209-seed shows "20 seconds"; seed 0 shows "Off". No runtime hook changes the value, so the "applies to next send" and "pending keeps deadline" checks are code review only (sendMessage reads m_app at queue time and stores its own deadline and timer per entry). No C++ or QML listener of appSettingsChanged besides bindings, so the signal resets no UI state. The setter's save no longer reloads from disk. "not placed in the graphics scene" warnings (Main.qml MessageListPage/MessagePage) predate T209: present in offscreen.log from 12:36, before the 13:29 T209 commit.
 
 ### T228 — Dev key hook without Qt private API
-- status: todo
+- status: done
 - depends on: T208
 - parallel-safe with: T209
 - files: CMakeLists.txt, src/CMakeLists.txt, src/app/main.cpp
@@ -4775,7 +4775,8 @@ first, then stop.
   default; `Qt6::GuiPrivate` and `QT_FIND_PRIVATE_MODULES` removed from the default build.
 - verify: build; ctest; the T208 Ctrl+Z demo check still passes (undo fires; focused search field
   keeps its own Ctrl+Z).
-- notes:
+- notes: No public API reaches the shortcut map: QCoreApplication/QGuiApplication::sendEvent of KeyPress/ShortcutOverride does not run QShortcutMap (only QGuiApplicationPrivate::processKeyEvent does, entered from the QPA key path). `QTest::keyClick(window, Qt::Key_Z, Qt::ControlModifier)` (public, Qt6::Test) does, so the hook now uses it, behind CMake option `PLASMAMAIL_DEV_HOOKS` (default OFF; defines PLASMAMAIL_DEV_HOOKS and links Qt6::Test into the app only when ON). `QT_FIND_PRIVATE_MODULES` and `Qt6::GuiPrivate` removed; grep for GuiPrivate/QT_FIND_PRIVATE/qpa/ in CMakeLists.txt and src is empty. Verified with -DPLASMAMAIL_DEV_HOOKS=ON offscreen: Ctrl+Z from main window undoes ("send undone id=1", pending 1 -> 0); with search field focused the message stays pending and is handed off at quit. Default OFF build clean, ctest 19/19, binary links no Qt6Test.
+
 
 ### T229 — Undo: tell the user when a restored attachment is gone
 - status: todo

@@ -4633,6 +4633,20 @@ first, then stop.
   `PLASMAMAIL_DEMO_QUIT_AFTER=<ms>`. Logs (qInfo): "send queued id=N in Ns", "send undone id=N",
   "send handed off id=N". Verified offscreen: queued -> handed off after 10 s; undo: no send;
   UndoSendSeconds=0: immediate; quit at 3 s: flushed and handed off before exit.
+- verification (2026-10-10): build clean, ctest 19/19. Headless (offscreen, isolated XDG): delay 10 s:
+  "send queued id=1 in 10s", "send handed off id=1" at ~11 s, "demo: would send" at ~12.5 s; undo: "send undone id=1",
+  no hand-off; UndoSendSeconds=0: immediate hand-off; quit at 3 s: "quit: sending 1 pending message(s) now",
+  "send handed off", "quit: waiting", "demo: would send", "quit: all messages handed off", process exits by itself
+  after ~5 s. Demo hand-off is now asynchronous (1.5 s), so the quit wait is exercised. Review fixes: quit wait
+  pumps events by hand (a nested QEventLoop returns at once after a second quit request), re-entered aboutToQuit
+  ignored, timers stopped before deleteLater.
+  Open, not fixed (planner): (a) a second quit request during the wait segfaults in QGuiApplicationPrivate::quit
+  / QtWebEngine (reproduced with PLASMAMAIL_DEMO_SEND=1 + a second quit 300 ms after the first; gdb backtrace
+  in scratchpad); fixing it needs the controller to own quitting (requestQuit before QCoreApplication::quit,
+  routing tray/window quit through it). (b) ComposeWindow: two composers waiting: the first messageSent closes
+  both; sendFailed reaches every waiting composer; a composer closed during the delay gets no failure report.
+  For T208. (c) Not verifiable headless: real SMTP hand-off at quit; close-to-tray with keepInTray (the demo
+  disables the tray); a real sendFailed.
 
 ### T208 — UI: "Sending… Undo" and reopening the message
 - status: todo

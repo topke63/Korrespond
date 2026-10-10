@@ -186,8 +186,10 @@ Kirigami.OverlayDrawer {
                                 Layout.topMargin: Kirigami.Units.largeSpacing
                                 Layout.leftMargin: Kirigami.Units.smallSpacing
                                 Layout.rightMargin: Kirigami.Units.smallSpacing
-                                topPadding: Kirigami.Units.smallSpacing
-                                bottomPadding: Kirigami.Units.smallSpacing
+                                // The folder rows' padding, so the header has their height.
+                                leftPadding: Kirigami.Units.largeSpacing
+                                topPadding: Kirigami.Units.smallSpacing + 3
+                                bottomPadding: Kirigami.Units.smallSpacing + 3
                                 onClicked: accountSection.expanded = !accountSection.expanded
                                 Accessible.name: KI18n.i18nc("@action:button", "Show or hide the folders of %1", accountSection.email)
 
@@ -196,7 +198,7 @@ Kirigami.OverlayDrawer {
                                     color: accountHeader.hovered ? Qt.alpha(Kirigami.Theme.textColor, MimeTheme.hoverAlpha) : "transparent"
                                 }
                                 contentItem: RowLayout {
-                                    spacing: Kirigami.Units.smallSpacing
+                                    spacing: Kirigami.Units.mediumSpacing
 
                                     Kirigami.Icon {
                                         implicitWidth: Kirigami.Units.iconSizes.small
@@ -206,7 +208,7 @@ Kirigami.OverlayDrawer {
                                         isMask: true
                                     }
                                     SenderAvatar {
-                                        implicitWidth: Kirigami.Units.iconSizes.smallMedium
+                                        implicitWidth: Kirigami.Units.iconSizes.small
                                         name: accountSection.email
                                     }
                                     QQC2.Label {
@@ -275,7 +277,9 @@ Kirigami.OverlayDrawer {
     // Small dim heading above a group of rows (DemiBold, not uppercase, as in Mimestream).
     component SectionLabel: QQC2.Label {
         Layout.fillWidth: true
-        Layout.leftMargin: Kirigami.Units.largeSpacing * 1.5
+        // The folder rows' text column: row margin, left padding, icon and the gap after it.
+        Layout.leftMargin: Kirigami.Units.smallSpacing + Kirigami.Units.largeSpacing
+                           + Kirigami.Units.iconSizes.small + Kirigami.Units.mediumSpacing
         Layout.topMargin: Kirigami.Units.largeSpacing
         Layout.bottomMargin: Kirigami.Units.smallSpacing
         font.pointSize: Kirigami.Theme.smallFont.pointSize

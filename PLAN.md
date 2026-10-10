@@ -4067,7 +4067,7 @@ known light look and derive it (macOS light: sidebar `#e8e6ee`-ish, band `#f3f1f
   Not seen in a real window (GUI runs paused).
 
 ### T201 — Sidebar headings at the folder rows' scale
-- status: todo
+- status: done
 - depends on: T200
 - parallel-safe with: none
 - files: src/qml/FolderSidebar.qml
@@ -4078,7 +4078,12 @@ known light look and derive it (macOS light: sidebar `#e8e6ee`-ish, band `#f3f1f
   account avatar is no larger than the folder icons (`iconSizes.small`); heading text small and
   DemiBold in `disabledTextColor`, aligned with the folder text column.
 - verify: build; ctest; GUI shots via scripts/desktop3-run.sh in Breeze Dark and Light.
-- notes:
+- notes: Account header rows take the folder rows' padding (left largeSpacing, top/bottom
+  smallSpacing + 3) and mediumSpacing between arrow, avatar and text; avatar `iconSizes.small`
+  (was smallMedium). SectionLabel's left margin is the folder text column (row margin + largeSpacing
+  + small icon + mediumSpacing). Text was already smallFont DemiBold disabledTextColor. Verified:
+  build, ctest 19/19, dark and light shots (t201-dark.png, t201-light.png) show the heading and
+  account row at folder scale.
 
 ### T202 — Hairline between sidebar and list
 - status: todo

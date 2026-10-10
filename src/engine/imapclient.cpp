@@ -49,6 +49,36 @@ QDateTime messageDate(const KMime::Message &message)
     return {};
 }
 
+static QString bareMessageId(const QByteArray &id)
+{
+    return QString::fromLatin1(id).trimmed().remove(u'<').remove(u'>');
+}
+
+void fillThreadingHeaders(const KMime::Message &message, MessageSummary &summary)
+{
+    summary.messageId.clear();
+    summary.inReplyTo.clear();
+    summary.references.clear();
+    if (const auto *id = message.messageID()) {
+        summary.messageId = bareMessageId(id->identifier());
+    }
+    if (const auto *reply = message.inReplyTo()) {
+        const auto ids = reply->identifiers();
+        if (!ids.isEmpty()) {
+            summary.inReplyTo = bareMessageId(ids.constFirst());
+        }
+    }
+    if (const auto *refs = message.references()) {
+        const auto ids = refs->identifiers();
+        for (const QByteArray &id : ids) {
+            const QString bare = bareMessageId(id);
+            if (!bare.isEmpty() && !summary.references.contains(bare)) {
+                summary.references.append(bare);
+            }
+        }
+    }
+}
+
 static MessageSummary summaryOf(const KIMAP::Message &msg, const QString &account)
 {
     MessageSummary summary;
@@ -64,6 +94,7 @@ static MessageSummary summaryOf(const KIMAP::Message &msg, const QString &accoun
             summary.from = from->displayString();
         }
         summary.date = messageDate(*mime);
+        fillThreadingHeaders(*mime, summary);
     }
     return summary;
 }

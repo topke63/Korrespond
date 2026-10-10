@@ -5310,14 +5310,14 @@ Approach: thread ids are computed in the engine and stored, the list model group
 - Flags/actions: see open question 7; mark read on open marks all expanded messages read.
 
 ### T217 — Threading headers in MessageSummary
-- status: todo
+- status: done
 - depends on: none
 - parallel-safe with: T206, T211
 - files: src/engine/imapclient.h, src/engine/imapclient.cpp, autotests/ (parser test)
 - output: `MessageSummary` gains `messageId`, `inReplyTo`, `references` (QStringList), `gmThreadId`
   (qint64, 0 = none); a helper fills them from a KMime header block; test with sample headers.
 - verify: build; ctest.
-- notes:
+- notes: Done 2026-10-10 (no sub-agents): fillThreadingHeaders() in imapclient.cpp (ids without <>, References deduplicated oldest first), called from summaryOf(); tests in messagedatetest.cpp (present and missing headers).
 
 ### T218 — Fetch the headers (and X-GM-THRID)
 - status: todo

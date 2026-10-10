@@ -29,6 +29,36 @@ private:
     }
 
 private Q_SLOTS:
+    void testThreadingHeaders()
+    {
+        KMime::Message message;
+        message.setContent(
+            "Message-ID: <c@example.org>\n"
+            "In-Reply-To: <b@example.org>\n"
+            "References: <a@example.org>\n <b@example.org> <a@example.org>\n"
+            "Subject: Re: Hi\n\nBody\n");
+        message.parse();
+        MessageSummary summary;
+        fillThreadingHeaders(message, summary);
+        QCOMPARE(summary.messageId, u"c@example.org"_s);
+        QCOMPARE(summary.inReplyTo, u"b@example.org"_s);
+        QCOMPARE(summary.references, (QStringList{u"a@example.org"_s, u"b@example.org"_s}));
+        QCOMPARE(summary.gmThreadId, qint64(0));
+    }
+
+    void testThreadingHeadersMissing()
+    {
+        KMime::Message message;
+        message.setContent("Subject: Hi\n\nBody\n");
+        message.parse();
+        MessageSummary summary;
+        summary.messageId = u"old"_s;
+        fillThreadingHeaders(message, summary);
+        QVERIFY(summary.messageId.isEmpty());
+        QVERIFY(summary.inReplyTo.isEmpty());
+        QVERIFY(summary.references.isEmpty());
+    }
+
     void testDateHeader()
     {
         const QDateTime date = dateOf(

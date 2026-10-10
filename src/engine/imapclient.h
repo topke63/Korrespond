@@ -35,7 +35,15 @@ struct MessageSummary {
     bool unread = false;
     bool flagged = false;
     QString preview; // body excerpt; only messages in local storage have one
+    // Threading (T217): ids without the angle brackets; empty/0 when the header is missing.
+    QString messageId;
+    QString inReplyTo; // the first In-Reply-To id
+    QStringList references; // References, oldest first
+    qint64 gmThreadId = 0; // Gmail's X-GM-THRID; 0 = none
 };
+
+// Message-ID, In-Reply-To and References of a parsed message, into the matching fields of `summary`.
+void fillThreadingHeaders(const KMime::Message &message, MessageSummary &summary);
 
 // When the message was sent: its Date header, else the date of the newest Received header
 // (the last mail server's arrival time), else null. Yahoo webmail sends mail without Date.

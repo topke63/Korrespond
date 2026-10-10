@@ -126,6 +126,32 @@ QQC2.Pane {
             Layout.bottomMargin: Kirigami.Units.smallSpacing
         }
 
+        // A message in the undo-send delay: the countdown of the newest one and a way to take it back.
+        RowLayout {
+            visible: MailController.pendingSends.length > 0
+            spacing: Kirigami.Units.smallSpacing
+
+            QQC2.Label {
+                text: {
+                    const list = MailController.pendingSends;
+                    const newest = list.length > 0 ? list[list.length - 1] : null;
+                    if (!newest) {
+                        return "";
+                    }
+                    const countdown = KI18n.i18nc("@info:status", "Sending in %1 s", newest.secondsLeft);
+                    return list.length > 1 ? countdown + " " + KI18n.i18ncp("@info:status", "+%1 more", "+%1 more", list.length - 1) : countdown;
+                }
+                font: Kirigami.Theme.smallFont
+                color: Kirigami.Theme.textColor
+            }
+            QQC2.ToolButton {
+                text: KI18n.i18nc("@action:button", "Undo")
+                icon.name: "edit-undo"
+                font: Kirigami.Theme.smallFont
+                onClicked: MailController.undoSend(-1)
+            }
+        }
+
         QQC2.Label {
             Layout.fillWidth: true
             text: bar.activity

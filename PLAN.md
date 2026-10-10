@@ -4694,7 +4694,7 @@ first, then stop.
   "Invalid attempt to destroy() an indestructible object"; real composers use createObject.
 
 ### T208 — UI: "Sending… Undo" and reopening the message
-- status: todo
+- status: done
 - depends on: T207, T227
 - parallel-safe with: none
 - files: src/qml/StatusBar.qml, src/qml/Main.qml, src/qml/ComposeWindow.qml
@@ -4710,6 +4710,19 @@ first, then stop.
   reopen a compose window with that message's content and the error (today sendFailed reaches every
   waiting composer and a closed composer loses its content); messageSent must only close the
   composer it belongs to (use the queue id).
+- verification (2026-10-10): build clean, ctest 19/19; offscreen demo shots in the scratchpad
+  (t208-pending-<dark|light>, t208-undo-<dark|light>, t208-fail-dark), logs free of QML warnings.
+  Implementation: `sendMessage` returns the queue id; signals are now `messageSent(int id)` and
+  `sendFailed(int id, QString message, QVariantMap original, bool queued)` (queued = came through the
+  queue, its window is gone); `isPendingSend(id)` lets ComposeWindow close itself right after a queue.
+  ComposeWindow matches answers by its `sendId` (0 while still inside sendMessage), gained
+  initialBcc / initialAttachments / initialError / restored (closing a restored message asks first).
+  Main.qml `reopenMessage(map, error)` is used for sendUndone and for a queued failure; StatusBar
+  "Sending in N s (+k more)" + Undo; passive notification with Undo; Ctrl+Z Shortcut enabled only while
+  pending (a focused text field handles its own Ctrl+Z first). Dev hooks: PLASMAMAIL_DEMO_FAIL=1 (demo
+  hand-off fails), PLASMAMAIL_SCREENSHOT_NEWEST=1 (grab the newest visible window).
+  Not verifiable headless: real clicks on Undo / Ctrl+Z keypress, the compose window closing on a real
+  Send press, a real SMTP failure.
 
 ### T209 — Settings: undo-send choice
 - status: todo

@@ -20,16 +20,24 @@ Kirigami.ApplicationWindow {
     property string initialAccount
     property string initialTo
     property string initialCc
+    property string initialBcc
     property string initialSubject
     property string initialBody
     property string initialInReplyTo
     property var initialReferences: []
+    // A message that came back (undo send, failed hand-off): the paths of its attachments, the error
+    // to show, and the fact that its text is not saved anywhere else (closing asks first).
+    property var initialAttachments: []
+    property string initialError
+    property bool restored: false
 
-    readonly property bool hasContent: toField.text !== initialTo || ccField.text !== initialCc || bccField.text.length > 0
+    readonly property bool hasContent: restored || toField.text !== initialTo || ccField.text !== initialCc || bccField.text.length > 0
         || subjectField.text !== initialSubject || bodyArea.text !== initialBody || attachments.length > 0
     property bool discardConfirmed: false
-    // True from pressing Send until the server has answered.
+    // True from pressing Send until the server has answered (or the message is queued).
     property bool waiting: false
+    // The id MailController gave the message; 0 until sendMessage() returned.
+    property int sendId: 0
     property string errorText
     // The files to attach: {path, name, size}.
     property var attachments: []
@@ -59,8 +67,9 @@ Kirigami.ApplicationWindow {
             return;
         }
         errorText = "";
+        sendId = 0;
         waiting = true;
-        MailController.sendMessage({
+        sendId = MailController.sendMessage({
             account: fromBox.currentValue,
             to: toField.text,
             cc: ccField.text,
@@ -71,13 +80,25 @@ Kirigami.ApplicationWindow {
             references: initialReferences,
             attachments: attachments.map(file => file.path)
         });
+        // Queued for the undo-send delay: the content lives in the controller now (Undo or a failure
+        // reopens it), so the window goes away at once.
+        if (MailController.isPendingSend(sendId)) {
+            waiting = false;
+            discardConfirmed = true;
+            close();
+        }
     }
 
     Component.onCompleted: {
         toField.text = initialTo;
         ccField.text = initialCc;
+        bccField.text = initialBcc;
         subjectField.text = initialSubject;
         bodyArea.text = initialBody;
+        errorText = initialError;
+        if (initialAttachments.length > 0) {
+            addAttachments(initialAttachments);
+        }
         const index = fromBox.indexOfValue(initialAccount);
         fromBox.currentIndex = index >= 0 ? index : 0;
         // A reply starts with the cursor above the quoted text.
@@ -87,17 +108,23 @@ Kirigami.ApplicationWindow {
         }
     }
 
-    // The answer to Send; only this window's own send counts.
+    // The answer to Send; only this window's own send counts (by id; 0 = still inside sendMessage()).
     Connections {
         target: MailController
         enabled: composer.waiting
 
-        function onMessageSent() {
+        function onMessageSent(id: int) {
+            if (composer.sendId !== 0 && id !== composer.sendId) {
+                return;
+            }
             composer.waiting = false;
             composer.discardConfirmed = true;
             composer.close();
         }
-        function onSendFailed(message: string) {
+        function onSendFailed(id: int, message: string, original: var, queued: bool) {
+            if (queued || (composer.sendId !== 0 && id !== composer.sendId)) {
+                return;
+            }
             composer.waiting = false;
             composer.errorText = message;
         }

@@ -327,11 +327,13 @@ public:
     // (a list), kind. Empty when no message is open or loaded.
     Q_INVOKABLE QVariantMap composeFor(const QString &kind) const;
     // Sends a message through the SMTP server of message["account"]. Keys: account, to, cc, bcc,
-    // subject, body (plain text), inReplyTo, references (a list). Answers with messageSent() or
-    // sendFailed(text); the caller keeps the text until then. One message at a time.
+    // subject, body (plain text), inReplyTo, references (a list). Returns the id of the message;
+    // answers with messageSent(id) or sendFailed(id, text, original, queued). One message at a time.
     // With the undo-send delay on (undoSendSeconds > 0) the message is queued first: sendQueued(id),
     // then after the delay the hand-off runs; undoSend(id) cancels it. Delay 0 hands off at once.
-    Q_INVOKABLE void sendMessage(const QVariantMap &message);
+    Q_INVOKABLE int sendMessage(const QVariantMap &message);
+    // Whether message id is waiting in the undo-send delay (right after sendMessage: it was queued).
+    Q_INVOKABLE bool isPendingSend(int id) const;
     // Cancels the queued message id (-1 = the newest) and emits sendUndone(original map). False when
     // there is no such pending message.
     Q_INVOKABLE bool undoSend(int id = -1);
@@ -381,8 +383,10 @@ Q_SIGNALS:
     void appSettingsChanged();
     void activityChanged();
     void sendingChanged();
-    void messageSent();
-    void sendFailed(const QString &message);
+    void messageSent(int id);
+    // queued: the message came through the undo-send queue, so its window is gone; original is the
+    // map passed to sendMessage, to reopen it with the error.
+    void sendFailed(int id, const QString &message, const QVariantMap &original, bool queued);
     void pendingSendChanged();
     void sendQueued(int id);
     void sendUndone(const QVariantMap &message);
@@ -502,10 +506,13 @@ private:
     void handOff(int id, const QVariantMap &message);
     void startNextHandOff();
     void finishPendingSend(int id);
+    void failSend(int id, const QVariantMap &message, const QString &text);
+    void finishSend(int id);
     [[nodiscard]] QString sendProblem(const QVariantMap &message) const;
     QList<PendingSend> m_pendingSends;
     QList<std::pair<int, QVariantMap>> m_handOffQueue;
     QTimer *m_pendingTick = nullptr;
+    QSet<int> m_queuedIds; // sent through the queue: no window waits for the answer
     int m_nextSendId = 1;
     AppSettings m_app;
     // Dev only: PLASMAMAIL_SIDEBAR_COLLAPSED=0|1 shows that state for this run without saving it.

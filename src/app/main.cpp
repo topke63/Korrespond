@@ -97,6 +97,17 @@ static void scheduleScreenshot(QQmlApplicationEngine &engine)
     QTimer::singleShot(delay, &engine, [&engine, file, composer] {
         // The window in front (e.g. the settings window), else the main window.
         auto window = composer ? composer : qobject_cast<QQuickWindow *>(QGuiApplication::focusWindow());
+        // PLASMAMAIL_SCREENSHOT_NEWEST=1: the newest visible window (a message window opened by the
+        // app itself, e.g. by undo send).
+        if (qEnvironmentVariableIntValue("PLASMAMAIL_SCREENSHOT_NEWEST") == 1) {
+            const auto windows = QGuiApplication::topLevelWindows();
+            for (auto it = windows.crbegin(); it != windows.crend(); ++it) {
+                if (auto quick = qobject_cast<QQuickWindow *>(*it); quick && quick->isVisible()) {
+                    window = quick;
+                    break;
+                }
+            }
+        }
         if (!window && !engine.rootObjects().isEmpty()) {
             window = qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
         }

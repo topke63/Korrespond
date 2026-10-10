@@ -545,16 +545,16 @@ QString MailController::sendProblem(const QVariantMap &message) const
     return i18n("Please enter a recipient.");
 }
 
-void MailController::sendMessage(const QVariantMap &message)
+int MailController::sendMessage(const QVariantMap &message)
 {
     const int id = m_nextSendId++;
     if (m_app.undoSendSeconds <= 0) {
         handOff(id, message);
-        return;
+        return id;
     }
     if (const QString problem = sendProblem(message); !problem.isEmpty()) {
-        Q_EMIT sendFailed(problem);
-        return;
+        failSend(id, message, problem);
+        return id;
     }
     PendingSend entry;
     entry.id = id;
@@ -567,6 +567,7 @@ void MailController::sendMessage(const QVariantMap &message)
         finishPendingSend(id);
     });
     m_pendingSends.append(entry);
+    m_queuedIds.insert(id);
     if (!m_pendingTick) {
         m_pendingTick = new QTimer(this);
         connect(m_pendingTick, &QTimer::timeout, this, &MailController::pendingSendChanged);
@@ -575,6 +576,27 @@ void MailController::sendMessage(const QVariantMap &message)
     qInfo("send queued id=%d in %ds", id, m_app.undoSendSeconds);
     Q_EMIT sendQueued(id);
     Q_EMIT pendingSendChanged();
+    return id;
+}
+
+bool MailController::isPendingSend(int id) const
+{
+    return std::any_of(m_pendingSends.cbegin(), m_pendingSends.cend(), [id](const PendingSend &entry) {
+        return entry.id == id;
+    });
+}
+
+// A queued message's window is gone (queued = true): the receiver reopens it from `message`.
+void MailController::failSend(int id, const QVariantMap &message, const QString &text)
+{
+    const bool queued = m_queuedIds.remove(id);
+    Q_EMIT sendFailed(id, text, message, queued);
+}
+
+void MailController::finishSend(int id)
+{
+    m_queuedIds.remove(id);
+    Q_EMIT messageSent(id);
 }
 
 bool MailController::undoSend(int id)
@@ -589,6 +611,7 @@ bool MailController::undoSend(int id)
         if (m_pendingSends.isEmpty()) {
             m_pendingTick->stop();
         }
+        m_queuedIds.remove(entry.id);
         qInfo("send undone id=%d", entry.id);
         Q_EMIT pendingSendChanged();
         Q_EMIT sendUndone(entry.message);
@@ -703,18 +726,18 @@ bool MailController::handingOff() const
 void MailController::handOff(int id, const QVariantMap &message)
 {
     if (handingOff()) {
-        Q_EMIT sendFailed(i18n("Another message is still being sent."));
+        failSend(id, message, i18n("Another message is still being sent."));
         return;
     }
     const AccountSession *session = sessionFor(message.value(u"account"_s).toString());
     if (!session) {
-        Q_EMIT sendFailed(i18n("Please choose an account to send from."));
+        failSend(id, message, i18n("Please choose an account to send from."));
         return;
     }
     // The login the account is using for IMAP: the password, or the current access token.
     const QString secret = m_demo ? QString() : session->client()->secret();
     if (!m_demo && secret.isEmpty()) {
-        Q_EMIT sendFailed(i18n("%1 is not connected yet. Please try again in a moment.", session->account().email));
+        failSend(id, message, i18n("%1 is not connected yet. Please try again in a moment.", session->account().email));
         return;
     }
     const Account &account = session->account();
@@ -741,7 +764,7 @@ void MailController::handOff(int id, const QVariantMap &message)
         }
     }
     if (outgoing.to.isEmpty() && outgoing.cc.isEmpty() && outgoing.bcc.isEmpty()) {
-        Q_EMIT sendFailed(i18n("Please enter a recipient."));
+        failSend(id, message, i18n("Please enter a recipient."));
         return;
     }
 
@@ -750,30 +773,39 @@ void MailController::handOff(int id, const QVariantMap &message)
         // Never SMTP or the network in a demo run: the hand-off takes about 1.5 s, then behaves like
         // a success. It is asynchronous so that quitting really waits for it.
         m_demoBusy = true;
-        QTimer::singleShot(1500, this, [this, subject = outgoing.subject] {
+        // PLASMAMAIL_DEMO_FAIL=1: the simulated hand-off fails (to check the reopened message).
+        const bool fail = qEnvironmentVariableIntValue("PLASMAMAIL_DEMO_FAIL") == 1;
+        QTimer::singleShot(1500, this, [this, id, message, fail, subject = outgoing.subject] {
             m_demoBusy = false;
+            if (fail) {
+                qInfo("demo: send failed %s", qPrintable(subject));
+                setLastAction(i18n("Sending failed"));
+                failSend(id, message, i18n("Demo: the server refused the message."));
+                startNextHandOff();
+                return;
+            }
             qInfo("demo: would send %s", qPrintable(subject));
             setLastAction(i18n("Message sent"));
-            Q_EMIT messageSent();
+            finishSend(id);
             startNextHandOff();
         });
         return;
     }
     m_smtp = new SmtpClient(this);
-    connect(m_smtp, &SmtpClient::sent, this, [this, email = account.email, provider = account.provider](const QByteArray &data) {
+    connect(m_smtp, &SmtpClient::sent, this, [this, id, email = account.email, provider = account.provider](const QByteArray &data) {
         std::exchange(m_smtp, nullptr)->deleteLater();
         Q_EMIT sendingChanged();
         saveSentCopy(email, provider, data);
         setLastAction(i18n("Message sent"));
-        Q_EMIT messageSent();
+        finishSend(id);
         startNextHandOff();
     });
-    connect(m_smtp, &SmtpClient::failed, this, [this, id](const QString &error) {
+    connect(m_smtp, &SmtpClient::failed, this, [this, id, message](const QString &error) {
         std::exchange(m_smtp, nullptr)->deleteLater();
         Q_EMIT sendingChanged();
         setLastAction(i18n("Sending failed"));
         qWarning("send failed id=%d: %s", id, qPrintable(error));
-        Q_EMIT sendFailed(error);
+        failSend(id, message, error);
         startNextHandOff();
     });
     Q_EMIT sendingChanged();

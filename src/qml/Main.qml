@@ -27,6 +27,30 @@ Kirigami.ApplicationWindow {
     // Whether the start page was last built for "has an account"; see onAccountChanged.
     property bool hadAccount: false
 
+    // Opens a message window filled with a message that came back (undo send, failed hand-off): the
+    // map is what was passed to MailController.sendMessage(). The same creation path as a reply.
+    function reopenMessage(data: var, error: string) {
+        const component = Qt.createComponent("PlasmaMail", "ComposeWindow");
+        const composer = component.createObject(mainWindow, {
+            initialAccount: data.account ?? "",
+            initialTo: data.to ?? "",
+            initialCc: data.cc ?? "",
+            initialBcc: data.bcc ?? "",
+            initialSubject: data.subject ?? "",
+            initialBody: data.body ?? "",
+            initialInReplyTo: data.inReplyTo ?? "",
+            initialReferences: data.references ?? [],
+            initialAttachments: data.attachments ?? [],
+            initialError: error,
+            restored: true
+        });
+        if (composer) {
+            (composer as Window).show();
+        } else {
+            console.warn(component.errorString());
+        }
+    }
+
     // Dev only: the PLASMAMAIL_SCREENSHOT_SETTINGS hook in main.cpp opens a settings module.
     function openSettingsModule(moduleId: string) {
         settings.open(moduleId);
@@ -147,6 +171,13 @@ Kirigami.ApplicationWindow {
         }
     }
 
+    // Undoes the newest pending send; a text field's own Ctrl+Z wins while it has focus.
+    Shortcut {
+        sequence: "Ctrl+Z"
+        enabled: MailController.pendingSends.length > 0
+        onActivated: MailController.undoSend(-1)
+    }
+
     Shortcut {
         sequence: "Ctrl+,"
         enabled: MailController.hasAccount
@@ -209,6 +240,21 @@ Kirigami.ApplicationWindow {
         target: MailController
         function onErrorOccurred(message: string) {
             mainWindow.showPassiveNotification(message);
+        }
+        // The compose window closed when the message was queued; the status bar counts down and
+        // this notification offers Undo for as long as the delay lasts.
+        function onSendQueued(id: int) {
+            const seconds = MailController.pendingSend.secondsLeft ?? 10;
+            mainWindow.showPassiveNotification(KI18n.i18nc("@info:status", "Sending message…"), seconds * 1000, KI18n.i18nc("@action:button", "Undo"), () => MailController.undoSend(id));
+        }
+        function onSendUndone(message: var) {
+            mainWindow.reopenMessage(message, "");
+        }
+        // A queued message failed after its window was gone: bring it back with the error.
+        function onSendFailed(id: int, message: string, original: var, queued: bool) {
+            if (queued) {
+                mainWindow.reopenMessage(original, message);
+            }
         }
         // A notification was clicked: show the message column (the window itself is raised in C++).
         function onShowMessageRequested() {

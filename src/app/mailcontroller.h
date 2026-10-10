@@ -139,6 +139,9 @@ class MailController : public QObject
     Q_PROPERTY(int undoSendSeconds READ undoSendSeconds WRITE setUndoSendSeconds NOTIFY appSettingsChanged)
     // One list row per conversation instead of per message (T221).
     Q_PROPERTY(bool conversationView READ conversationView WRITE setConversationView NOTIFY appSettingsChanged)
+    // The main window's remembered size; 0 when none. Read once at start (no change signal).
+    Q_PROPERTY(int windowWidth READ windowWidth CONSTANT)
+    Q_PROPERTY(int windowHeight READ windowHeight CONSTANT)
     // The open message belongs to a conversation of more than one message that the reading pane
     // stacks (T223): conversationModel holds its messages, oldest first.
     Q_PROPERTY(bool conversationOpen READ conversationOpen NOTIFY conversationChanged)
@@ -234,6 +237,10 @@ public:
     void setUndoSendSeconds(int seconds);
     [[nodiscard]] bool conversationView() const;
     void setConversationView(bool on);
+    [[nodiscard]] int windowWidth() const;
+    [[nodiscard]] int windowHeight() const;
+    // Remembers the main window's size (ignored when too small to be real).
+    Q_INVOKABLE void saveWindowSize(int width, int height);
     [[nodiscard]] bool conversationOpen() const;
     [[nodiscard]] QAbstractListModel *conversationModel() const;
     // Opens or closes one message of the stacked conversation (loads its body when it opens).

@@ -42,6 +42,10 @@ struct AppSettings {
     // The message list shows one row per conversation (T221). Off until it has been tried on real
     // mail (T226).
     bool conversationView = false;
+    // The main window's size as the user left it (0 = never saved). Kept here, not by screen, so
+    // it comes back whichever screen the window opens on.
+    int windowWidth = 0;
+    int windowHeight = 0;
 
     // The undo-send delay snapped to the nearest allowed choice (negative -> 0 = off).
     static int snapUndoSend(int seconds);

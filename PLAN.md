@@ -5482,6 +5482,22 @@ Approach: thread ids are computed in the engine and stored, the list model group
   Gmail and Yahoo accounts needs the user (reinstall, Settings → Message List → switch on; browse
   only, no actions) and X-GM-THRID has never been seen from a real server.
 
+# Fix — remember the window size (user request 2026-10-10: "app should remember size i chose")
+
+### T243 — Remember the main window's size
+- status: done
+- depends on: none
+- files: src/engine/appsettings.*, src/app/mailcontroller.*, src/qml/Main.qml, autotests/appsettingstest.cpp
+- output: the size is saved (WindowWidth/WindowHeight in plasmamailrc [General]) half a second after the
+  last change while the window is neither maximized nor fullscreen, and used as the window's size at
+  the next start. Kept by the app, not by screen: the Addons' WindowStateSaver (still there) keys
+  its size by screen geometry ("2560x1440 screen:"), which is the likely reason a size was not
+  found again.
+- verify: build; ctest; offscreen start with WindowWidth=1111/WindowHeight=666 → 1111x666 shot.
+- notes: Done 2026-10-10 (no sub-agents). Not verified: the save path on a real window resize
+  (only the timer + MailController::saveWindowSize, covered by the settings round trip), Wayland
+  placement; the saved size is the window's, positions are not remembered (the compositor places it).
+
 ## Execution Loop
 
 Execute the plan as a loop. Each iteration handles one task in a fresh context, then ends.

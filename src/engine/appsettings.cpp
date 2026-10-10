@@ -76,6 +76,8 @@ AppSettings AppSettings::load()
     settings.showHiddenFolders = group.readEntry("ShowHiddenFolders", settings.showHiddenFolders);
     settings.undoSendSeconds = snapUndoSend(group.readEntry("UndoSendSeconds", settings.undoSendSeconds));
     settings.conversationView = group.readEntry("ConversationView", settings.conversationView);
+    settings.windowWidth = qMax(0, group.readEntry("WindowWidth", settings.windowWidth));
+    settings.windowHeight = qMax(0, group.readEntry("WindowHeight", settings.windowHeight));
     const KConfigGroup hidden = hiddenGroup();
     const QStringList keys = hidden.keyList();
     for (const QString &key : keys) {
@@ -101,6 +103,8 @@ void AppSettings::save() const
     group.writeEntry("ShowHiddenFolders", showHiddenFolders);
     group.writeEntry("UndoSendSeconds", snapUndoSend(undoSendSeconds));
     group.writeEntry("ConversationView", conversationView);
+    group.writeEntry("WindowWidth", windowWidth);
+    group.writeEntry("WindowHeight", windowHeight);
     KConfigGroup hidden = hiddenGroup();
     for (const QString &key : hidden.keyList()) {
         hidden.deleteEntry(key);

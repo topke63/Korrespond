@@ -90,8 +90,23 @@ StatefulApp.StatefulWindow {
     footer: MailController.hasAccount ? statusBar : null
 
     title: KI18n.i18nc("@title:window", "Plasma Mail")
-    width: Kirigami.Units.gridUnit * 75
-    height: Kirigami.Units.gridUnit * 45
+    // The size the user left (kept by the app, so it does not depend on the screen), else a default.
+    width: MailController.windowWidth > 0 ? MailController.windowWidth : Kirigami.Units.gridUnit * 75
+    height: MailController.windowHeight > 0 ? MailController.windowHeight : Kirigami.Units.gridUnit * 45
+
+    // Saves the size half a second after the last change; not while maximized, fullscreen or hidden.
+    Timer {
+        id: sizeSaver
+
+        interval: 500
+        onTriggered: {
+            if (mainWindow.visibility === Window.Windowed) {
+                MailController.saveWindowSize(mainWindow.width, mainWindow.height);
+            }
+        }
+    }
+    onWidthChanged: sizeSaver.restart()
+    onHeightChanged: sizeSaver.restart()
 
     Component.onCompleted: showStartPage()
 

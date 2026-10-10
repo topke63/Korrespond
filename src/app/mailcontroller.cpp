@@ -973,6 +973,26 @@ void MailController::setOpenUnread(bool unread)
     }
 }
 
+int MailController::windowWidth() const
+{
+    return m_app.windowWidth;
+}
+
+int MailController::windowHeight() const
+{
+    return m_app.windowHeight;
+}
+
+void MailController::saveWindowSize(int width, int height)
+{
+    if (width < 400 || height < 300 || (width == m_app.windowWidth && height == m_app.windowHeight)) {
+        return;
+    }
+    m_app.windowWidth = width;
+    m_app.windowHeight = height;
+    m_app.save();
+}
+
 bool MailController::pushEnabled() const
 {
     return m_app.pushEnabled;

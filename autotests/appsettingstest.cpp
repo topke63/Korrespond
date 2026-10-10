@@ -51,6 +51,8 @@ private Q_SLOTS:
         QVERIFY(!settings.showHiddenFolders);
         QCOMPARE(settings.undoSendSeconds, 10);
         QVERIFY(!settings.conversationView);
+        QCOMPARE(settings.windowWidth, 0);
+        QCOMPARE(settings.windowHeight, 0);
     }
 
     void testRoundTrip()
@@ -220,6 +222,19 @@ private Q_SLOTS:
         settings.conversationView = false;
         settings.save();
         QVERIFY(!AppSettings::load().conversationView);
+    }
+
+    void testWindowSizeRoundTrip()
+    {
+        AppSettings settings;
+        settings.windowWidth = 1765;
+        settings.windowHeight = 906;
+        settings.save();
+        const AppSettings loaded = AppSettings::load();
+        QCOMPARE(loaded.windowWidth, 1765);
+        QCOMPARE(loaded.windowHeight, 906);
+        KSharedConfig::openConfig(u"plasmamailrc"_s)->group(u"General"_s).writeEntry("WindowWidth", -5);
+        QCOMPARE(AppSettings::load().windowWidth, 0); // nonsense is ignored
     }
 
     void testSavingKeepsOtherGroups()

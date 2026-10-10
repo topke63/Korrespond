@@ -87,8 +87,8 @@ Kirigami.OverlayDrawer {
                         Layout.leftMargin: Kirigami.Units.largeSpacing
                         Layout.preferredWidth: Kirigami.Units.iconSizes.smallMedium
                         Layout.preferredHeight: Kirigami.Units.iconSizes.smallMedium
-                        source: "plasma-mail"
-                        fallback: ":/icons/sc-apps-plasma-mail.svg"
+                        source: "org.topke.plasmamail"
+                        fallback: ":/icons/sc-apps-org.topke.plasmamail.svg"
                         isMask: false
                     }
                     Kirigami.Heading {

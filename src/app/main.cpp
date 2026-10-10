@@ -126,7 +126,7 @@ int main(int argc, char *argv[])
     about.setDesktopFileName(u"plasma-mail"_s);
     about.setLicense(KAboutLicense::GPL_V2, KAboutLicense::OrLaterVersions); // matches the SPDX headers
     // The installed themed icon, else the copy inside the executable.
-    const QIcon appIcon = QIcon::fromTheme(u"plasma-mail"_s, QIcon(u":/icons/sc-apps-plasma-mail.svg"_s));
+    const QIcon appIcon = QIcon::fromTheme(u"org.topke.plasmamail"_s, QIcon(u":/icons/sc-apps-org.topke.plasmamail.svg"_s));
     QGuiApplication::setWindowIcon(appIcon);
     about.setProgramLogo(appIcon); // the About page
     KAboutData::setApplicationData(about);

@@ -1,5 +1,5 @@
 [Global]
-IconName=plasma-mail
+IconName=org.topke.plasmamail
 Name=Plasma Mail
 Comment=Plasma Mail
 

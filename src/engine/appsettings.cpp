@@ -35,7 +35,7 @@ static int clampList(int width)
 
 // The allowed undo-send delays snap to the nearest choice; negative -> 0 (off). Ascending order and a
 // strict "<" make a tie (15 between 10 and 20, 25 between 20 and 30) go to the smaller choice.
-static int snapUndoSend(int seconds)
+int AppSettings::snapUndoSend(int seconds)
 {
     // Clamp first: the distance computed below would overflow for values near INT_MIN.
     if (seconds <= 0) {

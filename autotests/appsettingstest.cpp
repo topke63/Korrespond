@@ -77,6 +77,17 @@ private Q_SLOTS:
         }
     }
 
+    void testUndoSendSnapsWhenSaved()
+    {
+        // The in-memory value is snapped by the same helper that load() uses.
+        QCOMPARE(AppSettings::snapUndoSend(7), 5);
+        QCOMPARE(AppSettings::snapUndoSend(-4), 0);
+        AppSettings settings;
+        settings.undoSendSeconds = 26;
+        settings.save();
+        QCOMPARE(group().readEntry("UndoSendSeconds", 0), 30);
+    }
+
     void testUndoSendSnapsToTheNearestChoice()
     {
         // Nearest choice wins; a tie (15, 25) goes to the smaller one.

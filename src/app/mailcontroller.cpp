@@ -922,14 +922,13 @@ int MailController::undoSendSeconds() const
 void MailController::setUndoSendSeconds(int seconds)
 {
     // Messages already waiting keep their deadline; only later sends use the new value.
-    AppSettings settings = m_app;
-    settings.undoSendSeconds = seconds;
-    settings.save();
-    settings = AppSettings::load();
-    if (settings.undoSendSeconds == m_app.undoSendSeconds) {
+    AppSettings settings = m_app; // keeps everything else as it is in memory
+    settings.undoSendSeconds = AppSettings::snapUndoSend(seconds);
+    if (settings == m_app) {
         return;
     }
-    m_app.undoSendSeconds = settings.undoSendSeconds;
+    settings.save();
+    m_app = settings;
     Q_EMIT appSettingsChanged();
 }
 

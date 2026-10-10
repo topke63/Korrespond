@@ -40,6 +40,9 @@ struct AppSettings {
     // 0, 5, 10, 20, 30: other values snap to the nearest choice on load.
     int undoSendSeconds = 10;
 
+    // The undo-send delay snapped to the nearest allowed choice (negative -> 0 = off).
+    static int snapUndoSend(int seconds);
+
     // Missing or out-of-range values fall back to the defaults / the nearest allowed value.
     static AppSettings load();
     // Saves with checkMinutes and the widths limited to the allowed ranges.

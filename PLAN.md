@@ -3857,7 +3857,7 @@ known light look and derive it (macOS light: sidebar `#e8e6ee`-ish, band `#f3f1f
 
 ### T178 — Message list rows like Mimestream
 - status: todo
-- depends on: T177
+- depends on: T186
 - parallel-safe with: none
 - files: src/qml/MessageListPage.qml
 - inputs: palette tokens.
@@ -3871,7 +3871,7 @@ known light look and derive it (macOS light: sidebar `#e8e6ee`-ish, band `#f3f1f
 
 ### T179 — Sidebar like Mimestream
 - status: todo
-- depends on: T177
+- depends on: T186
 - parallel-safe with: none
 - files: src/qml/FolderSidebar.qml
 - inputs: palette tokens.
@@ -3883,7 +3883,7 @@ known light look and derive it (macOS light: sidebar `#e8e6ee`-ish, band `#f3f1f
 
 ### T180 — Reading pane header and label chip colours
 - status: todo
-- depends on: T177
+- depends on: T186
 - parallel-safe with: none
 - files: src/qml/MessagePage.qml, src/qml/MimeTheme.qml
 - inputs: palette tokens; open question 1.
@@ -3968,6 +3968,23 @@ known light look and derive it (macOS light: sidebar `#e8e6ee`-ish, band `#f3f1f
 - output: screenshot; the mail's own colours stay readable (no dark-on-dark text, no unreadable
   links, no white-on-white), both for the newsletter and the plain sample.
 - verify: sampled text/background pairs ≥ 4.5:1.
+- notes:
+
+### T186 — Fix: sidebar and title band ignore MimeTheme
+- status: todo
+- depends on: T177, T182
+- parallel-safe with: none
+- files: src/qml/FolderSidebar.qml, src/qml/MessageListPage.qml, src/qml/MessagePage.qml,
+  src/qml/Main.qml, src/qml/StatusBar.qml
+- inputs: T182 notes and screenshots: in both schemes the sidebar drawer and the title band show
+  the Breeze colours, not `sidebarBackground` / `headerBackground` (T177's globalHeader override has
+  no visible effect).
+- output: sidebar (incl. its header row "Mail") painted `sidebarBackground`; list title bar and
+  reading-pane toolbar painted `headerBackground`; header text/icons readable on the band (set the
+  band's Kirigami.Theme text colour from MimeTheme); status bar on `sidebarBackground`. Works in
+  both forced schemes and survives narrow/wide switches.
+- verify: build; ctest; screenshots with `PLASMAMAIL_COLOR_SCHEME=dark` and `=light`; sampled
+  pixels: dark sidebar ≈ #4c4951, dark band ≈ #251e2c, light sidebar ≈ #e8e6ee, light band ≈ #f3f1f6.
 - notes:
 
 ## Execution Loop

@@ -205,7 +205,7 @@ T39 and T46 later make it fully functional.
   1–2 file limit, and a `.h`/`.cpp` pair counts as one file.
 - Every source, CMake and QML file starts with an SPDX header (`//` comments in C++/QML,
   `#` in CMake):
-  `SPDX-FileCopyrightText: 2026 topke <topke63@gmail.com>` and
+  `SPDX-FileCopyrightText: 2026 topke <author@example.com>` and
   `SPDX-License-Identifier: GPL-3.0-or-later`. The licence text is in
   `LICENSES/GPL-3.0-or-later.txt`.
 - Build only in `build/` (or `build-*/` presets). Never run `cmake .` in the source tree.
@@ -2471,7 +2471,7 @@ Unread/Flagged cover the inboxes only (cheap: one SEARCH per inbox), not every f
     since the previous check, it is unread, and it is not older than the last check by more than a
     day (so the first start after a long time doesn't announce old mail).
   - Notification: `KNotification` (event id `newmail`, `plasma-mail.notifyrc` installed): one
-    notification per account per check ("3 new messages in topke63@yahoo.com", or sender + subject
+    notification per account per check ("3 new messages in alice@example.com", or sender + subject
     for a single message); clicking it shows the window and opens that message. No notification
     while the window is focused. Notification settings use KDE's standard dialog (a "Configure
     Notifications…" row in Settings).

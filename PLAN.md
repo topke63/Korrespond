@@ -3894,7 +3894,7 @@ known light look and derive it (macOS light: sidebar `#e8e6ee`-ish, band `#f3f1f
 - notes: done 2026-10-10. Subject large bold in `text`; sender name Bold `text`, address and "To:" `secondaryText`, date right-aligned `secondaryText`; separator is a 1 px `divider` Rectangle (was an opacity-0.5 Kirigami.Separator); avatar kept; toolbar untouched. MimeTheme: `labelColours` (tag colours, deeper in light), `chipBackgrounds` (Home/Inquiries/Travel chip bg), `chipColour(name)` (known name, else stable hash into the palette), `chipTextColour(bg)` (white/dark by luminance). Unused until labels exist (open question 1). Screenshots: scratchpad t180-dark.png, t180-light.png.
 
 ### T181 — Visual check, dark mode
-- status: todo
+- status: superseded
 - depends on: T178, T179, T180, T182, T183
 - parallel-safe with: none
 - files: none (fixes go back to the owning task as new tasks)
@@ -3904,7 +3904,7 @@ known light look and derive it (macOS light: sidebar `#e8e6ee`-ish, band `#f3f1f
   list, selection, text; differences listed; contrast of text, secondary, link, selected row, hover, dividers, unread dot
   measured as in T184.
 - verify: sampled colours within about 6 per channel of the table (dark mode).
-- notes:
+- notes: superseded by T196 (system colours); the 2026-10-10 tester run was interrupted, nothing verified.
 
 ### T182 — Dev hook: force the colour scheme
 - status: done
@@ -3955,7 +3955,7 @@ known light look and derive it (macOS light: sidebar `#e8e6ee`-ish, band `#f3f1f
   the dark pane (readable); the plain mail takes the theme colours. ctest 19/19.
 
 ### T184 — Visual check, light mode
-- status: todo
+- status: superseded
 - depends on: T178, T179, T180, T182, T183
 - parallel-safe with: none
 - files: none (fixes become new tasks)
@@ -3965,10 +3965,10 @@ known light look and derive it (macOS light: sidebar `#e8e6ee`-ish, band `#f3f1f
   secondary text, link, selected row, hover, dividers and unread dot measured (WCAG ratio).
 - verify: text ≥ 7:1, secondary and link ≥ 4.5:1, selected row and dividers visible (≥ 1.2:1
   against the background), unread dot ≥ 3:1.
-- notes:
+- notes: superseded by T196 (system colours); the 2026-10-10 tester run was interrupted, nothing verified.
 
 ### T185 — Visual check, HTML mail with its own colours (dark)
-- status: todo
+- status: superseded
 - depends on: T183, T182
 - parallel-safe with: T184
 - files: none (fixes become new tasks)
@@ -3976,7 +3976,7 @@ known light look and derive it (macOS light: sidebar `#e8e6ee`-ish, band `#f3f1f
 - output: screenshot; the mail's own colours stay readable (no dark-on-dark text, no unreadable
   links, no white-on-white), both for the newsletter and the plain sample.
 - verify: sampled text/background pairs ≥ 4.5:1.
-- notes:
+- notes: superseded by T196 (system colours); the 2026-10-10 tester run was interrupted, nothing verified.
 
 ### T186 — Fix: sidebar and title band ignore MimeTheme
 - status: done
@@ -4049,7 +4049,7 @@ Queued after the Mimestream palette tasks (T175–T186); same file (FolderSideba
 
 ### T188 — Account trees: persisted collapse, Collapse all / Expand all
 - status: todo
-- depends on: T187
+- depends on: T187, T196 (Milestone 3k first)
 - parallel-safe with: none
 - files: src/engine/appsettings.h, src/engine/appsettings.cpp, autotests/appsettingstest.cpp,
   src/app/mailcontroller.h, src/app/mailcontroller.cpp, src/qml/FolderSidebar.qml
@@ -4096,6 +4096,79 @@ Queued after the Mimestream palette tasks (T175–T186); same file (FolderSideba
   and dimmed rows readable in both schemes.
 - verify: screenshots + restart checks pass.
 - notes:
+
+# Milestone 3k — Follow the system colour scheme (user direction 2026-10-10: "the app's looks must
+# follow the global (Plasma) theme, not a fixed Mimestream palette")
+
+Supersedes the fixed hex palette of T176/T192. Keep the Mimestream-like structure (sidebar vs list
+vs reading pane distinct, one accent, bold sender + dot for unread, hairline dividers, rounded inset
+selection, chip style); the colour scheme supplies every colour. Runs before T188–T191.
+
+GUI runs are paused (2026-10-10: a test window landed on the user's video desktop). Until the user
+lifts that, verify with build, ctest, qmllint and `QT_QPA_PLATFORM=offscreen` runs only (no window);
+screenshot checks stay `todo`.
+
+- **Open questions**:
+  1. Does the user also want an optional "Mimestream palette" choice in Settings (default: follow
+     the system)? Not built unless answered.
+  2. When may GUI screenshot runs resume, and on which desktop / with which KWin rule?
+
+### T193 — Colours from the system colour sets
+- status: todo
+- depends on: T187
+- parallel-safe with: none
+- files: src/qml/MimeTheme.qml, src/qml/FolderSidebar.qml, src/qml/StatusBar.qml,
+  src/qml/MessageListPage.qml, src/qml/MessagePage.qml, src/qml/Main.qml
+- inputs: user direction above.
+- output: no hex colours in MimeTheme or the four views (label chip colours excepted). Sidebar,
+  status bar and title band use `Kirigami.Theme.colorSet: Window` (band may use `Header`), list and
+  reading pane `View`, with `inherit: false` only where a set changes, so runtime scheme changes
+  are picked up. Selected rows = `Kirigami.Theme.highlightColor` (or text at alpha) of that set;
+  hover and dividers = text colour with alpha; column hairline = text at a higher alpha; secondary
+  text = `disabledTextColor`; unread dot = highlight. MimeTheme keeps only derived helpers (alphas,
+  chip colours) or is removed if nothing remains. `MimeTheme.dark` is not used to choose colours.
+- verify: build; ctest; `qmllint` on the changed files no new warnings; offscreen start
+  (`QT_QPA_PLATFORM=offscreen QT_FORCE_STDERR_LOGGING=1 timeout 10 build/bin/plasma-mail`) without
+  new QML warnings; `grep -n '"#' ` in the changed QML only finds chip colours.
+- notes:
+
+### T194 — Message body colours from the system, re-render on scheme change
+- status: todo
+- depends on: T193
+- parallel-safe with: none
+- files: src/qml/MessagePage.qml, src/app/mailcontroller.h, src/app/mailcontroller.cpp
+  (src/engine/messagerenderer.* only if needed), autotests/messagerenderertest.cpp
+- inputs: `MailController::setMessageColours`, `readableLinkColour` (4.5:1 floor).
+- output: MessagePage passes the View set's text, background and link colour
+  (`Kirigami.Theme.linkColor`) to `setMessageColours`; when any of them changes at runtime (scheme
+  switch) the open message is re-rendered and reloaded; link floor stays 4.5:1.
+- verify: build; ctest (a test that a dark base gets a light link and vice versa stays/added).
+- notes:
+
+### T195 — Colour-scheme hook forces a real scheme
+- status: todo
+- depends on: T193
+- parallel-safe with: T194
+- files: src/app/main.cpp, src/qml/MimeTheme.qml
+- inputs: T182 (KColorSchemeManager activateScheme "Breeze Light"/"Breeze Dark").
+- output: `PLASMAMAIL_COLOR_SCHEME` accepts `light`, `dark` or any installed scheme name
+  (e.g. "Breeze Classic"); it only activates that KDE scheme for this process (never writes
+  kdeglobals); nothing depends on MimeTheme's own dark flag.
+- verify: build; ctest; offscreen start with two scheme names logs the activated scheme, no
+  warnings; `~/.config/kdeglobals` unchanged (compare mtime before/after).
+- notes:
+
+### T196 — Check: two real schemes (screenshots)
+- status: todo
+- depends on: T194, T195, and open question 2 (GUI runs paused)
+- parallel-safe with: none
+- files: none (fixes become new tasks)
+- inputs: Breeze Dark and Breeze Light via the hook; samples from T183.
+- output: screenshots per scheme; contrast measured: text ≥ 7:1, secondary and link ≥ 4.5:1,
+  selected row and dividers ≥ 1.2:1, unread dot ≥ 3:1; HTML newsletter readable in dark.
+  Replaces the pending T181/T184/T185 checks (they measured the fixed palette).
+- verify: as output.
+- notes: waits until GUI runs are allowed again.
 
 ## Execution Loop
 

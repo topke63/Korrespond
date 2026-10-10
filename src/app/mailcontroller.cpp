@@ -106,6 +106,7 @@ MailController::MailController(QObject *parent)
         m_collapsedOverride = qEnvironmentVariableIntValue("PLASMAMAIL_SIDEBAR_COLLAPSED") == 1;
     }
     m_accounts->setPushEnabled(m_app.pushEnabled);
+    m_messageModel->setConversationView(m_app.conversationView);
     // Ticks often; checkForNewMail() decides per account whether its interval has passed.
     m_checkTimer->start(std::chrono::seconds(30));
 
@@ -932,6 +933,24 @@ void MailController::setUndoSendSeconds(int seconds)
     }
     settings.save();
     m_app = settings;
+    Q_EMIT appSettingsChanged();
+}
+
+bool MailController::conversationView() const
+{
+    return m_app.conversationView;
+}
+
+void MailController::setConversationView(bool on)
+{
+    if (m_app.conversationView == on) {
+        return;
+    }
+    AppSettings settings = m_app;
+    settings.conversationView = on;
+    settings.save();
+    m_app = settings;
+    m_messageModel->setConversationView(on);
     Q_EMIT appSettingsChanged();
 }
 

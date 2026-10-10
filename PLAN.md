@@ -5368,14 +5368,24 @@ Approach: thread ids are computed in the engine and stored, the list model group
   "u:<uid>" of the oldest member, independent of input order. 12 test cases in threadbuildertest.
 
 ### T221 — List model: conversation rows
-- status: todo
+- status: done
 - depends on: T219, T220
 - parallel-safe with: none
 - files: src/models/messagelistmodel.h/.cpp, src/engine/appsettings.* (ConversationView), tests
 - output: when `conversationView` is on, one row per thread with roles threadCount, participants,
   threadUnread, threadFlagged, threadUids; off = today's rows.
 - verify: build; ctest.
-- notes:
+- notes: Done 2026-10-10 (no sub-agents). MessageListModel keeps the full flat list (message(),
+  setUnread(), removeMessage() … see every message) and, with setConversationView(true), shows
+  one row per conversation: the newest message stands for it, rows come from ThreadBuilder per
+  account (stored thread ids are not needed to display). New roles threadId, threadCount,
+  participants ("Alice, me": oldest first, own address "me", first names), threadUnread,
+  threadFlagged, threadUids (all also valid in the flat view, as a conversation of one);
+  conversationAt(row) returns a row's messages newest first. setUnread/setFlagged/removeMessage
+  keep views informed with the smallest change (dataChanged, one row removed, else reset);
+  removeMessage returns the row of the conversation. Setting ConversationView (AppSettings,
+  default OFF until T226 has tried it on real mail), MailController.conversationView property
+  applied to the model at start and on change. Tests in messagelistmodeltest/appsettingstest.
 
 ### T222 — List row UI for conversations
 - status: todo

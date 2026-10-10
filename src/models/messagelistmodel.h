@@ -23,6 +23,13 @@ public:
         UnreadRole,
         FlaggedRole,
         PreviewRole,
+        // Conversation rows (T221). In the flat view each message is its own conversation of one.
+        ThreadIdRole, // "<account>\n<thread id>"
+        ThreadCountRole,
+        ParticipantsRole, // "Alice, Bob, me": the senders, oldest first, own address as "me"
+        ThreadUnreadRole, // any message of the conversation is unread
+        ThreadFlaggedRole, // any message is flagged
+        ThreadUidsRole, // the conversation's uids (same account as the row), in list order
     };
 
     explicit MessageListModel(QObject *parent = nullptr);
@@ -33,6 +40,20 @@ public:
 
     void setMessages(const QList<MessageSummary> &messages);
     void clear();
+    // One row per conversation (its newest message stands for it) instead of one per message.
+    // Lookups by account and uid (message(), setUnread() …) always see every message.
+    void setConversationView(bool on);
+    [[nodiscard]] bool conversationView() const;
+    // Every message the model holds, in list order (also those hidden behind a conversation row).
+    [[nodiscard]] QList<MessageSummary> allMessages() const;
+    // The messages of the conversation that row `row` shows, newest first; the one message of the
+    // row in the flat view, empty for a row that doesn't exist.
+    [[nodiscard]] QList<MessageSummary> conversationAt(int row) const;
+
+    // "Alice Example <alice@example.org>" → "Alice"; an address alone → its local part; "Doe, John"
+    // → "John". `own` (the account's address) → empty; the caller shows "me".
+    [[nodiscard]] static QString participantName(const QString &from);
+    [[nodiscard]] static QString participantAddress(const QString &from);
     // A uid is only unique within one account, so every lookup names the account.
     // Updates one message's unread state; emits dataChanged for that row only.
     void setUnread(const QString &account, qint64 uid, bool unread);
@@ -48,5 +69,26 @@ public:
     [[nodiscard]] static QString dateText(const QDateTime &dateTime, const QDate &today);
 
 private:
+    struct Row {
+        QString key; // account + thread id
+        QString account;
+        qint64 uid = 0; // the representative: the first (newest) message of the conversation
+        int count = 0;
+        bool unread = false;
+        bool flagged = false;
+        QList<qint64> uids;
+        QString participants;
+
+        bool operator==(const Row &) const = default;
+    };
+
+    [[nodiscard]] QList<Row> buildRows() const;
+    // Makes `rows` the visible rows, telling views the smallest change (a row changed, one row
+    // removed, else a reset).
+    void applyRows(const QList<Row> &rows);
+    [[nodiscard]] const MessageSummary &representative(const Row &row) const;
+
     QList<MessageSummary> m_messages;
+    bool m_conversationView = false;
+    QList<Row> m_rows; // only in the conversation view
 };

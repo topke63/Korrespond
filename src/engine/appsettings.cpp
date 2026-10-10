@@ -75,6 +75,7 @@ AppSettings AppSettings::load()
     settings.collapsedAccounts = group.readEntry("CollapsedAccounts", settings.collapsedAccounts);
     settings.showHiddenFolders = group.readEntry("ShowHiddenFolders", settings.showHiddenFolders);
     settings.undoSendSeconds = snapUndoSend(group.readEntry("UndoSendSeconds", settings.undoSendSeconds));
+    settings.conversationView = group.readEntry("ConversationView", settings.conversationView);
     const KConfigGroup hidden = hiddenGroup();
     const QStringList keys = hidden.keyList();
     for (const QString &key : keys) {
@@ -99,6 +100,7 @@ void AppSettings::save() const
     group.writeEntry("CollapsedAccounts", collapsedAccounts);
     group.writeEntry("ShowHiddenFolders", showHiddenFolders);
     group.writeEntry("UndoSendSeconds", snapUndoSend(undoSendSeconds));
+    group.writeEntry("ConversationView", conversationView);
     KConfigGroup hidden = hiddenGroup();
     for (const QString &key : hidden.keyList()) {
         hidden.deleteEntry(key);

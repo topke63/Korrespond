@@ -39,6 +39,9 @@ struct AppSettings {
     // Seconds a sent message waits (undoable) before it is handed to SMTP; 0 = off. One of
     // 0, 5, 10, 20, 30: other values snap to the nearest choice on load.
     int undoSendSeconds = 10;
+    // The message list shows one row per conversation (T221). Off until it has been tried on real
+    // mail (T226).
+    bool conversationView = false;
 
     // The undo-send delay snapped to the nearest allowed choice (negative -> 0 = off).
     static int snapUndoSend(int seconds);

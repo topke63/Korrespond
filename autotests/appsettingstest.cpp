@@ -50,6 +50,7 @@ private Q_SLOTS:
         QVERIFY(settings.hiddenFolders.isEmpty());
         QVERIFY(!settings.showHiddenFolders);
         QCOMPARE(settings.undoSendSeconds, 10);
+        QVERIFY(!settings.conversationView);
     }
 
     void testRoundTrip()
@@ -208,6 +209,17 @@ private Q_SLOTS:
         const AppSettings settings = AppSettings::load();
         QCOMPARE(settings.sidebarWidth, AppSettings::defaultSidebarWidth);
         QCOMPARE(settings.listWidth, AppSettings::defaultListWidth);
+    }
+
+    void testConversationViewRoundTrip()
+    {
+        AppSettings settings;
+        settings.conversationView = true;
+        settings.save();
+        QVERIFY(AppSettings::load().conversationView);
+        settings.conversationView = false;
+        settings.save();
+        QVERIFY(!AppSettings::load().conversationView);
     }
 
     void testSavingKeepsOtherGroups()

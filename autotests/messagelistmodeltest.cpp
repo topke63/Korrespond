@@ -206,6 +206,114 @@ private Q_SLOTS:
         QCOMPARE(model.messageAt(-1).uid, qint64(0));
     }
 
+    // A conversation of three (uids 1, 2, 4 by References) and a single message (uid 3).
+    static QList<MessageSummary> thread()
+    {
+        auto make = [](qint64 uid, int day, const QString &from, const QString &subject, const QString &id, const QStringList &refs, bool unread) {
+            MessageSummary m;
+            m.account = u"me@example.org"_s;
+            m.uid = uid;
+            m.subject = subject;
+            m.from = from;
+            m.date = QDateTime(QDate(2026, 10, day), QTime(10, 0), QTimeZone::UTC);
+            m.unread = unread;
+            m.messageId = id;
+            m.references = refs;
+            if (!refs.isEmpty()) {
+                m.inReplyTo = refs.last();
+            }
+            return m;
+        };
+        // Newest first, like the list.
+        return {
+            make(4, 5, u"Alice Example <alice@example.com>"_s, u"Re: Plan"_s, u"d"_s, {u"a"_s, u"b"_s}, true),
+            make(3, 4, u"Carol <carol@example.com>"_s, u"Other"_s, u"c"_s, {}, false),
+            make(2, 3, u"Me <me@example.org>"_s, u"Re: Plan"_s, u"b"_s, {u"a"_s}, false),
+            make(1, 2, u"\"Alice Example\" <alice@example.com>"_s, u"Plan"_s, u"a"_s, {}, false),
+        };
+    }
+
+    void testParticipantNames()
+    {
+        QCOMPARE(MessageListModel::participantName(u"Alice Example <alice@example.com>"_s), u"Alice"_s);
+        QCOMPARE(MessageListModel::participantName(u"\"Doe, John\" <j@example.com>"_s), u"John"_s);
+        QCOMPARE(MessageListModel::participantName(u"bob@example.com"_s), u"bob"_s);
+        QCOMPARE(MessageListModel::participantName(u"<bob@example.com>"_s), u"bob"_s);
+        QCOMPARE(MessageListModel::participantAddress(u"Bob <Bob@Example.COM>"_s), u"bob@example.com"_s);
+    }
+
+    void testConversationRows()
+    {
+        MessageListModel model;
+        QAbstractItemModelTester tester(&model, QAbstractItemModelTester::FailureReportingMode::QtTest);
+        model.setMessages(thread());
+        QCOMPARE(model.rowCount(), 4); // flat by default
+
+        model.setConversationView(true);
+        QCOMPARE(model.rowCount(), 2);
+        QCOMPARE(model.data(model.index(0), MessageListModel::UidRole).toLongLong(), qint64(4)); // newest stands for it
+        QCOMPARE(model.data(model.index(0), MessageListModel::ThreadCountRole).toInt(), 3);
+        QCOMPARE(model.data(model.index(0), MessageListModel::ParticipantsRole).toString(), u"Alice, me"_s);
+        QVERIFY(model.data(model.index(0), MessageListModel::ThreadUnreadRole).toBool());
+        QVERIFY(!model.data(model.index(0), MessageListModel::ThreadFlaggedRole).toBool());
+        QCOMPARE(model.data(model.index(0), MessageListModel::ThreadUidsRole).toList(), (QVariantList{qint64(4), qint64(2), qint64(1)}));
+        QCOMPARE(model.data(model.index(1), MessageListModel::UidRole).toLongLong(), qint64(3));
+        QCOMPARE(model.data(model.index(1), MessageListModel::ThreadCountRole).toInt(), 1);
+        QCOMPARE(model.conversationAt(0).size(), 3);
+        QCOMPARE(model.conversationAt(0).first().uid, qint64(4));
+        QCOMPARE(model.messageAt(0).uid, qint64(4));
+        QCOMPARE(model.allMessages().size(), 4);
+        // Lookups still see the hidden messages.
+        QCOMPARE(model.message(u"me@example.org"_s, 1).subject, u"Plan"_s);
+
+        model.setConversationView(false);
+        QCOMPARE(model.rowCount(), 4);
+        QCOMPARE(model.data(model.index(0), MessageListModel::ThreadCountRole).toInt(), 1);
+    }
+
+    void testConversationUpdates()
+    {
+        MessageListModel model;
+        QAbstractItemModelTester tester(&model, QAbstractItemModelTester::FailureReportingMode::QtTest);
+        model.setMessages(thread());
+        model.setConversationView(true);
+        QSignalSpy changed(&model, &QAbstractItemModel::dataChanged);
+        QSignalSpy removed(&model, &QAbstractItemModel::rowsRemoved);
+        QSignalSpy reset(&model, &QAbstractItemModel::modelReset);
+
+        // The newest message is read: the conversation is read, one row changed.
+        model.setUnread(u"me@example.org"_s, 4, false);
+        QVERIFY(!model.data(model.index(0), MessageListModel::ThreadUnreadRole).toBool());
+        QCOMPARE(changed.count(), 1);
+        // Flagging an old message flags the conversation row.
+        model.setFlagged(u"me@example.org"_s, 1, true);
+        QVERIFY(model.data(model.index(0), MessageListModel::ThreadFlaggedRole).toBool());
+
+        // Removing one of three: the row stays and its count drops; the answer is the row it was in.
+        QCOMPARE(model.removeMessage(u"me@example.org"_s, 2), 0);
+        QCOMPARE(model.rowCount(), 2);
+        QCOMPARE(model.data(model.index(0), MessageListModel::ThreadCountRole).toInt(), 2);
+        QCOMPARE(removed.count(), 0);
+
+        // Removing the single message removes its row.
+        QCOMPARE(model.removeMessage(u"me@example.org"_s, 3), 1);
+        QCOMPARE(model.rowCount(), 1);
+        QCOMPARE(removed.count(), 1);
+        QCOMPARE(reset.count(), 0);
+    }
+
+    void testConversationsKeepAccountsApart()
+    {
+        // The same uid in two accounts is two messages; a conversation never mixes accounts.
+        MessageSummary a = summary(1, u"Same subject"_s, true, QDateTime(QDate(2026, 10, 2), QTime(10, 0), QTimeZone::UTC));
+        MessageSummary b = a;
+        b.account = u"me@gmail.com"_s;
+        MessageListModel model;
+        model.setMessages({a, b});
+        model.setConversationView(true);
+        QCOMPARE(model.rowCount(), 2);
+    }
+
     void testClear()
     {
         MessageListModel model;

@@ -25,16 +25,16 @@ SPDX-License-Identifier: CC0-1.0
   <screenshots>
     <screenshot type="default">
       <caption>Light colour scheme</caption>
-      <image type="source">https://raw.githubusercontent.com/topke63/Plasma-Mail/main/docs/screenshots/korrespond-light.png</image>
+      <image type="source">https://raw.githubusercontent.com/topke63/Korrespond/main/docs/screenshots/korrespond-light.png</image>
     </screenshot>
     <screenshot>
       <caption>Dark colour scheme</caption>
-      <image type="source">https://raw.githubusercontent.com/topke63/Plasma-Mail/main/docs/screenshots/korrespond-dark.png</image>
+      <image type="source">https://raw.githubusercontent.com/topke63/Korrespond/main/docs/screenshots/korrespond-dark.png</image>
     </screenshot>
   </screenshots>
   <launchable type="desktop-id">io.github.topke63.korrespond.desktop</launchable>
-  <url type="homepage">https://github.com/topke63/Plasma-Mail</url>
-  <url type="bugtracker">https://github.com/topke63/Plasma-Mail/issues</url>
+  <url type="homepage">https://github.com/topke63/Korrespond</url>
+  <url type="bugtracker">https://github.com/topke63/Korrespond/issues</url>
   <provides>
     <binary>korrespond</binary>
   </provides>

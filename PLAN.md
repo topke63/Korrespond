@@ -5543,7 +5543,7 @@ Approach: thread ids are computed in the engine and stored, the list model group
   2 new secretstoretest cases against the real keychain), legacy Google env vars. Build clean,
   26/26 tests, lint 31 (release preset; same as before), offscreen demo start in a throw-away profile:
   plasmamailrc → korrespondrc and plasma-mail/ → korrespond/ done, window size carried over.
-  Not done: the GitHub repository name (still Plasma-Mail; rename it there, GitHub redirects), the
+  Not done: the GitHub repository name (renamed to Korrespond afterwards, the same day), the
   user's installed old build (needs `cmake --install` again and removal of the old files, README
   lists them), the user's KWin rule `plasmamail-desktop3` (class was `plasma-mail`; the window
   class is now `io.github.topke63.korrespond`).

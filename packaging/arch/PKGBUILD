@@ -11,7 +11,7 @@ pkgver=0.1.0
 pkgrel=1
 pkgdesc='Simple IMAP mail client for KDE Plasma'
 arch=(x86_64)
-url='https://github.com/topke63/Plasma-Mail'
+url='https://github.com/topke63/Korrespond'
 license=(GPL-3.0-or-later)
 depends=(
   cyrus-sasl

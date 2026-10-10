@@ -64,7 +64,7 @@ Runtime: `qqc2-desktop-style`, Cyrus SASL, SQLite (Qt's `QSQLITE` driver), and t
 ## Build
 
 ```sh
-git clone https://github.com/topke63/Plasma-Mail.git korrespond
+git clone https://github.com/topke63/Korrespond.git
 cd korrespond
 cmake --preset release            # or: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo
 cmake --build --preset release

@@ -26,10 +26,10 @@ Kirigami.ScrollablePage {
     readonly property color unreadColor: MimeTheme.accent
     Kirigami.Theme.colorSet: Kirigami.Theme.Custom
     Kirigami.Theme.inherit: false
-    Kirigami.Theme.customBackgroundColor: MimeTheme.listBackground
-    Kirigami.Theme.customTextColor: MimeTheme.text
-    Kirigami.Theme.customDisabledTextColor: MimeTheme.secondaryText
-    Kirigami.Theme.customHighlightColor: MimeTheme.accent
+    Kirigami.Theme.backgroundColor: MimeTheme.listBackground
+    Kirigami.Theme.textColor: MimeTheme.text
+    Kirigami.Theme.disabledTextColor: MimeTheme.secondaryText
+    Kirigami.Theme.highlightColor: MimeTheme.accent
     titleDelegate: Kirigami.Heading {
         level: 2
         font.weight: Font.Bold

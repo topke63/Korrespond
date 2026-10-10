@@ -52,10 +52,10 @@ QQC2.Pane {
     implicitHeight: Kirigami.Units.gridUnit * 1.8
     Kirigami.Theme.colorSet: Kirigami.Theme.Custom
     Kirigami.Theme.inherit: false
-    Kirigami.Theme.customBackgroundColor: MimeTheme.sidebarBackground
-    Kirigami.Theme.customTextColor: MimeTheme.text
-    Kirigami.Theme.customDisabledTextColor: MimeTheme.secondaryText
-    Kirigami.Theme.customHighlightColor: MimeTheme.accent
+    Kirigami.Theme.backgroundColor: MimeTheme.sidebarBackground
+    Kirigami.Theme.textColor: MimeTheme.text
+    Kirigami.Theme.disabledTextColor: MimeTheme.secondaryText
+    Kirigami.Theme.highlightColor: MimeTheme.accent
 
     background: Rectangle {
         color: Kirigami.Theme.backgroundColor

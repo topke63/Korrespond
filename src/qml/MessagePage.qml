@@ -21,10 +21,10 @@ Kirigami.Page {
 
     Kirigami.Theme.colorSet: Kirigami.Theme.Custom
     Kirigami.Theme.inherit: false
-    Kirigami.Theme.customBackgroundColor: MimeTheme.readingBackground
-    Kirigami.Theme.customTextColor: MimeTheme.text
-    Kirigami.Theme.customDisabledTextColor: MimeTheme.secondaryText
-    Kirigami.Theme.customHighlightColor: MimeTheme.accent
+    Kirigami.Theme.backgroundColor: MimeTheme.readingBackground
+    Kirigami.Theme.textColor: MimeTheme.text
+    Kirigami.Theme.disabledTextColor: MimeTheme.secondaryText
+    Kirigami.Theme.highlightColor: MimeTheme.accent
 
     // The body's own colours follow the pane.
     function syncBodyColours() {

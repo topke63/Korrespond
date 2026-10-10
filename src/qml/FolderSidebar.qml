@@ -63,10 +63,10 @@ Kirigami.OverlayDrawer {
 
     Kirigami.Theme.colorSet: Kirigami.Theme.Custom
     Kirigami.Theme.inherit: false
-    Kirigami.Theme.customBackgroundColor: MimeTheme.sidebarBackground
-    Kirigami.Theme.customTextColor: MimeTheme.text
-    Kirigami.Theme.customDisabledTextColor: MimeTheme.secondaryText
-    Kirigami.Theme.customHighlightColor: MimeTheme.accent
+    Kirigami.Theme.backgroundColor: MimeTheme.sidebarBackground
+    Kirigami.Theme.textColor: MimeTheme.text
+    Kirigami.Theme.disabledTextColor: MimeTheme.secondaryText
+    Kirigami.Theme.highlightColor: MimeTheme.accent
 
     // The folder list, with the drag handle for the width on its right edge.
     contentItem: Item {

@@ -4183,6 +4183,37 @@ screenshot checks stay `todo`.
 - verify: as output.
 - notes: waits until GUI runs are allowed again.
 
+### T197 — Dev script: GUI runs on Desktop 3
+- status: done
+- depends on: none
+- parallel-safe with: any
+- files: scripts/desktop3-run.sh
+- inputs: script written in the user's session 2026-10-10.
+- output: `scripts/desktop3-run.sh [ENV=VALUE…]` runs build/bin/plasma-mail with a temporary KWin
+  rule (Desktop 3, focus stealing prevention "extreme") and restores ~/.config/kwinrulesrc on exit.
+- verify: committed as-is; not run (GUI runs paused until the user confirms it doesn't pull them to
+  Desktop 3).
+- notes: review points for the user: while it runs, `[General] rules/count` list only the test
+  rule, so the user's other KWin rules are inactive for that time (restored on exit); the rule
+  matches wmclass `plasma-mail`, so it would also apply to the user's own instance if one opens a
+  window during the run.
+
+### T198 — App logo in the sidebar header
+- status: todo
+- depends on: T187
+- parallel-safe with: none
+- files: src/qml/FolderSidebar.qml (src/app/main.cpp only if the icon needs exposing to QML)
+- inputs: user: "the icon on the upper left corner of the app window is still generic".
+- output: a Kirigami.Icon (`iconSizes.smallMedium`, not a mask/monochrome) left of the "Mail"
+  heading, source the app icon: theme name `plasma-mail` with fallback to the bundled
+  `:/icons/sc-apps-plasma-mail.svg` (as main.cpp's QIcon::fromTheme fallback), so it works when run
+  from build/bin. Hidden with the sidebar when collapsed (T187's "Show Sidebar" button in the list
+  band stays the way back). Correct in light and dark.
+- verify: build; ctest; offscreen start without new QML warnings. Visual check `todo` until GUI runs
+  are allowed (open question 2 of Milestone 3k).
+- notes: the title bar icon is a separate matter: `_NET_WM_ICON` and `_KDE_NET_WM_DESKTOP_FILE` are
+  already correct, so a generic title-bar icon would be a KWin/panel cache issue, not an app bug.
+
 ## Execution Loop
 
 Execute the plan as a loop. Each iteration handles one task in a fresh context, then ends.

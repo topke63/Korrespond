@@ -53,6 +53,7 @@ private Q_SLOTS:
         QVERIFY(!settings.conversationView);
         QCOMPARE(settings.windowWidth, 0);
         QCOMPARE(settings.windowHeight, 0);
+        QVERIFY(settings.contactsEnabled);
     }
 
     void testRoundTrip()
@@ -68,6 +69,16 @@ private Q_SLOTS:
         settings.collapsedAccounts = {u"bob@example.com"_s, u"we,ird\\x@example.com"_s};
         settings.save();
         QCOMPARE(AppSettings::load(), settings);
+    }
+
+    void testContactsSwitchRoundTrip()
+    {
+        for (const bool enabled : {false, true}) {
+            AppSettings settings;
+            settings.contactsEnabled = enabled;
+            settings.save();
+            QCOMPARE(AppSettings::load().contactsEnabled, enabled);
+        }
     }
 
     void testUndoSendRoundTrip()

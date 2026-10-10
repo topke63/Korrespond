@@ -226,6 +226,12 @@ StatefulApp.StatefulWindow {
                 page: () => sendingPage
             },
             KirigamiSettings.ConfigurationModule {
+                moduleId: "contacts"
+                text: KI18n.i18nc("@action:button", "Contacts")
+                icon.name: "view-pim-contacts"
+                page: () => contactsPage
+            },
+            KirigamiSettings.ConfigurationModule {
                 moduleId: "shortcuts"
                 text: KI18n.i18nc("@action:button", "Shortcuts")
                 icon.name: "configure-shortcuts"
@@ -320,6 +326,12 @@ StatefulApp.StatefulWindow {
 
         application: mailApplication
         onChangeRequested: settings.open("shortcuts")
+    }
+
+    Component {
+        id: contactsPage
+
+        ContactsSettingsPage {}
     }
 
     Component {

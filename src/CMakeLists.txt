@@ -86,6 +86,7 @@ qt_add_qml_module(plasma-mail
         qml/StorageSettingsPage.qml
         qml/NotificationSettingsPage.qml
         qml/SendingSettingsPage.qml
+        qml/ContactsSettingsPage.qml
         qml/ViewSettingsPage.qml
         qml/ConversationView.qml
         qml/RecipientField.qml

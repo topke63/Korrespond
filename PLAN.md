@@ -5265,7 +5265,7 @@ no contacts API: its autocomplete (and Gmail's fallback) comes from addresses se
 - notes: Done 2026-10-10 (no sub-agents). A sender whose header has no display name gets the contact's name ('Name <address>') in the list (FromRole, participants of conversation rows) and in the reading pane header; a name in the header always wins. MessageListModel.setNameResolver()/namesChanged() (cached per address, refreshed when contactsChanged); the controller resolves through ContactStore::nameFor. Tests in messagelistmodeltest; demo: Frank (t239-BreezeLight.png). The avatar initial follows the shown name. Not done: photos.
 
 ### T240 — Settings → Contacts
-- status: todo
+- status: done
 - depends on: T234, T236
 - files: new src/qml/ContactsSettingsPage.qml, src/qml/Main.qml, src/engine/appsettings.*
 - output: a "Contacts" settings page: switch (setting `ContactsEnabled`, default on), per Google
@@ -5273,7 +5273,7 @@ no contacts API: its autocomplete (and Gmail's fallback) comes from addresses se
   "Clear contacts cache" (asks first; history addresses are rebuilt from mail). Switching off
   stops syncing and hides suggestions and names; the cache is kept until cleared.
 - verify: build; ctest for the setting; offscreen shots in both schemes.
-- notes:
+- notes: Done 2026-10-10 (no sub-agents). ContactsSettingsPage.qml (module 'contacts' in Main.qml, after Sending): switch 'Use contacts', one entry per Google account with the state text from contactsStatus() and 'Allow Access to Contacts…' when permission is needed, counts of saved contacts / other contacts / addresses seen in mail, 'Sync Now', 'Clear Contacts Cache…' (asks first). Controller: contactsEnabled property, setContactsEnabled() (off stops the syncs, on starts them; both emit contactsChanged so suggestions and names go away or return at once), contactAccounts(), contactCounts(), syncContactsNow(), clearContacts() (stops syncs, cancels a running history pass, clears the store, then syncs again if on). A history pass that meets the switch off is not marked done, so it runs again later. Test: AppSettings round trip of the switch. Shots: t240-{BreezeLight,BreezeDark}.png. Not verified with the real app: clearing while a Google sync is in flight.
 
 ### T241 — Check: contacts
 - status: todo

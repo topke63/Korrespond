@@ -1027,6 +1027,11 @@ bool MailController::pushEnabled() const
     return m_app.pushEnabled;
 }
 
+bool MailController::contactsEnabled() const
+{
+    return m_app.contactsEnabled;
+}
+
 int MailController::sidebarWidth() const
 {
     return m_app.sidebarWidth;
@@ -1230,6 +1235,24 @@ void MailController::setPushEnabled(bool enabled)
         }
     }
     Q_EMIT appSettingsChanged();
+}
+
+void MailController::setContactsEnabled(bool enabled)
+{
+    if (enabled == m_app.contactsEnabled) {
+        return;
+    }
+    m_app.contactsEnabled = enabled;
+    m_app.save();
+    for (AccountSession *session : std::as_const(m_sessions)) {
+        if (enabled) {
+            startContactSync(session);
+        } else if (auto *sync = session->findChild<ContactSync *>()) {
+            sync->stop();
+        }
+    }
+    Q_EMIT appSettingsChanged();
+    Q_EMIT contactsChanged(); // suggestions and names appear or go away
 }
 
 void MailController::configureNotifications()
@@ -2913,8 +2936,11 @@ void MailController::startHistoryBackfill(AccountSession *session)
 
 void MailController::backfillStep(AccountSession *session, std::shared_ptr<QList<std::pair<QString, qint64>>> keys, qsizetype next)
 {
-    if (!isKnown(session) || !session->storageActive() || !m_contacts) {
-        m_backfilling.erase(session);
+    if (m_backfilling.count(session) == 0) {
+        return; // cancelled by clearContacts()
+    }
+    if (!isKnown(session) || !session->storageActive() || !m_contacts || !m_app.contactsEnabled) {
+        m_backfilling.erase(session); // not marked done: it runs again when it can
         return;
     }
     const QString account = session->account().email;
@@ -2976,6 +3002,66 @@ QVariantMap MailController::contactsStatus(const QString &account) const
         status[u"lastSync"_s] = sync->lastSync().isValid() ? QLocale().toString(sync->lastSync().toLocalTime(), QLocale::ShortFormat) : QString();
     }
     return status;
+}
+
+QVariantList MailController::contactAccounts() const
+{
+    QVariantList result;
+    for (const AccountSession *session : m_sessions) {
+        if (session->account().authMethod != "oauth"_L1) {
+            continue;
+        }
+        const QString email = session->account().email;
+        QVariantMap entry = contactsStatus(email);
+        entry[u"email"_s] = email;
+        result.append(entry);
+    }
+    return result;
+}
+
+QVariantMap MailController::contactCounts() const
+{
+    const bool open = m_contacts && m_contacts->isOpen();
+    return {{u"google"_s, open ? m_contacts->count(ContactStore::Google) : 0},
+            {u"other"_s, open ? m_contacts->count(ContactStore::Other) : 0},
+            {u"history"_s, open ? m_contacts->count(ContactStore::History) : 0}};
+}
+
+void MailController::syncContactsNow()
+{
+    if (!m_app.contactsEnabled) {
+        return;
+    }
+    for (AccountSession *session : std::as_const(m_sessions)) {
+        if (auto *sync = session->findChild<ContactSync *>()) {
+            sync->setAccessToken(session->accessToken());
+            sync->start(); // ignored while a run is going
+        } else {
+            startContactSync(session);
+        }
+    }
+}
+
+void MailController::clearContacts()
+{
+    if (!m_contacts || !m_contacts->isOpen()) {
+        return;
+    }
+    for (const AccountSession *session : std::as_const(m_sessions)) {
+        if (auto *sync = session->findChild<ContactSync *>()) {
+            sync->stop();
+        }
+    }
+    m_backfilling.clear(); // a running pass would otherwise mark the emptied cache as complete
+    if (!m_contacts->clearAll()) {
+        Q_EMIT errorOccurred(i18n("Could not clear the contacts: %1", m_contacts->lastError()));
+    }
+    if (m_app.contactsEnabled) {
+        for (AccountSession *session : std::as_const(m_sessions)) {
+            startContactSync(session); // full sync again; the history pass rereads the stored mail
+        }
+    }
+    Q_EMIT contactsChanged();
 }
 
 QVariantList MailController::contactSuggestions(const QString &prefix) const

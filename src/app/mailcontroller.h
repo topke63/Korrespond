@@ -138,6 +138,7 @@ class MailController : public QObject
     Q_PROPERTY(bool keepInTray READ keepInTray NOTIFY appSettingsChanged)
     Q_PROPERTY(int checkMinutes READ checkMinutes NOTIFY appSettingsChanged)
     Q_PROPERTY(bool pushEnabled READ pushEnabled NOTIFY appSettingsChanged)
+    Q_PROPERTY(bool contactsEnabled READ contactsEnabled NOTIFY appSettingsChanged)
     // Seconds a sent message waits before the hand-off (0 = off); applies to messages sent afterwards.
     Q_PROPERTY(int undoSendSeconds READ undoSendSeconds WRITE setUndoSendSeconds NOTIFY appSettingsChanged)
     // One list row per conversation instead of per message (T221).
@@ -236,6 +237,7 @@ public:
     [[nodiscard]] bool keepInTray() const;
     [[nodiscard]] int checkMinutes() const;
     [[nodiscard]] bool pushEnabled() const;
+    [[nodiscard]] bool contactsEnabled() const;
     [[nodiscard]] int undoSendSeconds() const;
     void setUndoSendSeconds(int seconds);
     [[nodiscard]] bool conversationView() const;
@@ -262,6 +264,15 @@ public:
     // Signs in with Google again in the browser, asking for the contacts scopes; the mail
     // connection stays up. The new refresh token replaces the saved one when it worked.
     Q_INVOKABLE void allowContacts(const QString &account);
+    // The Google accounts for the contacts settings page: contactsStatus() of each plus {email}.
+    Q_INVOKABLE QVariantList contactAccounts() const;
+    // What the cache holds: {google, other, history} (numbers of addresses).
+    Q_INVOKABLE QVariantMap contactCounts() const;
+    // Runs the contacts sync of every account now (a no-op with contacts off).
+    Q_INVOKABLE void syncContactsNow();
+    // Empties the contacts cache (every account) and syncs again when contacts are on.
+    // Addresses seen in mail are read again from the stored mail.
+    Q_INVOKABLE void clearContacts();
     // Up to 8 addresses that start with `prefix` (a name word or the address): [{name, email,
     // display}], display being "Name <address>" as to put in a To field. Empty with contacts off.
     Q_INVOKABLE QVariantList contactSuggestions(const QString &prefix) const;
@@ -364,6 +375,9 @@ public:
     Q_INVOKABLE void saveAppSettings(bool keepInTray, int checkMinutes);
     // Push (IDLE) on or off; off stops every watcher, on starts them for the connected accounts.
     Q_INVOKABLE void setPushEnabled(bool enabled);
+    // Switches contacts (suggestions, sender names, sync) on or off. Off stops the syncs and hides
+    // everything; the cache is kept until clearContacts().
+    Q_INVOKABLE void setContactsEnabled(bool enabled);
     // Remembers the widths the user dragged the panels to (clamped to the limits); call it when
     // a drag ends. Emits panelWidthsChanged when something changed.
     Q_INVOKABLE void savePanelWidths(int sidebar, int list);

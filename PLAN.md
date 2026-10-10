@@ -4146,7 +4146,7 @@ screenshot checks stay `todo`.
   in a window (GUI runs paused).
 
 ### T194 — Message body colours from the system, re-render on scheme change
-- status: todo
+- status: done
 - depends on: T193
 - parallel-safe with: none
 - files: src/qml/MessagePage.qml, src/app/mailcontroller.h, src/app/mailcontroller.cpp
@@ -4156,7 +4156,14 @@ screenshot checks stay `todo`.
   (`Kirigami.Theme.linkColor`) to `setMessageColours`; when any of them changes at runtime (scheme
   switch) the open message is re-rendered and reloaded; link floor stays 4.5:1.
 - verify: build; ctest (a test that a dark base gets a light link and vice versa stays/added).
-- notes:
+- notes: MessagePage has readonly bodyText/bodyBackground/bodyLink from the View set; each
+  onChanged does Qt.callLater(syncBodyColours) (several changes in one tick collapse into one
+  call, and setMessageColours is a no-op when nothing differs). setMessageColours already re-renders
+  the stored message (no fetch, no flags, remote-image state kept) and emits currentMessageChanged,
+  so html changes and showHtml() reloads the view. Test testLinkFollowsBase added (dark base ->
+  lighter link, light base -> darker link, both >= 4.5:1). Extra: unread dot in MessageListPage uses
+  a SystemPalette (Active group) highlight so it stays clear in an inactive window. Verified: build,
+  ctest 19/19, offscreen start only the two known graphics-scene lines. Not seen in a window.
 
 ### T195 — Colour-scheme hook forces a real scheme
 - status: todo

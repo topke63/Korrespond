@@ -20,6 +20,12 @@ Kirigami.ScrollablePage {
         (page.QQC2.ApplicationWindow.window as Kirigami.ApplicationWindow).pageStack.currentIndex = Kirigami.ColumnView.index + 1;
     }
 
+    // The unread dot keeps the active highlight even while the window is inactive.
+    SystemPalette {
+        id: activePalette
+        colorGroup: SystemPalette.Active
+    }
+
     title: MailController.searchActive ? KI18n.i18nc("@title", "Search") : MailController.currentFolderName
     Kirigami.Theme.colorSet: Kirigami.Theme.View
     Kirigami.Theme.inherit: false
@@ -241,7 +247,7 @@ Kirigami.ScrollablePage {
             contentItem: RowLayout {
                 spacing: Kirigami.Units.smallSpacing
 
-                // Unread: a dot in the highlight colour.
+                // Unread: a dot in the active-group highlight, so it stays clear in an inactive window.
                 Rectangle {
                     Layout.alignment: Qt.AlignTop
                     Layout.topMargin: Math.round(senderLabel.height / 2 - height / 2)
@@ -250,7 +256,7 @@ Kirigami.ScrollablePage {
                     implicitWidth: 10
                     implicitHeight: 10
                     radius: width / 2
-                    color: Kirigami.Theme.highlightColor
+                    color: activePalette.highlight
                     opacity: row.unread ? 1 : 0
                 }
 

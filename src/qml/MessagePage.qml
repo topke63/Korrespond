@@ -26,6 +26,14 @@ Kirigami.Page {
         MailController.setMessageColours(Kirigami.Theme.textColor, Kirigami.Theme.backgroundColor, Kirigami.Theme.linkColor);
     }
 
+    // Any of the three changing (scheme switch) re-renders the open message once, from the stored mail.
+    readonly property color bodyText: Kirigami.Theme.textColor
+    readonly property color bodyBackground: Kirigami.Theme.backgroundColor
+    readonly property color bodyLink: Kirigami.Theme.linkColor
+    onBodyTextChanged: Qt.callLater(syncBodyColours)
+    onBodyBackgroundChanged: Qt.callLater(syncBodyColours)
+    onBodyLinkChanged: Qt.callLater(syncBodyColours)
+
     function showHtml() {
         // Set right before loading so the setting and the HTML always belong to the same message.
         view.settings.autoLoadImages = MailController.remoteImagesLoaded;

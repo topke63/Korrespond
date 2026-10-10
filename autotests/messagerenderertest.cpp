@@ -91,6 +91,18 @@ private Q_SLOTS:
         QVERIFY(contrastRatio(result, background) >= 4.5);
         QCOMPARE(result == link, unchanged);
     }
+    void testLinkFollowsBase()
+    {
+        // A dark base lightens a too-dark link, a light base darkens a too-pale one, both to 4.5:1.
+        const QColor dark("#1b1e20");
+        const QColor light("#fcfcfc");
+        const QColor onDark = readableLinkColour(QColor("#1d3f8f"), dark);
+        QVERIFY(contrastRatio(onDark, dark) >= 4.5);
+        QVERIFY(onDark.lightness() > QColor("#1d3f8f").lightness());
+        const QColor onLight = readableLinkColour(QColor("#a8c8ff"), light);
+        QVERIFY(contrastRatio(onLight, light) >= 4.5);
+        QVERIFY(onLight.lightness() < QColor("#a8c8ff").lightness());
+    }
     void testCspAlwaysPresent_data()
     {
         QTest::addColumn<QByteArray>("raw");

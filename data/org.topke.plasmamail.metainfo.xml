@@ -22,6 +22,16 @@ SPDX-License-Identifier: CC0-1.0
       <li>Messages are shown without remote content and without JavaScript</li>
     </ul>
   </description>
+  <screenshots>
+    <screenshot type="default">
+      <caption>Light colour scheme</caption>
+      <image type="source">https://raw.githubusercontent.com/topke63/Plasma-Mail/main/docs/screenshots/plasma-mail-light.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Dark colour scheme</caption>
+      <image type="source">https://raw.githubusercontent.com/topke63/Plasma-Mail/main/docs/screenshots/plasma-mail-dark.png</image>
+    </screenshot>
+  </screenshots>
   <launchable type="desktop-id">plasma-mail.desktop</launchable>
   <url type="homepage">https://github.com/topke63/Plasma-Mail</url>
   <url type="bugtracker">https://github.com/topke63/Plasma-Mail/issues</url>

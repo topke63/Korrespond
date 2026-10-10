@@ -8,6 +8,12 @@ SPDX-License-Identifier: CC0-1.0
 A simple IMAP mail client for KDE Plasma, written in C++20 with Qt 6 and Kirigami.
 It is a personal project: it does not use Akonadi, and it talks IMAP/SMTP directly.
 
+The app follows the Plasma colour scheme. Light and dark (demo data):
+
+| Light | Dark |
+|---|---|
+| ![Plasma Mail, light colour scheme](docs/screenshots/plasma-mail-light.png) | ![Plasma Mail, dark colour scheme](docs/screenshots/plasma-mail-dark.png) |
+
 - **Accounts:** Yahoo (app password), Gmail (Google sign-in, OAuth2) and any other IMAP
   provider with a password. Several accounts at once. Outlook is not available yet.
 - **Mail:** folders, conversations, local storage with import date / keep time / size limits,

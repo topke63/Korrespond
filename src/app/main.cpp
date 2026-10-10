@@ -8,6 +8,7 @@
 #include <KLocalizedString>
 
 #include "appsettings.h"
+#include "mailapplication.h"
 #include "mailcontroller.h"
 #include "mailnotifier.h"
 #include "trayicon.h"
@@ -262,6 +263,12 @@ int main(int argc, char *argv[])
     engine.loadFromModule("PlasmaMail", "Main");
     demoRoot = engine.rootObjects().isEmpty() ? nullptr : engine.rootObjects().constFirst();
     scheduleScreenshot(engine);
+    if (qEnvironmentVariableIntValue("PLASMAMAIL_DEMO") == 1 && demoRoot) {
+        // Dev check (T211): the action collection's ids.
+        if (auto *application = demoRoot->property("application").value<MailApplication *>()) {
+            qInfo().noquote() << "actions:" << application->actionNames().join(u' ');
+        }
+    }
 
     // The tray icon and notifications; not in the screenshot and demo runs (they must not put icons
     // or popups on the desktop), unless PLASMAMAIL_SCREENSHOT_TRAY=1 for a screenshot run.

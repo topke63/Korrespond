@@ -66,6 +66,7 @@ qt_add_qml_module(plasma-mail
         app/mailnotifier.cpp app/mailnotifier.h
         app/trayicon.cpp app/trayicon.h
         app/mailcontroller.cpp app/mailcontroller.h
+        app/mailapplication.cpp app/mailapplication.h
     QML_FILES
         qml/MimeTheme.qml
         qml/Main.qml
@@ -109,4 +110,6 @@ target_link_libraries(plasma-mail PRIVATE
     KF6::Notifications
     KF6::NotifyConfig
     KF6::StatusNotifierItem
+    KF6::ConfigGui
+    KirigamiAddonsStatefulApp
 )

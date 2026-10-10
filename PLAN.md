@@ -4860,7 +4860,7 @@ app has about 20 scattered `Shortcut {}`/`Kirigami.Action` definitions in Main.q
 MessagePage.qml.
 
 ### T211 — Action collection
-- status: todo
+- status: done
 - depends on: none (open question 3 answered: StatefulApp)
 - parallel-safe with: T206, T217
 - files: CMakeLists.txt, src/CMakeLists.txt, new src/app/mailapplication.h/.cpp, src/app/main.cpp
@@ -4870,7 +4870,25 @@ MessagePage.qml.
   refresh, toggle_sidebar, settings, shortcuts_help, next_message, previous_message,
   go_to_folder; each forwards to MailController (enabled state bound to it).
 - verify: build; ctest; offscreen demo start without warnings.
-- notes:
+- notes: Done 2026-10-10. `MailApplication` (src/app/mailapplication.h/.cpp, QML_ELEMENT) is the
+  window's `application:`; Main.qml root is now `StatefulApp.StatefulWindow` (windowName "Main", so
+  the window size is saved by KConfig) with `application: MailApplication { controller: MailController }`.
+  CMake: `find_package(KF6KirigamiAddons)`, link `KirigamiAddonsStatefulApp` + `KF6::ConfigGui`
+  (XmlGui not needed). Ids: compose, reply, reply_all, forward, archive, delete, move, mark_read,
+  mark_unread, flag (checkable, follows messageFlagged), search, refresh, toggle_sidebar, settings,
+  shortcuts_help, next_message, previous_message, go_to_folder; plus the base's open_kcommand_bar,
+  file_quit, options_configure_keybinding, open_about_page, open_about_kde_page (the base has no
+  options_configure unless `configurationView` is set, so `settings` is ours). archive, delete,
+  mark_read, mark_unread, flag, refresh call MailController directly; compose/reply/reply_all/
+  forward emit `composeRequested(kind)` ("new"/"reply"/"replyAll"/"forward"), the rest emit
+  `moveRequested`, `searchRequested`, `toggleSidebarRequested`, `settingsRequested`,
+  `shortcutsHelpRequested`, `nextMessageRequested`, `previousMessageRequested`,
+  `goToFolderRequested` for QML (T212) to handle. Enabled state is refreshed on accountChanged /
+  currentMessageChanged. NO default shortcuts on any of the new actions yet (QML Shortcut blocks
+  still own R, Shift+R, Shift+F, U, E, Delete, Ctrl+Shift+F, Ctrl+, and Ctrl+B; T213 sets the rest).
+  QML gets an action with `application.action("archive")` (a QAction; wrap with
+  `Kirigami.Action { fromQAction: … }`). Dev check: a PLASMAMAIL_DEMO=1 run logs `actions: …`
+  with all ids. Offscreen shots (dark/light) pixel-identical to the previous build; no new warnings.
 
 ### T212 — Views use the actions
 - status: todo

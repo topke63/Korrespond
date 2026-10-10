@@ -5,10 +5,17 @@ import QtQuick
 import org.kde.ki18n
 import org.kde.kirigami as Kirigami
 import org.kde.kirigamiaddons.settings as KirigamiSettings
+import org.kde.kirigamiaddons.statefulapp as StatefulApp
 import PlasmaMail
 
-Kirigami.ApplicationWindow {
+StatefulApp.StatefulWindow {
     id: mainWindow
+
+    windowName: "Main"
+    // The action collection (T211): ids and enabled state live in C++, see mailapplication.h.
+    application: MailApplication {
+        controller: MailController
+    }
 
     // Shows account setup until an account exists, the mail view after.
     function showStartPage() {

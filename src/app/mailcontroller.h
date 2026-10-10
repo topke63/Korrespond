@@ -91,6 +91,10 @@ class MailController : public QObject
     Q_PROPERTY(bool canCompose READ canCompose NOTIFY currentMessageChanged)
     // A message is being sent (one at a time).
     Q_PROPERTY(bool sending READ sending NOTIFY sendingChanged)
+    // Messages waiting out the undo-send delay: [{id, subject, secondsLeft}], oldest first; and the
+    // newest of them (empty map when none).
+    Q_PROPERTY(QVariantList pendingSends READ pendingSends NOTIFY pendingSendChanged)
+    Q_PROPERTY(QVariantMap pendingSend READ pendingSend NOTIFY pendingSendChanged)
     // The most the attachments of one message may add up to, in bytes.
     Q_PROPERTY(qint64 maxAttachmentBytes READ maxAttachmentBytes CONSTANT)
     // The folders of the open message's account (for the Move to Folder menu).
@@ -325,7 +329,16 @@ public:
     // Sends a message through the SMTP server of message["account"]. Keys: account, to, cc, bcc,
     // subject, body (plain text), inReplyTo, references (a list). Answers with messageSent() or
     // sendFailed(text); the caller keeps the text until then. One message at a time.
+    // With the undo-send delay on (undoSendSeconds > 0) the message is queued first: sendQueued(id),
+    // then after the delay the hand-off runs; undoSend(id) cancels it. Delay 0 hands off at once.
     Q_INVOKABLE void sendMessage(const QVariantMap &message);
+    // Cancels the queued message id (-1 = the newest) and emits sendUndone(original map). False when
+    // there is no such pending message.
+    Q_INVOKABLE bool undoSend(int id = -1);
+    // Ends the delay of every pending message now (what quitting does), handing them to SMTP in turn.
+    void flushPendingSends();
+    [[nodiscard]] QVariantList pendingSends() const;
+    [[nodiscard]] QVariantMap pendingSend() const;
     // {path, name, size} of a local file or file URL, for the attachment chips; empty when it is not a file.
     Q_INVOKABLE QVariantMap fileInfo(const QUrl &url) const;
     Q_INVOKABLE void archiveMessage();
@@ -365,6 +378,9 @@ Q_SIGNALS:
     void sendingChanged();
     void messageSent();
     void sendFailed(const QString &message);
+    void pendingSendChanged();
+    void sendQueued(int id);
+    void sendUndone(const QVariantMap &message);
     void panelWidthsChanged();
     void sidebarCollapsedChanged();
     void collapsedAccountsChanged();
@@ -465,6 +481,21 @@ private:
     std::map<QString, QList<MessageSummary>> m_sharedParts;
     std::set<AccountSession *> m_sharedRequested;
     SmtpClient *m_smtp = nullptr; // the running send, if any
+    // Messages in the undo-send delay, and those whose delay ended while another send was running.
+    struct PendingSend {
+        int id = 0;
+        QVariantMap message;
+        QDateTime deadline;
+        QTimer *timer = nullptr;
+    };
+    void handOff(int id, const QVariantMap &message);
+    void startNextHandOff();
+    void finishPendingSend(int id);
+    [[nodiscard]] QString sendProblem(const QVariantMap &message) const;
+    QList<PendingSend> m_pendingSends;
+    QList<std::pair<int, QVariantMap>> m_handOffQueue;
+    QTimer *m_pendingTick = nullptr;
+    int m_nextSendId = 1;
     AppSettings m_app;
     // Dev only: PLASMAMAIL_SIDEBAR_COLLAPSED=0|1 shows that state for this run without saving it.
     std::optional<bool> m_collapsedOverride;

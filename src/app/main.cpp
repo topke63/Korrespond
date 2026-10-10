@@ -213,5 +213,29 @@ int main(int argc, char *argv[])
         notifier = std::make_unique<MailNotifier>(controller, qobject_cast<QWindow *>(engine.rootObjects().constFirst()));
     }
 
+    // Dev only, with PLASMAMAIL_DEMO=1 (never any SMTP): PLASMAMAIL_DEMO_SEND=1 queues a fictional
+    // message ~1 s after start, PLASMAMAIL_DEMO_UNDO=1 also undoes it ~2 s after start, and
+    // PLASMAMAIL_DEMO_QUIT_AFTER=<ms> quits then (to check that quitting flushes pending sends).
+    if (controller && qEnvironmentVariableIntValue("PLASMAMAIL_DEMO") == 1) {
+        if (qEnvironmentVariableIntValue("PLASMAMAIL_DEMO_SEND") == 1) {
+            QTimer::singleShot(1000, controller, [controller] {
+                controller->sendMessage({{u"account"_s, u"alice@example.com"_s},
+                                         {u"to"_s, u"bob@example.com"_s},
+                                         {u"subject"_s, u"Demo: lunch on Friday?"_s},
+                                         {u"body"_s, u"Hello Bob,\n\nlunch on Friday?\n\nAlice\n"_s}});
+            });
+            if (qEnvironmentVariableIntValue("PLASMAMAIL_DEMO_UNDO") == 1) {
+                QTimer::singleShot(2000, controller, [controller] {
+                    controller->undoSend(-1);
+                });
+            }
+        }
+        bool ok = false;
+        const int quitAfter = qEnvironmentVariableIntValue("PLASMAMAIL_DEMO_QUIT_AFTER", &ok);
+        if (ok && quitAfter > 0) {
+            QTimer::singleShot(quitAfter, &app, &QCoreApplication::quit);
+        }
+    }
+
     return app.exec();
 }

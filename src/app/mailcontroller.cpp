@@ -25,6 +25,7 @@
 #include <QCoreApplication>
 #include <QDesktopServices>
 #include <QDir>
+#include <QEventLoop>
 #include <QFileInfo>
 #include <QGuiApplication>
 #include <QMetaEnum>
@@ -79,6 +80,26 @@ MailController::MailController(QObject *parent)
     // owning it is torn down after the event loop, which may not be reached on every exit path).
     if (QCoreApplication *app = QCoreApplication::instance()) {
         connect(app, &QCoreApplication::aboutToQuit, this, [this] {
+            // Quitting during the undo-send delay sends at once: wait (nested loop, at most 60 s)
+            // until every SMTP hand-off finished or failed.
+            flushPendingSends();
+            if (m_smtp || !m_handOffQueue.isEmpty()) {
+                qInfo("quit: waiting for %lld message(s) to be sent", qlonglong(m_handOffQueue.size() + (m_smtp ? 1 : 0)));
+                QEventLoop wait;
+                QTimer poll;
+                QTimer limit;
+                limit.setSingleShot(true);
+                connect(&poll, &QTimer::timeout, &wait, [this, &wait] {
+                    if (!m_smtp && m_handOffQueue.isEmpty()) {
+                        wait.quit();
+                    }
+                });
+                connect(&limit, &QTimer::timeout, &wait, &QEventLoop::quit);
+                poll.start(100);
+                limit.start(std::chrono::seconds(60));
+                wait.exec();
+                qInfo(m_smtp || !m_handOffQueue.isEmpty() ? "quit: timed out, some messages were not sent" : "quit: all messages handed off");
+            }
             m_attachmentDir.reset();
             for (AccountSession *session : std::as_const(m_sessions)) {
                 session->stopWatcher();
@@ -515,7 +536,123 @@ QVariantMap MailController::fileInfo(const QUrl &url) const
     return {{u"path"_s, info.absoluteFilePath()}, {u"name"_s, info.fileName()}, {u"size"_s, info.size()}};
 }
 
+// The problems that can be seen without a server; empty when the message may be sent.
+QString MailController::sendProblem(const QVariantMap &message) const
+{
+    if (!sessionFor(message.value(u"account"_s).toString())) {
+        return i18n("Please choose an account to send from.");
+    }
+    for (const QString &key : {u"to"_s, u"cc"_s, u"bcc"_s}) {
+        if (!message.value(key).toString().trimmed().isEmpty()) {
+            return {};
+        }
+    }
+    return i18n("Please enter a recipient.");
+}
+
 void MailController::sendMessage(const QVariantMap &message)
+{
+    const int id = m_nextSendId++;
+    if (m_app.undoSendSeconds <= 0) {
+        handOff(id, message);
+        return;
+    }
+    if (const QString problem = sendProblem(message); !problem.isEmpty()) {
+        Q_EMIT sendFailed(problem);
+        return;
+    }
+    PendingSend entry;
+    entry.id = id;
+    entry.message = message;
+    entry.deadline = QDateTime::currentDateTimeUtc().addSecs(m_app.undoSendSeconds);
+    entry.timer = new QTimer(this);
+    entry.timer->setSingleShot(true);
+    entry.timer->start(std::chrono::seconds(m_app.undoSendSeconds));
+    connect(entry.timer, &QTimer::timeout, this, [this, id] {
+        finishPendingSend(id);
+    });
+    m_pendingSends.append(entry);
+    if (!m_pendingTick) {
+        m_pendingTick = new QTimer(this);
+        connect(m_pendingTick, &QTimer::timeout, this, &MailController::pendingSendChanged);
+    }
+    m_pendingTick->start(std::chrono::seconds(1));
+    qInfo("send queued id=%d in %ds", id, m_app.undoSendSeconds);
+    Q_EMIT sendQueued(id);
+    Q_EMIT pendingSendChanged();
+}
+
+bool MailController::undoSend(int id)
+{
+    for (qsizetype i = m_pendingSends.size() - 1; i >= 0; --i) {
+        if (id >= 0 && m_pendingSends.at(i).id != id) {
+            continue;
+        }
+        const PendingSend entry = m_pendingSends.takeAt(i);
+        entry.timer->deleteLater();
+        if (m_pendingSends.isEmpty()) {
+            m_pendingTick->stop();
+        }
+        qInfo("send undone id=%d", entry.id);
+        Q_EMIT pendingSendChanged();
+        Q_EMIT sendUndone(entry.message);
+        return true;
+    }
+    return false;
+}
+
+QVariantList MailController::pendingSends() const
+{
+    QVariantList list;
+    const QDateTime now = QDateTime::currentDateTimeUtc();
+    for (const PendingSend &entry : m_pendingSends) {
+        const int left = int(std::max<qint64>(0, (now.msecsTo(entry.deadline) + 999) / 1000));
+        list.append(QVariantMap{{u"id"_s, entry.id}, {u"subject"_s, entry.message.value(u"subject"_s)}, {u"secondsLeft"_s, left}});
+    }
+    return list;
+}
+
+QVariantMap MailController::pendingSend() const
+{
+    const QVariantList list = pendingSends();
+    return list.isEmpty() ? QVariantMap() : list.last().toMap();
+}
+
+// The delay of one message ended (or quitting cut it short): it joins the hand-off queue.
+void MailController::finishPendingSend(int id)
+{
+    for (qsizetype i = 0; i < m_pendingSends.size(); ++i) {
+        if (m_pendingSends.at(i).id == id) {
+            const PendingSend entry = m_pendingSends.takeAt(i);
+            entry.timer->deleteLater();
+            if (m_pendingSends.isEmpty()) {
+                m_pendingTick->stop();
+            }
+            Q_EMIT pendingSendChanged();
+            m_handOffQueue.append({entry.id, entry.message});
+            startNextHandOff();
+            return;
+        }
+    }
+}
+
+void MailController::flushPendingSends()
+{
+    while (!m_pendingSends.isEmpty()) {
+        finishPendingSend(m_pendingSends.first().id);
+    }
+}
+
+// SMTP takes one message at a time: the next queued one starts when the running one is done.
+void MailController::startNextHandOff()
+{
+    while (!m_smtp && !m_handOffQueue.isEmpty()) {
+        const auto [id, message] = m_handOffQueue.takeFirst();
+        handOff(id, message);
+    }
+}
+
+void MailController::handOff(int id, const QVariantMap &message)
 {
     if (m_smtp) {
         Q_EMIT sendFailed(i18n("Another message is still being sent."));
@@ -527,8 +664,8 @@ void MailController::sendMessage(const QVariantMap &message)
         return;
     }
     // The login the account is using for IMAP: the password, or the current access token.
-    const QString secret = session->client()->secret();
-    if (secret.isEmpty()) {
+    const QString secret = m_demo ? QString() : session->client()->secret();
+    if (!m_demo && secret.isEmpty()) {
         Q_EMIT sendFailed(i18n("%1 is not connected yet. Please try again in a moment.", session->account().email));
         return;
     }
@@ -560,6 +697,14 @@ void MailController::sendMessage(const QVariantMap &message)
         return;
     }
 
+    qInfo("send handed off id=%d", id);
+    if (m_demo) {
+        // Never SMTP or the network in a demo run: behaves like a success.
+        qInfo("demo: would send %s", qPrintable(outgoing.subject));
+        setLastAction(i18n("Message sent"));
+        Q_EMIT messageSent();
+        return;
+    }
     m_smtp = new SmtpClient(this);
     connect(m_smtp, &SmtpClient::sent, this, [this, email = account.email, provider = account.provider](const QByteArray &data) {
         std::exchange(m_smtp, nullptr)->deleteLater();
@@ -567,12 +712,15 @@ void MailController::sendMessage(const QVariantMap &message)
         saveSentCopy(email, provider, data);
         setLastAction(i18n("Message sent"));
         Q_EMIT messageSent();
+        startNextHandOff();
     });
-    connect(m_smtp, &SmtpClient::failed, this, [this](const QString &error) {
+    connect(m_smtp, &SmtpClient::failed, this, [this, id](const QString &error) {
         std::exchange(m_smtp, nullptr)->deleteLater();
         Q_EMIT sendingChanged();
         setLastAction(i18n("Sending failed"));
+        qWarning("send failed id=%d: %s", id, qPrintable(error));
         Q_EMIT sendFailed(error);
+        startNextHandOff();
     });
     Q_EMIT sendingChanged();
     m_smtp->send(account, secret, outgoing);

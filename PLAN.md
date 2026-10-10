@@ -4603,7 +4603,7 @@ first, then stop.
 - verification (2026-10-10): build clean, ctest 19/19 pass; added an early clamp in `snapUndoSend` so INT_MIN/INT_MAX cannot overflow, with tests.
 
 ### T207 — Controller: delayed hand-off and undo
-- status: todo
+- status: done
 - depends on: T206
 - parallel-safe with: none
 - files: src/app/mailcontroller.h, src/app/mailcontroller.cpp
@@ -4617,6 +4617,22 @@ first, then stop.
   fictional message at start) logs queued → sent after the delay; with `PLASMAMAIL_DEMO_UNDO=1` it
   logs undone and no send.
 - notes: keep `sending` true only during the real SMTP hand-off.
+  API for T208: `sendMessage(map)` queues when `undoSendSeconds > 0` (account and recipient are
+  checked first: `sendFailed` at once), signal `sendQueued(int id)`; `pendingSends` (list of
+  {id, subject, secondsLeft}, oldest first) and `pendingSend` (newest, empty map when none), both
+  with `pendingSendChanged` (also fired every 1 s while pending); `Q_INVOKABLE bool undoSend(int id = -1)`
+  (-1 = newest) emits `sendUndone(QVariantMap original)`; the original map is exactly what was
+  passed to sendMessage (incl. attachments). After the delay: existing send path, `messageSent` /
+  `sendFailed` as before; hand-offs run one at a time (queued behind a running SMTP send, so no
+  "Another message is still being sent" for delayed ones). `sending` true only during real SMTP.
+  Delay 0: as before. Quit: `aboutToQuit` handler calls `flushPendingSends()` and runs a nested
+  event loop until all hand-offs finished/failed (max 60 s, logged), so every quit path
+  (window close, tray Quit, QCoreApplication::quit) is covered. Demo: hand-off logs
+  "demo: would send <subject>" and emits messageSent. Dev hooks (PLASMAMAIL_DEMO=1 only):
+  `PLASMAMAIL_DEMO_SEND=1` (queue at 1 s), `PLASMAMAIL_DEMO_UNDO=1` (undo at 2 s),
+  `PLASMAMAIL_DEMO_QUIT_AFTER=<ms>`. Logs (qInfo): "send queued id=N in Ns", "send undone id=N",
+  "send handed off id=N". Verified offscreen: queued -> handed off after 10 s; undo: no send;
+  UndoSendSeconds=0: immediate; quit at 3 s: flushed and handed off before exit.
 
 ### T208 — UI: "Sending… Undo" and reopening the message
 - status: todo

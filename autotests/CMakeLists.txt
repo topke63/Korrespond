@@ -45,6 +45,13 @@ ecm_add_test(
     LINK_LIBRARIES plasmamail_models Qt6::Test
 )
 
+# Test for the open conversation's message model
+ecm_add_test(
+    conversationmodeltest.cpp
+    TEST_NAME conversationmodeltest
+    LINK_LIBRARIES plasmamail_models Qt6::Test
+)
+
 # Test for message rendering
 ecm_add_test(
     messagerenderertest.cpp

@@ -17,6 +17,7 @@
 #include <QDateTime>
 #include <QObject>
 #include <QQmlEngine>
+#include <QSet>
 #include <QTemporaryDir>
 #include <QTimer>
 #include <QUrl>
@@ -36,6 +37,7 @@ class Message;
 class AccountListModel;
 class AccountSession;
 class FolderModel;
+class ConversationModel;
 class MessageListModel;
 class MessageStore;
 class SecretStore;
@@ -137,6 +139,10 @@ class MailController : public QObject
     Q_PROPERTY(int undoSendSeconds READ undoSendSeconds WRITE setUndoSendSeconds NOTIFY appSettingsChanged)
     // One list row per conversation instead of per message (T221).
     Q_PROPERTY(bool conversationView READ conversationView WRITE setConversationView NOTIFY appSettingsChanged)
+    // The open message belongs to a conversation of more than one message that the reading pane
+    // stacks (T223): conversationModel holds its messages, oldest first.
+    Q_PROPERTY(bool conversationOpen READ conversationOpen NOTIFY conversationChanged)
+    Q_PROPERTY(QAbstractListModel *conversationModel READ conversationModel CONSTANT)
     // Widths of the folder sidebar and the message list column (logical pixels), and their limits.
     Q_PROPERTY(int sidebarWidth READ sidebarWidth NOTIFY panelWidthsChanged)
     Q_PROPERTY(int listWidth READ listWidth NOTIFY panelWidthsChanged)
@@ -228,6 +234,14 @@ public:
     void setUndoSendSeconds(int seconds);
     [[nodiscard]] bool conversationView() const;
     void setConversationView(bool on);
+    [[nodiscard]] bool conversationOpen() const;
+    [[nodiscard]] QAbstractListModel *conversationModel() const;
+    // Opens or closes one message of the stacked conversation (loads its body when it opens).
+    Q_INVOKABLE void setConversationItemExpanded(int row, bool expanded);
+    // "Load images" for one message of the conversation.
+    Q_INVOKABLE void loadConversationImages(int row);
+    // Makes one message of the conversation the current one (the toolbar's Reply and the like act on it).
+    Q_INVOKABLE void selectConversationMessage(int row);
     [[nodiscard]] int sidebarWidth() const;
     [[nodiscard]] int listWidth() const;
     [[nodiscard]] bool sidebarCollapsed() const;
@@ -389,6 +403,7 @@ Q_SIGNALS:
     void searchActiveChanged();
     void unreadCountChanged();
     void appSettingsChanged();
+    void conversationChanged();
     void activityChanged();
     void sendingChanged();
     void messageSent(int id);
@@ -471,6 +486,13 @@ private:
     void onHeadersFetched(AccountSession *session, const QString &folder, ImapClient::HeaderFilter filter, const QList<MessageSummary> &messages);
     void onMessageFetched(AccountSession *session, const QString &folder, qint64 uid, const std::shared_ptr<KMime::Message> &message);
     void showMessage(AccountSession *session, const QString &folder, qint64 uid, const std::shared_ptr<KMime::Message> &message);
+    // Marks a shown message read (list, counts, server, store) when it is unread in the open folder.
+    void markShown(AccountSession *session, const QString &folder, qint64 uid);
+    // Fills the stacked conversation from the list's conversation of (account, uid), or empties it.
+    void openConversationFor(AccountSession *session, qint64 uid);
+    // Loads the body of one conversation message (store, demo data or server).
+    void requestConversationBody(AccountSession *session, int row);
+    void fillConversationItem(AccountSession *session, const QString &folder, int row, const std::shared_ptr<KMime::Message> &message);
     // The stored messages for a folder or shared-view path, filtered like the server's list.
     [[nodiscard]] QList<MessageSummary> storedMessages(const AccountSession *session, const QString &path) const;
     [[nodiscard]] bool storageActive() const; // storage on and the open account's store open
@@ -544,6 +566,9 @@ private:
     FolderModel *m_noFolders; // shown when there is no session
     SecretStore *m_secrets;
     MessageListModel *m_messageModel;
+    ConversationModel *m_conversationModel;
+    bool m_conversationOpen = false;
+    QSet<qint64> m_conversationRequested; // uids whose body was asked for (this conversation)
     QString m_currentAccount; // email of the open folder's account; empty for a shared view
     QString m_currentFolder; // an IMAP folder path or a shared-view path
     qint64 m_currentUid = 0; // 0 when no message is open

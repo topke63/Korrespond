@@ -49,6 +49,9 @@ public:
     // The messages of the conversation that row `row` shows, newest first; the one message of the
     // row in the flat view, empty for a row that doesn't exist.
     [[nodiscard]] QList<MessageSummary> conversationAt(int row) const;
+    // The conversation that holds this message, newest first (just the message in the flat view);
+    // empty when the message is not in the list.
+    [[nodiscard]] QList<MessageSummary> conversationOf(const QString &account, qint64 uid) const;
 
     // "Alice Example <alice@example.org>" → "Alice"; an address alone → its local part; "Doe, John"
     // → "John". `own` (the account's address) → empty; the caller shows "me".

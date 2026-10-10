@@ -6,6 +6,7 @@
 #include "accountlistmodel.h"
 #include "accountsession.h"
 #include "appsettings.h"
+#include "conversationmodel.h"
 #include "foldermodel.h"
 #include "folderutils.h"
 #include "idlepolicy.h"
@@ -69,6 +70,7 @@ MailController::MailController(QObject *parent)
     , m_noFolders(new FolderModel(this))
     , m_secrets(new SecretStore(QString::fromLatin1(AccountSecrets::service), this))
     , m_messageModel(new MessageListModel(this))
+    , m_conversationModel(new ConversationModel(this))
 {
     connect(m_secrets, &SecretStore::passwordRead, this, &MailController::onSecretRead);
     m_googleConfigured = GoogleOAuthSettings::load().isConfigured();
@@ -447,6 +449,12 @@ void MailController::setMessageColours(const QColor &text, const QColor &backgro
     if (m_openMessage) {
         m_messageHtml = renderBody(*m_openMessage, m_remoteImagesLoaded);
         Q_EMIT currentMessageChanged();
+    }
+    for (int row = 0; row < m_conversationModel->rowCount(); ++row) {
+        if (const auto message = m_conversationModel->parsed(row)) {
+            const bool images = m_conversationModel->data(m_conversationModel->index(row), ConversationModel::ImagesLoadedRole).toBool();
+            m_conversationModel->setHtml(row, renderBody(*message, images), images);
+        }
     }
 }
 
@@ -1297,6 +1305,14 @@ MessageSummary *MailController::demoEntry(const QString &account, const QString 
     return it == messages.end() ? nullptr : &*it;
 }
 
+// A plain message built from a demo list entry (demo mode has no server and no store).
+static QByteArray demoRawMessage(const MessageSummary &entry, const QString &account)
+{
+    return "From: " + entry.from.toUtf8() + "\r\nTo: " + account.toUtf8() + "\r\nSubject: " + entry.subject.toUtf8()
+        + "\r\nDate: " + entry.date.toString(Qt::RFC2822Date).toUtf8() + "\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n"
+        + entry.preview.toUtf8() + "\r\n";
+}
+
 void MailController::loadDemo()
 {
     const auto folder = [](const QString &path, const QString &role = {}) {
@@ -1814,6 +1830,7 @@ void MailController::openMessage(const QString &account, qint64 uid)
     m_messageFlagged = listed.flagged;
     m_messageUnread = listed.unread;
     Q_EMIT currentMessageChanged(); // the flag shows while the message is still loading
+    openConversationFor(session, uid);
     if (session->storageActive()) {
         if (const QByteArray raw = session->store()->rawMessage(m_messageFolder, uid); !raw.isEmpty()) {
             // Parsed like KIMAP does with fetched messages.
@@ -1827,9 +1844,7 @@ void MailController::openMessage(const QString &account, qint64 uid)
     if (m_demo) {
         // Rendered from the demo data: a plain message built from the list entry, no fetch.
         if (const MessageSummary *entry = demoEntry(m_messageAccount, m_messageFolder, uid)) {
-            const QByteArray raw = "From: " + entry->from.toUtf8() + "\r\nTo: " + m_messageAccount.toUtf8() + "\r\nSubject: " + entry->subject.toUtf8()
-                + "\r\nDate: " + entry->date.toString(Qt::RFC2822Date).toUtf8() + "\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n"
-                + entry->preview.toUtf8() + "\r\n";
+            const QByteArray raw = demoRawMessage(*entry, m_messageAccount);
             auto message = std::make_shared<KMime::Message>();
             message->setContent(KMime::CRLFtoLF(raw));
             message->parse();
@@ -1875,6 +1890,7 @@ void MailController::setFlagged(const QString &account, qint64 uid, bool flagged
         return;
     }
     m_messageModel->setFlagged(session->account().email, uid, flagged);
+    m_conversationModel->setFlagged(session->account().email, uid, flagged);
     if (isOpenMessage && m_messageFlagged != flagged) {
         m_messageFlagged = flagged;
         Q_EMIT currentMessageChanged();
@@ -1904,6 +1920,7 @@ void MailController::setUnread(const QString &account, qint64 uid, bool unread)
         adjustUnread(session, folder, unread ? 1 : -1);
     }
     m_messageModel->setUnread(session->account().email, uid, unread);
+    m_conversationModel->setUnread(session->account().email, uid, unread);
     if (session->storageActive() && session->store()->contains(folder, uid)) {
         session->store()->setUnread(folder, uid, unread);
     }
@@ -2241,10 +2258,20 @@ void MailController::onMessageMoved(AccountSession *session, const QString &from
 void MailController::onMessageFetched(AccountSession *session, const QString &folder, qint64 uid, const std::shared_ptr<KMime::Message> &message)
 {
     endRequest();
-    if (!isKnown(session) || uid != m_currentUid || folder != m_messageFolder || session->account().email != m_messageAccount || !message) {
-        return; // another message was opened while this one was loading
+    if (!isKnown(session) || folder != m_messageFolder || !message) {
+        return;
     }
-    showMessage(session, folder, uid, message);
+    const QString email = session->account().email;
+    if (uid == m_currentUid && email == m_messageAccount) {
+        showMessage(session, folder, uid, message);
+        return;
+    }
+    // Another message of the stacked conversation (else: another message was opened while this
+    // one was loading).
+    const int row = m_conversationOpen ? m_conversationModel->indexOf(email, uid) : -1;
+    if (row >= 0 && !m_conversationModel->isLoaded(row)) {
+        fillConversationItem(session, folder, row, message);
+    }
 }
 
 void MailController::showMessage(AccountSession *session, const QString &folder, qint64 uid, const std::shared_ptr<KMime::Message> &message)
@@ -2263,25 +2290,159 @@ void MailController::showMessage(AccountSession *session, const QString &folder,
     m_messageAttachments = attachmentNames(msg);
     Q_EMIT currentMessageChanged();
 
+    const int row = m_conversationModel->indexOf(session->account().email, uid);
+    if (row >= 0) {
+        m_conversationModel->setBody(row, message, m_messageHtml, m_messageHasRemoteImages, m_messageAttachments);
+    }
+    markShown(session, folder, uid);
+}
+
+void MailController::markShown(AccountSession *session, const QString &folder, qint64 uid)
+{
     const QString email = session->account().email;
-    if (folder == imapFolderFor(session, m_currentFolder) && m_messageModel->message(email, uid).unread) {
-        if (m_demo) {
-            if (MessageSummary *entry = demoEntry(email, folder, uid)) {
-                entry->unread = false;
-            }
-        } else {
-            session->client()->markSeen(folder, uid);
+    if (folder != imapFolderFor(session, m_currentFolder) || !m_messageModel->message(email, uid).unread) {
+        return;
+    }
+    if (m_demo) {
+        if (MessageSummary *entry = demoEntry(email, folder, uid)) {
+            entry->unread = false;
         }
-        adjustUnread(session, folder, -1);
-        m_messageModel->setUnread(email, uid, false);
-        if (m_messageUnread) {
-            m_messageUnread = false;
-            Q_EMIT currentMessageChanged();
-        }
-        if (session->storageActive() && session->store()->contains(folder, uid)) {
-            session->store()->setUnread(folder, uid, false);
+    } else {
+        session->client()->markSeen(folder, uid);
+    }
+    adjustUnread(session, folder, -1);
+    m_messageModel->setUnread(email, uid, false);
+    m_conversationModel->setUnread(email, uid, false);
+    if (uid == m_currentUid && email == m_messageAccount && m_messageUnread) {
+        m_messageUnread = false;
+        Q_EMIT currentMessageChanged();
+    }
+    if (session->storageActive() && session->store()->contains(folder, uid)) {
+        session->store()->setUnread(folder, uid, false);
+    }
+}
+
+void MailController::openConversationFor(AccountSession *session, qint64 uid)
+{
+    m_conversationRequested.clear();
+    QList<MessageSummary> members;
+    if (m_app.conversationView) {
+        members = m_messageModel->conversationOf(session->account().email, uid);
+    }
+    const bool open = members.size() > 1;
+    if (!open) {
+        m_conversationModel->clear();
+    } else {
+        m_conversationModel->setMessages(members);
+    }
+    if (m_conversationOpen != open) {
+        m_conversationOpen = open;
+        Q_EMIT conversationChanged();
+    }
+    if (m_demo) {
+        qInfo("demo: conversation of uid %lld: %d message(s), open=%d", qint64(uid), int(members.size()), open ? 1 : 0);
+    }
+    if (!open) {
+        return;
+    }
+    // Bodies of the other open messages; the clicked one arrives through showMessage().
+    for (int row = 0; row < m_conversationModel->rowCount(); ++row) {
+        if (m_conversationModel->isExpanded(row) && m_conversationModel->summary(row).uid != uid) {
+            requestConversationBody(session, row);
         }
     }
+}
+
+void MailController::requestConversationBody(AccountSession *session, int row)
+{
+    const MessageSummary item = m_conversationModel->summary(row);
+    if (item.uid <= 0 || m_conversationModel->isLoaded(row) || m_conversationRequested.contains(item.uid)) {
+        return;
+    }
+    m_conversationRequested.insert(item.uid);
+    const QString folder = m_messageFolder;
+    if (session->storageActive()) {
+        if (const QByteArray raw = session->store()->rawMessage(folder, item.uid); !raw.isEmpty()) {
+            auto message = std::make_shared<KMime::Message>();
+            message->setContent(KMime::CRLFtoLF(raw));
+            message->parse();
+            fillConversationItem(session, folder, row, message);
+            return;
+        }
+    }
+    if (m_demo) {
+        if (const MessageSummary *entry = demoEntry(item.account, folder, item.uid)) {
+            auto message = std::make_shared<KMime::Message>();
+            message->setContent(KMime::CRLFtoLF(demoRawMessage(*entry, item.account)));
+            message->parse();
+            fillConversationItem(session, folder, row, message);
+        } else {
+            m_conversationModel->setFailed(row);
+        }
+        return;
+    }
+    beginRequest();
+    session->client()->fetchMessage(folder, item.uid);
+}
+
+void MailController::fillConversationItem(AccountSession *session, const QString &folder, int row, const std::shared_ptr<KMime::Message> &message)
+{
+    const MessageSummary item = m_conversationModel->summary(row);
+    if (m_demo) {
+        qInfo("demo: conversation body uid %lld shown, unread=%d", qint64(item.uid), item.unread ? 1 : 0);
+    }
+    m_conversationModel->setBody(row, message, renderBody(*message, false), ::messageHasRemoteImages(*message), attachmentNames(*message));
+    markShown(session, folder, item.uid);
+}
+
+bool MailController::conversationOpen() const
+{
+    return m_conversationOpen;
+}
+
+QAbstractListModel *MailController::conversationModel() const
+{
+    return m_conversationModel;
+}
+
+void MailController::setConversationItemExpanded(int row, bool expanded)
+{
+    m_conversationModel->setExpanded(row, expanded);
+    if (expanded) {
+        if (AccountSession *session = sessionFor(m_conversationModel->summary(row).account)) {
+            requestConversationBody(session, row);
+        }
+    }
+}
+
+void MailController::loadConversationImages(int row)
+{
+    if (const auto message = m_conversationModel->parsed(row)) {
+        m_conversationModel->setHtml(row, renderBody(*message, true), true);
+    }
+}
+
+void MailController::selectConversationMessage(int row)
+{
+    const MessageSummary item = m_conversationModel->summary(row);
+    const auto message = m_conversationModel->parsed(row);
+    if (item.uid <= 0 || !message || (item.uid == m_currentUid && item.account == m_messageAccount)) {
+        return;
+    }
+    // The message's own properties; the html stays (the stacked view shows each body itself).
+    m_currentUid = item.uid;
+    m_messageAccount = item.account;
+    m_openMessage = message;
+    m_attachmentCache.reset();
+    const KMime::Message &msg = *message;
+    m_messageSubject = msg.subject() ? msg.subject()->asUnicodeString() : QString();
+    m_messageFrom = msg.from() ? msg.from()->asUnicodeString() : QString();
+    m_messageTo = msg.to() ? msg.to()->displayString() : QString();
+    m_messageDate = ::messageDate(msg);
+    m_messageAttachments = attachmentNames(msg);
+    m_messageFlagged = item.flagged;
+    m_messageUnread = item.unread;
+    Q_EMIT currentMessageChanged();
 }
 
 void MailController::clearMessage(bool clearUid)
@@ -2303,6 +2464,12 @@ void MailController::clearMessage(bool clearUid)
     m_messageUnread = false;
     m_openMessage.reset();
     m_attachmentCache.reset();
+    m_conversationModel->clear();
+    m_conversationRequested.clear();
+    if (m_conversationOpen) {
+        m_conversationOpen = false;
+        Q_EMIT conversationChanged();
+    }
     Q_EMIT currentMessageChanged();
 }
 

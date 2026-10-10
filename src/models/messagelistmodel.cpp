@@ -299,6 +299,20 @@ QList<MessageSummary> MessageListModel::allMessages() const
     return m_messages;
 }
 
+QList<MessageSummary> MessageListModel::conversationOf(const QString &account, qint64 uid) const
+{
+    if (!m_conversationView) {
+        const MessageSummary found = message(account, uid);
+        return found.uid == uid ? QList<MessageSummary>{found} : QList<MessageSummary>();
+    }
+    for (qsizetype row = 0; row < m_rows.size(); ++row) {
+        if (m_rows.at(row).account == account && m_rows.at(row).uids.contains(uid)) {
+            return conversationAt(int(row));
+        }
+    }
+    return {};
+}
+
 QList<MessageSummary> MessageListModel::conversationAt(int row) const
 {
     if (!m_conversationView) {

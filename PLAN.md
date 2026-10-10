@@ -5405,7 +5405,7 @@ Approach: thread ids are computed in the engine and stored, the list model group
   the settings page shot, row context menu on a conversation, narrow window.
 
 ### T223 — Controller: open a conversation
-- status: todo
+- status: done
 - depends on: T221
 - parallel-safe with: T222
 - files: src/app/mailcontroller.h, src/app/mailcontroller.cpp
@@ -5413,7 +5413,18 @@ Approach: thread ids are computed in the engine and stored, the list model group
   unread, html on demand) exposed as a model; bodies rendered with the existing renderer, fetched
   lazily; marks read per open question 7.
 - verify: build; ctest; offscreen demo run logs.
-- notes:
+- notes: Done 2026-10-10 (no sub-agents). openMessage() asks the list model for the
+  conversation of the opened message (MessageListModel::conversationOf); with conversationView on
+  and more than one message, ConversationModel (new, src/models/conversationmodel.*, oldest first;
+  expanded = unread or newest) is filled and MailController.conversationOpen is true. Bodies: the
+  clicked message arrives through showMessage() as before and also fills its row; the other
+  expanded ones are loaded from the store, demo data or a fetch (onMessageFetched routes by uid);
+  each is rendered by renderBody() into its own html (own CSP document per message) and marked read
+  (markShown(), shared with showMessage). Invokables: setConversationItemExpanded(row, bool),
+  loadConversationImages(row), selectConversationMessage(row) (makes it the current message for
+  Reply etc.). Colour changes re-render every loaded item. Flag/unread changes reach the model.
+  Dev hooks PLASMAMAIL_DEMO_OPEN_UID / _ACCOUNT. Verified in a demo run (uid 2 → 3 messages, the
+  other open one loaded and logged). Not verified: the fetch path on a real server.
 
 ### T224 — Reading pane: stacked messages
 - status: todo

@@ -44,6 +44,7 @@ add_library(plasmamail_models STATIC
     models/accountlistmodel.cpp
     models/foldermodel.cpp
     models/messagelistmodel.cpp
+    models/conversationmodel.cpp
 )
 target_include_directories(plasmamail_models PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/models ${CMAKE_CURRENT_SOURCE_DIR}/app)
 target_link_libraries(plasmamail_models PUBLIC

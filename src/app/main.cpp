@@ -336,9 +336,14 @@ int main(int argc, char *argv[])
         // so the message actions (archive, mark read, ...) are enabled for PLASMAMAIL_DEMO_TRIGGER.
         const int openAt = qEnvironmentVariableIntValue("PLASMAMAIL_DEMO_OPEN");
         if (openAt > 0) {
-            QTimer::singleShot(openAt, controller, [controller] {
-                controller->selectFolder(u"alice@example.com"_s, u"INBOX"_s);
-                controller->openMessage(u"alice@example.com"_s, 1);
+            // PLASMAMAIL_DEMO_OPEN_UID=<uid> (default 1) and PLASMAMAIL_DEMO_OPEN_ACCOUNT (default alice@example.com)
+            // pick another demo message, e.g. one of a conversation.
+            const qint64 openUid = qMax(1, qEnvironmentVariableIntValue("PLASMAMAIL_DEMO_OPEN_UID"));
+            const QString openAccount =
+                qEnvironmentVariableIsSet("PLASMAMAIL_DEMO_OPEN_ACCOUNT") ? qEnvironmentVariable("PLASMAMAIL_DEMO_OPEN_ACCOUNT") : u"alice@example.com"_s;
+            QTimer::singleShot(openAt, controller, [controller, openUid, openAccount] {
+                controller->selectFolder(openAccount, u"INBOX"_s);
+                controller->openMessage(openAccount, openUid);
             });
         }
         // PLASMAMAIL_DEMO_MOVE=<folder path>@<ms> moves the open message there; PLASMAMAIL_DEMO_SELECT=

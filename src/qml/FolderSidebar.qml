@@ -18,28 +18,6 @@ Kirigami.OverlayDrawer {
     signal settingsRequested()
     signal aboutRequested()
 
-    // Mimestream-style colored icons by folder role; other folders stay neutral.
-    function roleColor(role: string): color {
-        switch (role) {
-        case "inbox": return "#3daee9";
-        case "drafts": return "#1abc9c";
-        case "sent": return "#27ae60";
-        case "archive": return "#9b59b6";
-        case "junk": return "#f39c12";
-        case "trash": return "#da4453";
-        default: return Kirigami.Theme.textColor;
-        }
-    }
-
-    function sharedColor(path: string): color {
-        switch (path) {
-        case "plasmamail:inboxes": return "#3daee9";
-        case "plasmamail:unread": return Kirigami.Theme.highlightColor;
-        case "plasmamail:flagged": return "#f67400";
-        default: return Kirigami.Theme.textColor;
-        }
-    }
-
     edge: Application.layoutDirection === Qt.RightToLeft ? Qt.RightEdge : Qt.LeftEdge
     // Docked: the width the user chose (live while dragging). Sliding over a narrow window: fixed.
     width: modal ? Kirigami.Units.gridUnit * 14 : Math.min(maxDockedWidth, resizer.dragging ? resizer.liveWidth : MailController.sidebarWidth)
@@ -150,7 +128,6 @@ Kirigami.OverlayDrawer {
                             path: modelData.path
                             text: modelData.name
                             icon.name: modelData.iconName
-                            icon.color: sidebar.sharedColor(modelData.path)
                         }
                     }
 
@@ -182,7 +159,7 @@ Kirigami.OverlayDrawer {
 
                                 background: Rectangle {
                                     radius: Kirigami.Units.cornerRadius
-                                    color: accountHeader.hovered ? Qt.alpha(Kirigami.Theme.textColor, 0.05) : "transparent"
+                                    color: accountHeader.hovered ? MimeTheme.hover : "transparent"
                                 }
                                 contentItem: RowLayout {
                                     spacing: Kirigami.Units.smallSpacing
@@ -191,7 +168,7 @@ Kirigami.OverlayDrawer {
                                         implicitWidth: Kirigami.Units.iconSizes.small
                                         implicitHeight: Kirigami.Units.iconSizes.small
                                         source: accountSection.expanded ? "arrow-down" : "arrow-right"
-                                        color: Kirigami.Theme.disabledTextColor
+                                        color: MimeTheme.sectionText
                                         isMask: true
                                     }
                                     SenderAvatar {
@@ -202,7 +179,9 @@ Kirigami.OverlayDrawer {
                                         Layout.fillWidth: true
                                         text: accountSection.email
                                         elide: Text.ElideRight
+                                        font.pointSize: Kirigami.Theme.smallFont.pointSize
                                         font.weight: Font.DemiBold
+                                        color: MimeTheme.sectionText
                                     }
                                 }
                             }
@@ -221,7 +200,6 @@ Kirigami.OverlayDrawer {
                                     leftPadding: Kirigami.Units.gridUnit * 1.5 + model.depth * Kirigami.Units.gridUnit
                                     text: model.name
                                     icon.name: model.iconName
-                                    icon.color: sidebar.roleColor(model.folderRole)
                                 }
                             }
                         }
@@ -260,17 +238,18 @@ Kirigami.OverlayDrawer {
         }
     }
 
-    // Small dim heading above a group of rows.
+    // Small dim heading above a group of rows (DemiBold, not uppercase, as in Mimestream).
     component SectionLabel: QQC2.Label {
         Layout.fillWidth: true
         Layout.leftMargin: Kirigami.Units.largeSpacing * 1.5
         Layout.topMargin: Kirigami.Units.largeSpacing
         Layout.bottomMargin: Kirigami.Units.smallSpacing
-        font: Kirigami.Theme.smallFont
-        color: Kirigami.Theme.disabledTextColor
+        font.pointSize: Kirigami.Theme.smallFont.pointSize
+        font.weight: Font.DemiBold
+        color: MimeTheme.sectionText
     }
 
-    // A clickable folder (or shared view) with a tinted icon and the soft selection.
+    // A clickable folder (or shared view) with a monochrome tinted icon and the soft selection.
     component FolderRow: QQC2.ItemDelegate {
         id: folderRow
 
@@ -282,10 +261,9 @@ Kirigami.OverlayDrawer {
         Layout.leftMargin: Kirigami.Units.smallSpacing
         Layout.rightMargin: Kirigami.Units.smallSpacing
         leftPadding: Kirigami.Units.largeSpacing
-        topPadding: Kirigami.Units.smallSpacing + 1
-        bottomPadding: Kirigami.Units.smallSpacing + 1
+        topPadding: Kirigami.Units.smallSpacing + 3
+        bottomPadding: Kirigami.Units.smallSpacing + 3
         highlighted: path === MailController.currentFolder && account === MailController.currentAccount
-        font.weight: highlighted ? Font.DemiBold : Font.Normal
         onClicked: {
             MailController.selectFolder(account, path);
             if (sidebar.modal) {
@@ -305,13 +283,14 @@ Kirigami.OverlayDrawer {
                 implicitWidth: Kirigami.Units.iconSizes.small
                 implicitHeight: Kirigami.Units.iconSizes.small
                 source: folderRow.icon.name
-                color: folderRow.icon.color
+                color: folderRow.highlighted ? MimeTheme.text : MimeTheme.iconTint
                 isMask: true
             }
             QQC2.Label {
                 Layout.fillWidth: true
                 text: folderRow.text
                 font: folderRow.font
+                color: MimeTheme.text
                 elide: Text.ElideRight
             }
         }

@@ -3870,7 +3870,7 @@ known light look and derive it (macOS light: sidebar `#e8e6ee`-ish, band `#f3f1f
 - notes: rows are three lines (sender MimeTheme.text bold/DemiBold with small secondaryText date, subject text, one-line elided previewText); hairline dividers removed; background rect radius 6 inset 12 px, listSelected / hover; flag icon tinted secondaryText (orange when flagged). The row has no attachment indicator (not in the model), so none added. Screenshots checked dark and light; clicks, menu and drag untouched.
 
 ### T179 — Sidebar like Mimestream
-- status: todo
+- status: done
 - depends on: T186
 - parallel-safe with: none
 - files: src/qml/FolderSidebar.qml
@@ -3879,7 +3879,7 @@ known light look and derive it (macOS light: sidebar `#e8e6ee`-ish, band `#f3f1f
   selection `sidebarSelected` inset ~`smallSpacing`; selected row text stays normal weight; folder
   icons tinted `iconTint` (selected: `text`); unread counts `secondaryText`.
 - verify: build; ctest; screenshot compared with the reference sidebar.
-- notes:
+- notes: done 2026-10-10. Section labels ("All Accounts") and account header rows (arrow, avatar kept, email) are small DemiBold `sectionText`; folder rows ~30 px (padding smallSpacing+3), text `MimeTheme.text` normal weight even when selected, icons monochrome (role/shared colours and roleColor/sharedColor removed) `iconTint`, `text` when selected; hover `MimeTheme.hover`. Selection was already `sidebarSelected` inset smallSpacing. The sidebar shows no unread counts yet (model has none), so none added. Screenshots: scratchpad t179-dark.png, t179-light.png.
 
 ### T180 — Reading pane header and label chip colours
 - status: todo

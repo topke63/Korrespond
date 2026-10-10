@@ -37,7 +37,9 @@ add_subdirectory(src)
 add_subdirectory(tools)
 
 # The app icon (file name sc-apps-<name>.svg → hicolor/scalable/apps) and the launcher entry.
-ecm_install_icons(ICONS data/icons/sc-apps-plasma-mail.svg data/icons/sc-apps-plasma-mail-unread.svg DESTINATION ${KDE_INSTALL_ICONDIR} THEME hicolor)
+# PNG sizes next to the SVG: some lookups (the window manager's title bar, panels) skip scalable-only icons.
+file(GLOB PLASMA_MAIL_ICON_PNGS ${CMAKE_SOURCE_DIR}/data/icons/*-apps-plasma-mail*.png)
+ecm_install_icons(ICONS data/icons/sc-apps-plasma-mail.svg data/icons/sc-apps-plasma-mail-unread.svg ${PLASMA_MAIL_ICON_PNGS} DESTINATION ${KDE_INSTALL_ICONDIR} THEME hicolor)
 install(FILES data/plasma-mail.desktop DESTINATION ${KDE_INSTALL_APPDIR})
 install(FILES data/plasma-mail.notifyrc DESTINATION ${KDE_INSTALL_KNOTIFYRCDIR})
 

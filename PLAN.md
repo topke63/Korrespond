@@ -4648,9 +4648,27 @@ first, then stop.
   For T208. (c) Not verifiable headless: real SMTP hand-off at quit; close-to-tray with keepInTray (the demo
   disables the tray); a real sendFailed.
 
-### T208 — UI: "Sending… Undo" and reopening the message
+### T227 — Fix: the controller owns quitting
 - status: todo
 - depends on: T207
+- parallel-safe with: none
+- files: src/app/mailcontroller.h, src/app/mailcontroller.cpp, src/app/trayicon.cpp, src/app/main.cpp,
+  src/qml/Main.qml (quit action / window close)
+- inputs: T207 verification: a second quit request while the quit wait runs crashes (SIGSEGV in
+  QGuiApplicationPrivate::quit → WebEngine); the wait currently runs inside aboutToQuit with
+  processEvents polling.
+- output: `MailController::requestQuit()`: first call flushes pending sends, waits (normal event
+  loop, no nested loop / processEvents in aboutToQuit) until every hand-off finished or failed
+  (cap 60 s), then calls QCoreApplication::quit(); later calls while waiting are ignored. Tray
+  Quit, Ctrl+Q / the Quit action, and the last-window close when it should quit route through it
+  (close-to-tray unchanged). aboutToQuit keeps only a last-resort synchronous flush log.
+- verify: build; ctest; demo runs: PLASMAMAIL_DEMO_SEND=1 + PLASMAMAIL_DEMO_QUIT_AFTER=3000 → flush,
+  wait, exit 0; same with a second quit request 300 ms later (dev hook) → exit 0, no crash.
+- notes:
+
+### T208 — UI: "Sending… Undo" and reopening the message
+- status: todo
+- depends on: T207, T227
 - parallel-safe with: none
 - files: src/qml/StatusBar.qml, src/qml/Main.qml, src/qml/ComposeWindow.qml
 - inputs: T207 API; ComposeWindow's existing prefill (used by reply/forward).
@@ -4661,7 +4679,10 @@ first, then stop.
 - verify: build; ctest; offscreen demo shots (`PLASMAMAIL_DEMO_SEND=1`) of the status bar in
   BreezeDark and BreezeLight; undo path checked with `PLASMAMAIL_DEMO_UNDO=1` (compose window
   shot).
-- notes:
+- notes: from T207 verification: once the compose window closes on queue, a later SMTP failure must
+  reopen a compose window with that message's content and the error (today sendFailed reaches every
+  waiting composer and a closed composer loses its content); messageSent must only close the
+  composer it belongs to (use the queue id).
 
 ### T209 — Settings: undo-send choice
 - status: todo

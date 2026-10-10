@@ -962,6 +962,17 @@ void MailController::setConversationView(bool on)
     Q_EMIT appSettingsChanged();
 }
 
+void MailController::setOpenUnread(bool unread)
+{
+    if (m_currentUid <= 0) {
+        return;
+    }
+    const QList<qint64> uids = actionUids();
+    for (const qint64 uid : uids) {
+        setUnread(m_messageAccount, uid, unread);
+    }
+}
+
 bool MailController::pushEnabled() const
 {
     return m_app.pushEnabled;
@@ -1924,8 +1935,19 @@ void MailController::setUnread(const QString &account, qint64 uid, bool unread)
     if (session->storageActive() && session->store()->contains(folder, uid)) {
         session->store()->setUnread(folder, uid, unread);
     }
-    if (isOpenMessage && m_messageUnread != unread) {
-        m_messageUnread = unread;
+    // The toolbar's read/unread toggle follows the open message, or any message of its conversation.
+    bool shownUnread = m_messageUnread;
+    if (isOpenMessage) {
+        shownUnread = unread;
+    }
+    if (m_conversationOpen) {
+        shownUnread = false;
+        for (int row = 0; row < m_conversationModel->rowCount(); ++row) {
+            shownUnread = shownUnread || m_conversationModel->summary(row).unread;
+        }
+    }
+    if (m_messageUnread != shownUnread) {
+        m_messageUnread = shownUnread;
         Q_EMIT currentMessageChanged();
     }
     if (m_demo) {
@@ -2107,14 +2129,20 @@ void MailController::openNewMail(const QString &account, qint64 uid)
 void MailController::archiveMessage()
 {
     if (const AccountSession *session = sessionFor(m_messageAccount); session && canArchive()) {
-        moveOpenMessage(archiveTarget(session->folders()), i18n("Message archived"), i18n("Archiving failed"));
+        moveOpenMessage(archiveTarget(session->folders()),
+                        i18n("Message archived"),
+                        i18n("Archiving failed"),
+                        i18nc("%1 is a number > 1", "%1 messages archived", QStringLiteral("%1")));
     }
 }
 
 void MailController::deleteMessage()
 {
     if (const AccountSession *session = sessionFor(m_messageAccount); session && canDelete()) {
-        moveOpenMessage(folderForRole(session->folders(), u"trash"_s), i18n("Message deleted"), i18n("Deleting failed"));
+        moveOpenMessage(folderForRole(session->folders(), u"trash"_s),
+                        i18n("Message deleted"),
+                        i18n("Deleting failed"),
+                        i18nc("%1 is a number > 1", "%1 messages deleted", QStringLiteral("%1")));
     }
 }
 
@@ -2125,45 +2153,79 @@ void MailController::moveMessage(const QString &folderPath)
         return;
     }
     const QList<FolderInfo> folders = session->folders();
-    if (std::none_of(folders.cbegin(), folders.cend(), [&folderPath](const FolderInfo &folder) {
-            return folder.path == folderPath;
-        })) {
-        return; // not a folder of this account
-    }
     const auto target = std::find_if(folders.cbegin(), folders.cend(), [&folderPath](const FolderInfo &folder) {
         return folder.path == folderPath;
     });
-    moveOpenMessage(folderPath, i18n("Message moved to %1", target->name), i18n("Moving failed"));
+    if (target == folders.cend()) {
+        return; // not a folder of this account
+    }
+    moveOpenMessage(folderPath,
+                    i18n("Message moved to %1", target->name),
+                    i18n("Moving failed"),
+                    i18nc("%1 is a number > 1, %2 a folder name", "%1 messages moved to %2", QStringLiteral("%1"), target->name));
 }
 
-void MailController::moveOpenMessage(const QString &target, const QString &doneText, const QString &failedText)
+// The messages an action on the open message acts on: its whole conversation in the open folder
+// when conversations are on, else the message alone.
+QList<qint64> MailController::actionUids() const
+{
+    QList<qint64> uids;
+    if (m_app.conversationView) {
+        const QList<MessageSummary> members = m_messageModel->conversationOf(m_messageAccount, m_currentUid);
+        for (const MessageSummary &member : members) {
+            uids.append(member.uid);
+        }
+    }
+    if (uids.isEmpty() && m_currentUid > 0) {
+        uids.append(m_currentUid);
+    }
+    return uids;
+}
+
+void MailController::moveOpenMessage(const QString &target, const QString &doneText, const QString &failedText, const QString &manyText)
 {
     AccountSession *session = sessionFor(m_messageAccount);
     if (!session || m_currentUid <= 0 || target.isEmpty() || target == m_messageFolder) {
         return;
     }
-    const QString key = moveKey(m_messageAccount, m_messageFolder, m_currentUid);
-    if (!m_moving.insert(key).second) {
-        return; // already on its way
-    }
-    m_moveTexts[key] = {doneText, failedText};
-    beginRequest();
-    updateActivity();
-    if (m_demo) {
-        // The message changes folders in the demo data; the rest is the server's answer path.
-        auto &from = m_demoMessages[m_messageAccount][m_messageFolder];
-        const qint64 uid = m_currentUid;
-        const auto entry = std::find_if(from.begin(), from.end(), [uid](const MessageSummary &message) {
-            return message.uid == uid;
-        });
-        if (entry != from.end()) {
-            m_demoMessages[m_messageAccount][target].prepend(*entry);
-            from.erase(entry);
-        }
-        onMessageMoved(session, m_messageFolder, uid, target);
+    // Messages already on their way are not moved twice.
+    QList<qint64> uids = actionUids();
+    uids.removeIf([this](qint64 uid) {
+        return m_moving.contains(moveKey(m_messageAccount, m_messageFolder, uid));
+    });
+    if (uids.isEmpty()) {
         return;
     }
-    session->client()->moveMessage(m_messageFolder, m_currentUid, target);
+    const QString done = uids.size() > 1 ? manyText.arg(uids.size()) : doneText;
+    // Several messages: the open message is replaced once, when the last one is gone.
+    m_batchKeys.clear();
+    m_batchWasOpen = false;
+    if (uids.size() > 1) {
+        for (const qint64 uid : std::as_const(uids)) {
+            m_batchKeys.insert(moveKey(m_messageAccount, m_messageFolder, uid));
+        }
+    }
+    for (const qint64 uid : std::as_const(uids)) {
+        const QString key = moveKey(m_messageAccount, m_messageFolder, uid);
+        m_moving.insert(key);
+        m_moveTexts[key] = {done, failedText};
+        beginRequest();
+        updateActivity();
+        if (m_demo) {
+            // The message changes folders in the demo data; the rest is the server's answer path.
+            auto &from = m_demoMessages[m_messageAccount][m_messageFolder];
+            const auto entry = std::find_if(from.begin(), from.end(), [uid](const MessageSummary &message) {
+                return message.uid == uid;
+            });
+            if (entry != from.end()) {
+                m_demoMessages[m_messageAccount][target].prepend(*entry);
+                from.erase(entry);
+            }
+            onMessageMoved(session, m_messageFolder, uid, target);
+            continue;
+        }
+        session->client()->moveMessage(m_messageFolder, uid, target);
+    }
     Q_EMIT currentMessageChanged(); // canArchive / canDelete are false while it moves
 }
 
@@ -2188,6 +2250,8 @@ void MailController::dropMoves(AccountSession *session, bool failed)
             ++it;
         }
     }
+    m_batchKeys.clear();
+    m_batchWasOpen = false;
     if (any) {
         updateActivity();
         Q_EMIT currentMessageChanged(); // canArchive / canDelete come back
@@ -2198,6 +2262,7 @@ void MailController::onMoveFailed(AccountSession *session, const QString &from, 
 {
     Q_UNUSED(message) // the toast comes from errorOccurred()
     const QString key = moveKey(session->account().email, from, uid);
+    m_batchKeys.remove(key); // the batch's open message stays where it is
     if (m_moving.erase(key) == 0) {
         m_moveTexts.erase(key);
         return;
@@ -2238,8 +2303,18 @@ void MailController::onMessageMoved(AccountSession *session, const QString &from
     if (m_messageModel->message(email, uid).unread) {
         adjustUnread(session, from, -1); // an unread message leaving the inbox
     }
-    const bool wasOpen = uid == m_currentUid && email == m_messageAccount && from == m_messageFolder;
+    bool wasOpen = uid == m_currentUid && email == m_messageAccount && from == m_messageFolder;
     const int row = m_messageModel->removeMessage(email, uid);
+    m_conversationModel->removeMessage(email, uid);
+    if (m_batchKeys.remove(key)) {
+        // One of several messages (a conversation): the open one is replaced when the last is gone.
+        m_batchWasOpen = m_batchWasOpen || wasOpen;
+        if (!m_batchKeys.isEmpty()) {
+            return;
+        }
+        wasOpen = m_batchWasOpen;
+        m_batchWasOpen = false;
+    }
     if (!wasOpen) {
         return;
     }

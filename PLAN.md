@@ -5448,14 +5448,25 @@ Approach: thread ids are computed in the engine and stored, the list model group
   messages (memory), keyboard focus in the cards, narrow window.
 
 ### T225 — Conversation actions
-- status: todo
+- status: done
 - depends on: T223
 - parallel-safe with: T224
 - files: src/app/mailcontroller.cpp
 - output: archive/delete/move/mark read on a conversation act on all its messages in the current
   folder; flag per message; undo of these follows today's behaviour.
 - verify: build; ctest; demo run logs (no real server).
-- notes:
+- notes: Done 2026-10-10 (no sub-agents). With conversations on, archive/delete/move act on
+  every message of the open message's conversation in the open folder (actionUids() from the list
+  model's conversation); each message goes through the existing per-message move path (same keys,
+  failure handling, demo path); the toast says "N messages archived/deleted/moved to X". The open
+  message is replaced once, when the last of the batch is gone (m_batchKeys); a failed move leaves
+  it open. Mark read/unread (toolbar, key U, row menu, command bar) go through
+  MailController::setOpenUnread() and cover the conversation; the read/unread toggle shows
+  "unread" while any message of the open conversation is unread. Flag stays per message (the
+  toolbar flags the current one, a card's message is selected by its Reply buttons). Verified in
+  demo runs (isolated config): archive on uid 2 → "3 messages archived", next row opened
+  (t225-archive.png); mark_unread → all three unread (t225-unread.png). Not verified: the server
+  path for several moves in a row (many MOVE commands) and a failure in the middle of a batch.
 
 ### T226 — Check: conversations
 - status: todo

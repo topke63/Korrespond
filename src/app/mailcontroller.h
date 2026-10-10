@@ -242,6 +242,8 @@ public:
     Q_INVOKABLE void loadConversationImages(int row);
     // Makes one message of the conversation the current one (the toolbar's Reply and the like act on it).
     Q_INVOKABLE void selectConversationMessage(int row);
+    // Marks the open message, or with conversations on all messages of its conversation, read or unread.
+    Q_INVOKABLE void setOpenUnread(bool unread);
     [[nodiscard]] int sidebarWidth() const;
     [[nodiscard]] int listWidth() const;
     [[nodiscard]] bool sidebarCollapsed() const;
@@ -461,7 +463,10 @@ private:
     // Loads the inbox again if the open view shows it, so new mail appears in the list.
     void refreshInboxView(AccountSession *session, const QString &inbox);
     void adjustUnread(const AccountSession *session, const QString &folder, int delta);
-    void moveOpenMessage(const QString &target, const QString &doneText, const QString &failedText);
+    // manyText has %1 for the count of messages (a conversation moves as a whole).
+    void moveOpenMessage(const QString &target, const QString &doneText, const QString &failedText, const QString &manyText);
+    // The uids an action on the open message acts on: its conversation in the open folder, or itself.
+    [[nodiscard]] QList<qint64> actionUids() const;
     [[nodiscard]] static QString moveKey(const QString &account, const QString &folder, qint64 uid);
     void onSessionFolders(AccountSession *session);
     void beginRequest();
@@ -561,6 +566,8 @@ private:
     std::map<AccountSession *, QTimer *> m_pushDebounce; // single-shot, children of their session
     std::map<AccountSession *, std::chrono::steady_clock::time_point> m_lastCheck;
     std::set<QString> m_moving; // moveKey()s of messages the server is moving
+    QSet<QString> m_batchKeys; // the moves of one conversation still on their way
+    bool m_batchWasOpen = false; // the open message was one of the batch
     std::set<AccountSession *> m_awaitingFolders; // sessions with a folder-list request in flight (counted as busy)
     AccountListModel *m_accounts;
     FolderModel *m_noFolders; // shown when there is no session

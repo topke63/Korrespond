@@ -121,10 +121,10 @@ void MailApplication::setupActions()
         c->deleteMessage();
     });
     controllerAction(u"mark_read"_s, i18nc("@action", "Mark as Read"), u"mail-mark-read"_s, [](MailController *c) {
-        c->setUnread(c->currentMessageAccount(), c->currentUid(), false);
+        c->setOpenUnread(false);
     });
     controllerAction(u"mark_unread"_s, i18nc("@action", "Mark as Unread"), u"mail-mark-unread"_s, [](MailController *c) {
-        c->setUnread(c->currentMessageAccount(), c->currentUid(), true);
+        c->setOpenUnread(true);
     });
     controllerAction(u"flag"_s, i18nc("@action", "Flag"), u"mail-mark-important"_s, [](MailController *c) {
         c->setFlagged(c->currentMessageAccount(), c->currentUid(), !c->messageFlagged());

@@ -28,13 +28,30 @@ Kirigami.ScrollablePage {
     Kirigami.Theme.textColor: MimeTheme.text
     Kirigami.Theme.disabledTextColor: MimeTheme.secondaryText
     Kirigami.Theme.highlightColor: MimeTheme.accent
-    titleDelegate: Kirigami.Heading {
-        level: 2
-        font.weight: Font.Bold
-        text: page.title
-        elide: Text.ElideRight
-        Layout.fillWidth: true
-        leftPadding: Kirigami.Units.largeSpacing
+    titleDelegate: RowLayout {
+        spacing: 0
+
+        // Brings the docked sidebar back while it is collapsed.
+        QQC2.ToolButton {
+            visible: MailController.sidebarCollapsed && (page.QQC2.ApplicationWindow.window as Kirigami.ApplicationWindow).wideScreen
+            icon.name: "sidebar-expand-left"
+            icon.color: MimeTheme.toolbarIcon
+            display: QQC2.AbstractButton.IconOnly
+            text: KI18n.i18nc("@action:button", "Show Sidebar")
+            onClicked: MailController.sidebarCollapsed = false
+
+            QQC2.ToolTip.text: text + " (Ctrl+B)"
+            QQC2.ToolTip.visible: hovered
+            QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
+        }
+        Kirigami.Heading {
+            level: 2
+            font.weight: Font.Bold
+            text: page.title
+            elide: Text.ElideRight
+            Layout.fillWidth: true
+            leftPadding: Kirigami.Units.largeSpacing
+        }
     }
     // A fixed list column, like Geary's; the message column takes the rest.
     // The width the user chose (live while dragging the divider on the right edge); the message

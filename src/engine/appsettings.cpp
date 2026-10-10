@@ -39,6 +39,7 @@ AppSettings AppSettings::load()
     settings.pushEnabled = group.readEntry("PushEnabled", settings.pushEnabled);
     settings.sidebarWidth = clampSidebar(group.readEntry("SidebarWidth", settings.sidebarWidth));
     settings.listWidth = clampList(group.readEntry("ListWidth", settings.listWidth));
+    settings.sidebarCollapsed = group.readEntry("SidebarCollapsed", settings.sidebarCollapsed);
     return settings;
 }
 
@@ -50,5 +51,6 @@ void AppSettings::save() const
     group.writeEntry("PushEnabled", pushEnabled);
     group.writeEntry("SidebarWidth", clampSidebar(sidebarWidth));
     group.writeEntry("ListWidth", clampList(listWidth));
+    group.writeEntry("SidebarCollapsed", sidebarCollapsed);
     group.sync();
 }

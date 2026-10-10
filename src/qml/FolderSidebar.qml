@@ -75,6 +75,17 @@ Kirigami.OverlayDrawer {
                         elide: Text.ElideRight
                     }
                     QQC2.ToolButton {
+                        icon.name: "sidebar-collapse-left"
+                        icon.color: MimeTheme.toolbarIcon
+                        display: QQC2.AbstractButton.IconOnly
+                        text: KI18n.i18nc("@action:button", "Hide Sidebar")
+                        onClicked: sidebar.modal ? sidebar.close() : MailController.sidebarCollapsed = true
+
+                        QQC2.ToolTip.text: text + " (Ctrl+B)"
+                        QQC2.ToolTip.visible: hovered
+                        QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
+                    }
+                    QQC2.ToolButton {
                         icon.name: "application-menu"
                         display: QQC2.AbstractButton.IconOnly
                         text: KI18n.i18nc("@action:button", "Main Menu")

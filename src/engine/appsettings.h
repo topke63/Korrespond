@@ -24,6 +24,8 @@ struct AppSettings {
     // The widths the user dragged the panels to.
     int sidebarWidth = defaultSidebarWidth;
     int listWidth = defaultListWidth;
+    // The folder sidebar is hidden on wide windows (a narrow window's sliding sidebar is not kept).
+    bool sidebarCollapsed = false;
 
     // Missing or out-of-range values fall back to the defaults / the nearest allowed value.
     static AppSettings load();

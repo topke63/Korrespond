@@ -4026,7 +4026,7 @@ Queued after the Mimestream palette tasks (T175–T186); same file (FolderSideba
      count and notifications? Proposal: yes — hiding is display-only. T190/T191 build the proposal.
 
 ### T187 — Collapse the whole sidebar
-- status: todo
+- status: done
 - depends on: T179
 - parallel-safe with: none
 - files: src/engine/appsettings.h, src/engine/appsettings.cpp, autotests/appsettingstest.cpp,
@@ -4039,7 +4039,13 @@ Queued after the Mimestream palette tasks (T175–T186); same file (FolderSideba
   restored at start. Narrow windows keep the modal drawer behaviour.
 - verify: build; ctest (new AppSettings test); screenshots collapsed/expanded in both schemes;
   restart keeps the state.
-- notes:
+- notes: `AppSettings::sidebarCollapsed` ("SidebarCollapsed"), `MailController.sidebarCollapsed`
+  (read/write property, saves at once). Icons sidebar-collapse-left / sidebar-expand-left in
+  MimeTheme.toolbarIcon; Ctrl+B in Main.qml (no conflict) via `sidebar.toggle()`: wide flips the
+  persisted flag, narrow opens/closes the drawer without persisting. The show button is in
+  MessageListPage's titleDelegate, only while wide and collapsed. Dev env
+  PLASMAMAIL_SIDEBAR_COLLAPSED=0|1 overrides for one run without saving. Screenshots: scratchpad
+  t187-{expanded,collapsed}-{dark,light}.png. ctest 19/19.
 
 ### T188 — Account trees: persisted collapse, Collapse all / Expand all
 - status: todo

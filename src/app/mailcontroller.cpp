@@ -86,6 +86,9 @@ MailController::MailController(QObject *parent)
         });
     }
     m_app = AppSettings::load();
+    if (qEnvironmentVariableIsSet("PLASMAMAIL_SIDEBAR_COLLAPSED")) {
+        m_collapsedOverride = qEnvironmentVariableIntValue("PLASMAMAIL_SIDEBAR_COLLAPSED") == 1;
+    }
     m_accounts->setPushEnabled(m_app.pushEnabled);
     // Ticks often; checkForNewMail() decides per account whether its interval has passed.
     m_checkTimer->start(std::chrono::seconds(30));
@@ -675,6 +678,22 @@ int MailController::sidebarWidth() const
 int MailController::listWidth() const
 {
     return m_app.listWidth;
+}
+
+bool MailController::sidebarCollapsed() const
+{
+    return m_collapsedOverride.value_or(m_app.sidebarCollapsed);
+}
+
+void MailController::setSidebarCollapsed(bool collapsed)
+{
+    if (collapsed == sidebarCollapsed()) {
+        return;
+    }
+    m_collapsedOverride.reset();
+    m_app.sidebarCollapsed = collapsed;
+    m_app.save();
+    Q_EMIT sidebarCollapsedChanged();
 }
 
 int MailController::sidebarMinWidth() const

@@ -43,6 +43,7 @@ private Q_SLOTS:
         QVERIFY(settings.pushEnabled);
         QCOMPARE(settings.sidebarWidth, 252);
         QCOMPARE(settings.listWidth, 360);
+        QVERIFY(!settings.sidebarCollapsed);
     }
 
     void testRoundTrip()
@@ -53,6 +54,7 @@ private Q_SLOTS:
         settings.pushEnabled = false;
         settings.sidebarWidth = 300;
         settings.listWidth = 600;
+        settings.sidebarCollapsed = true;
         settings.save();
         QCOMPARE(AppSettings::load(), settings);
     }

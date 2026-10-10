@@ -46,12 +46,28 @@ Kirigami.ApplicationWindow {
 
         // Docked beside the pages on wide windows, slides over them on narrow ones.
         function updateOpen() {
-            drawerOpen = !modal && MailController.hasAccount;
+            drawerOpen = !modal && MailController.hasAccount && !MailController.sidebarCollapsed;
+        }
+        // Wide: hides or shows the docked column (remembered). Narrow: opens or closes the drawer.
+        function toggle() {
+            if (modal) {
+                drawerOpen = !drawerOpen;
+            } else {
+                MailController.sidebarCollapsed = !MailController.sidebarCollapsed;
+            }
         }
 
         enabled: MailController.hasAccount
         modal: !mainWindow.wideScreen
         onModalChanged: updateOpen()
+
+        Connections {
+            target: MailController
+
+            function onSidebarCollapsedChanged() {
+                sidebar.updateOpen();
+            }
+        }
         onEnabledChanged: updateOpen()
         Component.onCompleted: updateOpen()
         onSettingsRequested: {
@@ -128,6 +144,12 @@ Kirigami.ApplicationWindow {
         sequence: "Ctrl+,"
         enabled: MailController.hasAccount
         onActivated: settings.open()
+    }
+
+    Shortcut {
+        sequence: "Ctrl+B"
+        enabled: MailController.hasAccount
+        onActivated: sidebar.toggle()
     }
 
     Component {

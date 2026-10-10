@@ -132,6 +132,8 @@ class MailController : public QObject
     // Widths of the folder sidebar and the message list column (logical pixels), and their limits.
     Q_PROPERTY(int sidebarWidth READ sidebarWidth NOTIFY panelWidthsChanged)
     Q_PROPERTY(int listWidth READ listWidth NOTIFY panelWidthsChanged)
+    // Whether the docked folder sidebar is hidden (remembered between runs).
+    Q_PROPERTY(bool sidebarCollapsed READ sidebarCollapsed WRITE setSidebarCollapsed NOTIFY sidebarCollapsedChanged)
     Q_PROPERTY(int sidebarMinWidth READ sidebarMinWidth CONSTANT)
     Q_PROPERTY(int sidebarMaxWidth READ sidebarMaxWidth CONSTANT)
     Q_PROPERTY(int sidebarDefaultWidth READ sidebarDefaultWidth CONSTANT)
@@ -211,6 +213,8 @@ public:
     [[nodiscard]] bool pushEnabled() const;
     [[nodiscard]] int sidebarWidth() const;
     [[nodiscard]] int listWidth() const;
+    [[nodiscard]] bool sidebarCollapsed() const;
+    void setSidebarCollapsed(bool collapsed);
     [[nodiscard]] int sidebarMinWidth() const;
     [[nodiscard]] int sidebarMaxWidth() const;
     [[nodiscard]] int sidebarDefaultWidth() const;
@@ -346,6 +350,7 @@ Q_SIGNALS:
     void messageSent();
     void sendFailed(const QString &message);
     void panelWidthsChanged();
+    void sidebarCollapsedChanged();
     void showMessageRequested();
     // New mail found by a background check. With count == 1, sender ("Name <address>") and
     // subject describe the message; uid is the newest new message of the account's inbox.
@@ -439,6 +444,8 @@ private:
     std::set<AccountSession *> m_sharedRequested;
     SmtpClient *m_smtp = nullptr; // the running send, if any
     AppSettings m_app;
+    // Dev only: PLASMAMAIL_SIDEBAR_COLLAPSED=0|1 shows that state for this run without saving it.
+    std::optional<bool> m_collapsedOverride;
     QString m_activityText;
     QString m_lastAction;
     std::map<QString, QPair<QString, QString>> m_moveTexts; // moveKey() -> status texts for success, failure

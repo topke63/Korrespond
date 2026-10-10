@@ -5112,14 +5112,21 @@ MessagePage.qml.
   filtered row to updateShortcut.
 
 ### T216 — Check: command bar and shortcuts
-- status: todo
+- status: done
 - depends on: T214, T215
 - parallel-safe with: none
 - files: none
 - output: every action reachable from the bar; shortcuts match the help dialog; no shortcut fires in
   text fields; a changed shortcut survives a restart (isolated config).
 - verify: offscreen demo runs + review.
-- notes:
+- notes: Done 2026-10-10 (no sub-agents, offscreen demo, isolated XDG).
+  Bar: Ctrl+K lists the enabled actions plus Go to / Move to entries (T214 shots). Help: "?" lists the
+  current keys (T215 shots); every key in it is an action's own shortcut, so help and keys cannot
+  differ. Text fields: single keys inert (T213 tester, search field and bar open). Changed key:
+  [Shortcuts] reply=F9 in an isolated plasma-mailrc: F9 triggers reply, R no longer does, the help
+  dialog shows F9 (t216-help.png). Not verified: writing a changed key through the editor UI (library
+  save(); needs a real key press in the dialog), real keyboards/layouts (? needs Shift on most),
+  the bar with a real Gmail account (many labels = many entries), Enter on a folder entry.
 
 ## c. Conversations (largest item)
 

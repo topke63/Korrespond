@@ -3798,7 +3798,8 @@ Sampled colours (dark):
 | Label chips (bg, text white) | Inquiries `#b4d1f8` (dark text), Travel `#b69dfe`, Home `#1ba26b` | |
 | Label tag icons | Awaiting `#f78671`, Delegated `#ffbd66`, Follow Up `#f8d075`, Home `#2ecb94`, Inquiries `#a9c6e6`, Travel `#bba3fd`, Website `#bebbc1` | |
 
-Light mode has no reference; derive it (macOS light: sidebar `#e8e6ee`-ish, band `#f3f1f6`, list
+Light mode (user addition 2026-10-10: light must match too) has no reference; use Mimestream's
+known light look and derive it (macOS light: sidebar `#e8e6ee`-ish, band `#f3f1f6`, list
 `#ffffff`, selection `#dcdcdc`, text `#1c1b22`, secondary `#6e6e73`, accent `#0a60d6`).
 
 - **Open questions**:
@@ -3892,16 +3893,69 @@ Light mode has no reference; derive it (macOS light: sidebar `#e8e6ee`-ish, band
 - verify: build; ctest; offscreen start without QML warnings.
 - notes:
 
-### T181 — Visual check against the reference
+### T181 — Visual check, dark mode
 - status: todo
-- depends on: T178, T179, T180
+- depends on: T178, T179, T180, T182, T183
 - parallel-safe with: none
 - files: none (fixes go back to the owning task as new tasks)
-- inputs: reference image; `PLASMAMAIL_SCREENSHOT=<png> build/bin/plasma-mail` (no `_OPEN`, see
-  open question 3).
+- inputs: reference image; `PLASMAMAIL_SCREENSHOT=<png> build/bin/plasma-mail` with
+  `PLASMAMAIL_COLOR_SCHEME=dark` and the plain sample (T183); no `_OPEN` (open question 3).
 - output: a screenshot of the app next to the reference with sampled colours of sidebar, band,
-  list, selection, text; differences listed.
+  list, selection, text; differences listed; contrast of text, secondary, link, selected row, hover, dividers, unread dot
+  measured as in T184.
 - verify: sampled colours within about 6 per channel of the table (dark mode).
+- notes:
+
+### T182 — Dev hook: force the colour scheme
+- status: todo
+- depends on: T176
+- parallel-safe with: T183
+- files: src/app/main.cpp, src/qml/MimeTheme.qml (only if it needs a property to follow)
+- inputs: user addition 2026-10-10: "both dark AND light mode must match Mimestream".
+- output: `PLASMAMAIL_COLOR_SCHEME=light|dark` (dev only, like the screenshot hooks) forces the
+  whole app into that scheme: `QGuiApplication::styleHints()->setColorScheme()` and, so that
+  Kirigami's non-Custom colour sets follow too, the matching KDE colour scheme (BreezeLight /
+  BreezeDark via KColorSchemeManager or the palette) if that is how the app gets its colours.
+  `MimeTheme.dark` follows. Unset: unchanged behaviour.
+- verify: build; ctest; two screenshots with the hook, light and dark, show the two palettes.
+- notes:
+
+### T183 — Dev hook: sample message in the reading pane
+- status: todo
+- depends on: T175
+- parallel-safe with: T182
+- files: src/app/main.cpp, src/app/mailcontroller.h, src/app/mailcontroller.cpp,
+  autotests/data/ (new sample files)
+- inputs: open question 3 (opening a real message may mark it read).
+- output: `PLASMAMAIL_SCREENSHOT_SAMPLE=<file.eml>` shows that local message in the reading pane
+  through the normal parse + render path (headers, body, links, attachments list) without touching
+  any account, server or flag. Two samples in the repo: a plain/simple HTML mail with links, and an
+  HTML newsletter with its own colours (white/coloured backgrounds, dark text, coloured links).
+- verify: build; ctest; screenshot with each sample in both schemes.
+- notes:
+
+### T184 — Visual check, light mode
+- status: todo
+- depends on: T178, T179, T180, T182, T183
+- parallel-safe with: none
+- files: none (fixes become new tasks)
+- inputs: Mimestream's known light look (white list and reading pane, light grey sidebar, blue
+  accent, dark text); `PLASMAMAIL_COLOR_SCHEME=light`.
+- output: screenshots (list, sidebar, reading pane with the plain sample); contrast of text,
+  secondary text, link, selected row, hover, dividers and unread dot measured (WCAG ratio).
+- verify: text ≥ 7:1, secondary and link ≥ 4.5:1, selected row and dividers visible (≥ 1.2:1
+  against the background), unread dot ≥ 3:1.
+- notes:
+
+### T185 — Visual check, HTML mail with its own colours (dark)
+- status: todo
+- depends on: T183, T182
+- parallel-safe with: T184
+- files: none (fixes become new tasks)
+- inputs: the newsletter sample; `PLASMAMAIL_COLOR_SCHEME=dark`.
+- output: screenshot; the mail's own colours stay readable (no dark-on-dark text, no unreadable
+  links, no white-on-white), both for the newsletter and the plain sample.
+- verify: sampled text/background pairs ≥ 4.5:1.
 - notes:
 
 ## Execution Loop

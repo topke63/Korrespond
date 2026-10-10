@@ -51,6 +51,25 @@ Kirigami.ApplicationWindow {
         }
     }
 
+    // Dev only (PLASMAMAIL_DEMO_COMPOSE_SEND in main.cpp): a fresh message window filled as the user
+    // would have typed it, with its attachments; objectName lets the hook find it again.
+    function openDemoComposer(data: var, name: string) {
+        const component = Qt.createComponent("PlasmaMail", "ComposeWindow");
+        const composer = component.createObject(mainWindow, {
+            objectName: name,
+            initialAccount: data.account ?? "",
+            initialTo: data.to ?? "",
+            initialSubject: data.subject ?? "",
+            initialBody: data.body ?? ""
+        });
+        if (composer) {
+            composer.addAttachments(data.attachments ?? []);
+            (composer as Window).show();
+        } else {
+            console.warn(component.errorString());
+        }
+    }
+
     // Dev only: the PLASMAMAIL_SCREENSHOT_SETTINGS hook in main.cpp opens a settings module.
     function openSettingsModule(moduleId: string) {
         settings.open(moduleId);

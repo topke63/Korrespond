@@ -91,6 +91,8 @@ install(TARGETS plasma-mail ${KDE_INSTALL_TARGETS_DEFAULT_ARGS})
 target_include_directories(plasma-mail PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
 target_link_libraries(plasma-mail PRIVATE
     plasmamail_models
+    # Dev hook only (PLASMAMAIL_DEMO_KEY_UNDO): the QPA key injection that runs the shortcut map.
+    Qt6::GuiPrivate
     Qt6::Qml
     Qt6::WebEngineQuick
     Qt6::Quick

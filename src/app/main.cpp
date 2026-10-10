@@ -17,18 +17,71 @@
 #include <QGuiApplication>
 #include <QIcon>
 #include <QQmlApplicationEngine>
+#include <QQuickItem>
 #include <QQuickStyle>
 #include <QQuickWindow>
 #include <QStyleHints>
 #include <QTimer>
+#include <QWindow>
 #include <QtWebEngineQuick>
 
 #include <QFile>
 #include <QFileInfo>
 #include <QTextStream>
 #include <memory>
+#include <qpa/qwindowsysteminterface.h>
 
 using namespace Qt::StringLiterals;
+
+// Dev only (PLASMAMAIL_DEMO=1): a comma-separated list of milliseconds, e.g. "500,1200".
+static QList<int> demoTimes(const char *name)
+{
+    QList<int> times;
+    const QStringList parts = qEnvironmentVariable(name).split(u',', Qt::SkipEmptyParts);
+    for (const QString &part : parts) {
+        if (const int ms = part.trimmed().toInt(); ms >= 0) {
+            times.append(ms);
+        }
+    }
+    return times;
+}
+
+// The main window (the first root object): the parent of the message windows the demo opens.
+static const QObject *demoRoot = nullptr;
+
+// Dev only: logs the visible windows and each open message window (a ComposeWindow has
+// initialSubject), so the demo checks can see what is on screen and what it holds. objects= counts
+// the message window objects still alive under the main window (a closed one must be gone).
+static void logDemoWindows(const char *when)
+{
+    int visible = 0;
+    for (const QWindow *window : QGuiApplication::topLevelWindows()) {
+        visible += window->isVisible() ? 1 : 0;
+    }
+    int objects = 0;
+    if (demoRoot) {
+        for (const QObject *child : demoRoot->children()) {
+            objects += child->property("initialSubject").isValid() ? 1 : 0;
+        }
+    }
+    qInfo("demo: %s, visible windows=%d, message window objects=%d", when, visible, objects);
+    for (const QWindow *window : QGuiApplication::topLevelWindows()) {
+        if (!window->property("initialSubject").isValid()) {
+            continue;
+        }
+        qInfo("demo: composer %s visible=%d active=%d subject=\"%s\" restored=%d waiting=%d tooLarge=%d error=\"%s\" attachments=%d initial=%d",
+              qPrintable(window->objectName()),
+              window->isVisible() ? 1 : 0,
+              window->isActive() ? 1 : 0,
+              qPrintable(window->property("initialSubject").toString()),
+              window->property("restored").toBool() ? 1 : 0,
+              window->property("waiting").toBool() ? 1 : 0,
+              window->property("attachmentsTooLarge").toBool() ? 1 : 0,
+              qPrintable(window->property("errorText").toString()),
+              int(window->property("attachments").toList().size()),
+              int(window->property("initialAttachments").toList().size()));
+    }
+}
 
 // Dev only: PLASMAMAIL_SCREENSHOT=<file.png> saves the app window in front (never the screen) after
 // PLASMAMAIL_SCREENSHOT_DELAY ms (default 6000) and quits. PLASMAMAIL_SCREENSHOT_OPEN=1 first
@@ -205,6 +258,7 @@ int main(int argc, char *argv[])
         },
         Qt::QueuedConnection);
     engine.loadFromModule("PlasmaMail", "Main");
+    demoRoot = engine.rootObjects().isEmpty() ? nullptr : engine.rootObjects().constFirst();
     scheduleScreenshot(engine);
 
     // The tray icon and notifications; not in the screenshot and demo runs (they must not put icons
@@ -270,6 +324,100 @@ int main(int argc, char *argv[])
                 if (auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().constLast())) {
                     window->close();
                 }
+            });
+        }
+
+        // PLASMAMAIL_DEMO_COMPOSE_SEND=<ms>[,<ms>...]: message k (1-based) opens at start in its own
+        // window (subject "Demo: message k", with the file PLASMAMAIL_DEMO_ATTACHMENT if set), and
+        // its send() runs at the k-th time: the same function the Send button calls. Logs the
+        // windows just before and after.
+        const QList<int> composeSendAt = demoTimes("PLASMAMAIL_DEMO_COMPOSE_SEND");
+        const QString demoAttachment = qEnvironmentVariable("PLASMAMAIL_DEMO_ATTACHMENT");
+        for (int i = 0; i < composeSendAt.size(); ++i) {
+            const int k = i + 1;
+            const QString name = u"demoComposer%1"_s.arg(k);
+            QTimer::singleShot(300, &engine, [&engine, k, name, demoAttachment] {
+                QObject *root = engine.rootObjects().isEmpty() ? nullptr : engine.rootObjects().constFirst();
+                if (!root) {
+                    return;
+                }
+                QVariantList attachments;
+                if (!demoAttachment.isEmpty()) {
+                    attachments.append(demoAttachment);
+                }
+                const QVariantMap data{{u"account"_s, u"alice@example.com"_s},
+                                       {u"to"_s, u"bob@example.com"_s},
+                                       {u"subject"_s, u"Demo: message %1"_s.arg(k)},
+                                       {u"body"_s, u"Hello Bob,\n\nmessage %1 of the demo.\n\nAlice\n"_s.arg(k)},
+                                       {u"attachments"_s, attachments}};
+                QMetaObject::invokeMethod(root, "openDemoComposer", Q_ARG(QVariant, QVariant::fromValue(data)), Q_ARG(QString, name));
+            });
+            QTimer::singleShot(composeSendAt.at(i), &engine, [&engine, name, k] {
+                QObject *root = engine.rootObjects().isEmpty() ? nullptr : engine.rootObjects().constFirst();
+                QObject *composer = root ? root->findChild<QObject *>(name) : nullptr;
+                qInfo("demo: send requested for message %d (composer %s)", k, composer ? "open" : "missing");
+                logDemoWindows("before send");
+                if (composer) {
+                    QMetaObject::invokeMethod(composer, "send");
+                }
+                QTimer::singleShot(300, &engine, [] {
+                    logDemoWindows("after send");
+                });
+            });
+        }
+        // PLASMAMAIL_DEMO_DUMP=<ms>[,<ms>...]: logs the open windows at those times.
+        for (const int ms : demoTimes("PLASMAMAIL_DEMO_DUMP")) {
+            QTimer::singleShot(ms, &engine, [] {
+                logDemoWindows("dump");
+            });
+        }
+        // PLASMAMAIL_DEMO_CLOSE_MESSAGES=<ms>[,<ms>...]: a window-manager close of every open message
+        // window at those times (the closing rules of ComposeWindow apply; logs what is still open).
+        for (const int ms : demoTimes("PLASMAMAIL_DEMO_CLOSE_MESSAGES")) {
+            QTimer::singleShot(ms, &engine, [&engine] {
+                for (QWindow *window : QGuiApplication::topLevelWindows()) {
+                    if (window->property("initialSubject").isValid()) {
+                        qInfo("demo: close requested for composer %s", qPrintable(window->property("initialSubject").toString()));
+                        window->close();
+                    }
+                }
+                QTimer::singleShot(300, &engine, [] {
+                    logDemoWindows("after close");
+                });
+            });
+        }
+        // PLASMAMAIL_DEMO_KEY_UNDO=<ms>: a Ctrl+Z key press for the main window at <ms>, through the platform
+        // key path (QWindowSystemInterface), so the window shortcuts see it as a real key press.
+        // PLASMAMAIL_DEMO_KEY_UNDO_SEARCH=1 focuses the message list's search field first. Logs the focus
+        // item and the pending sends before and after. The window is activated first (the key path
+        // needs the focus window; the activation is processed a little later, hence the second timer).
+        const int keyUndo = qEnvironmentVariableIntValue("PLASMAMAIL_DEMO_KEY_UNDO");
+        if (keyUndo > 0) {
+            const bool fromSearch = qEnvironmentVariableIntValue("PLASMAMAIL_DEMO_KEY_UNDO_SEARCH") == 1;
+            QTimer::singleShot(keyUndo, &engine, [&engine, controller, fromSearch] {
+                auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
+                if (!window) {
+                    return;
+                }
+                window->requestActivate();
+                if (fromSearch) {
+                    if (auto *field = window->findChild<QQuickItem *>(u"searchField"_s)) {
+                        field->forceActiveFocus();
+                    }
+                }
+                QTimer::singleShot(300, window, [window, controller] {
+                    const QQuickItem *focus = window->activeFocusItem();
+                    qInfo("demo: ctrl+z, active=%d focus item=%s, pending before=%lld",
+                          window->isActive() ? 1 : 0,
+                          focus ? focus->metaObject()->className() : "none",
+                          qlonglong(controller->property("pendingSends").toList().size()));
+                    QWindowSystemInterface::handleKeyEvent<QWindowSystemInterface::SynchronousDelivery>(window,
+                                                                                                        QEvent::KeyPress,
+                                                                                                        Qt::Key_Z,
+                                                                                                        Qt::ControlModifier,
+                                                                                                        QString(QChar(0x1a)));
+                    qInfo("demo: ctrl+z sent, pending after=%lld", qlonglong(controller->property("pendingSends").toList().size()));
+                });
             });
         }
     }

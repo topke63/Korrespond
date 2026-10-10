@@ -239,6 +239,8 @@ Kirigami.Page {
 
         Kirigami.SearchField {
             id: searchField
+            // Dev only: the PLASMAMAIL_DEMO_KEY_UNDO_SEARCH hook in main.cpp finds the field by name.
+            objectName: "searchField"
 
             Layout.preferredWidth: Kirigami.Units.gridUnit * 14
             Layout.rightMargin: Kirigami.Units.smallSpacing

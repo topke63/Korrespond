@@ -24,6 +24,8 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# Qt6::GuiPrivate for the demo key hook (PLASMAMAIL_DEMO_KEY_UNDO, QPA key injection).
+set(QT_FIND_PRIVATE_MODULES ON)
 find_package(Qt6 ${QT_MIN_VERSION} REQUIRED COMPONENTS Core Gui Widgets Network Sql Qml Quick QuickControls2 WebEngineQuick NetworkAuth Test)
 find_package(KF6 ${KF_MIN_VERSION} REQUIRED COMPONENTS Kirigami I18n CoreAddons Config ColorScheme Mime Notifications NotifyConfig StatusNotifierItem)
 find_package(KPim6IMAP REQUIRED)

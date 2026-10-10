@@ -5286,7 +5286,7 @@ no contacts API: its autocomplete (and Gmail's fallback) comes from addresses se
 - notes: Checked 2026-10-10 (no sub-agents), by tests and code review, not by one full demo run. Passing: contactsynctest (full, incremental with deletion, expired token, 403, 429 retry, stop during a run, rejected token), peopleclienttest, contactstoretest, addresshistorytest, appsettingstest (switch round trip); all 25 tests pass. Read-only: PeopleClient has one network call, QNetworkAccessManager::get(), in the whole tree. No network without the switch: the only 'new ContactSync' is in startContactSync(), which returns when contactsEnabled is false; every caller (session folders, new account, allowContacts, setContactsEnabled, syncContactsNow, clearContacts) goes through it; the sign-in asks for the contacts scopes only when the switch is on. Switching off also stops the running syncs and hides suggestions and names. NOT verified: a key-driven demo run of the compose field with the switch off (the demo keys did not reach the field in these runs, with the switch on as well, so the pictures prove nothing) and the Settings page buttons by click.
 
 ### T242 — Manual check with the user
-- status: todo
+- status: done
 - depends on: T241, the user's prerequisites above
 - files: none
 - output: the user restarts the installed app, re-authorizes Gmail, and checks: contacts appear in
@@ -5294,7 +5294,7 @@ no contacts API: its autocomplete (and Gmail's fallback) comes from addresses se
   Settings → Contacts shows the last sync time, "Clear contacts cache" empties and refills it.
   Read-only on the real account: no flag, folder or contact is changed.
 - verify: user report.
-- notes:
+- notes: Confirmed by the user 2026-10-10 on the installed release build: Gmail contacts sync works after enabling the People API (first status was 'The People API is not enabled for this app's Google project', which is the expected message for that state).
 
 ## c. Conversations (largest item)
 

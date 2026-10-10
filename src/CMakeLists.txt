@@ -5,6 +5,7 @@
 add_library(plasmamail_engine STATIC
     engine/account.cpp
     engine/appsettings.cpp
+    engine/contactstore.cpp
     engine/folderutils.cpp
     engine/threadbuilder.cpp
     engine/idlepolicy.cpp
@@ -16,6 +17,7 @@ add_library(plasmamail_engine STATIC
     engine/newmailtracker.cpp
     engine/oauthclient.cpp
     engine/oauthsettings.cpp
+    engine/peopleclient.cpp
     engine/outgoingmessage.cpp
     engine/retention.cpp
     engine/smtpclient.cpp

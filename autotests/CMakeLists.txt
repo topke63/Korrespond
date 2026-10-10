@@ -45,6 +45,20 @@ ecm_add_test(
     LINK_LIBRARIES plasmamail_models Qt6::Test
 )
 
+# Test for the contact cache
+ecm_add_test(
+    contactstoretest.cpp
+    TEST_NAME contactstoretest
+    LINK_LIBRARIES plasmamail_engine Qt6::Test
+)
+
+# Test for the Google People API client (fake HTTP server)
+ecm_add_test(
+    peopleclienttest.cpp
+    TEST_NAME peopleclienttest
+    LINK_LIBRARIES plasmamail_engine Qt6::Test Qt6::Network
+)
+
 # Test for the open conversation's message model
 ecm_add_test(
     conversationmodeltest.cpp

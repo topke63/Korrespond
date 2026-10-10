@@ -5160,7 +5160,7 @@ no contacts API: its autocomplete (and Gmail's fallback) comes from addresses se
 ## d. Google contacts
 
 ### T231 — People API client
-- status: todo
+- status: done
 - depends on: none
 - parallel-safe with: T232
 - files: new src/engine/peopleclient.{h,cpp}, tests
@@ -5170,10 +5170,10 @@ no contacts API: its autocomplete (and Gmail's fallback) comes from addresses se
   401 → `Unauthorized`, 403 with "insufficient"/"scope" → `MissingScope`, 400/410 with an expired
   sync token → `SyncTokenExpired`, 429/5xx/network → `Temporary`. Base URL overridable (tests).
 - verify: build; ctest with a QTcpServer fake: paging, deletions, each error class, empty answer.
-- notes:
+- notes: Done 2026-10-10 (no sub-agents). PeopleClient (src/engine/peopleclient.*): fetchPage(Connections|OtherContacts, syncToken, pageToken) with a bearer token; PeopleError adds ApiDisabled (403 SERVICE_DISABLED: the People API is not enabled in the project) and Other. Messages are ours, no body text. Fake HTTP server tests (peopleclienttest): parse incl. primary first, default photos dropped, deleted flag, request path/query/Authorization, each error class, no body text in the message, refused connection = Temporary.
 
 ### T232 — Contact store
-- status: todo
+- status: done
 - depends on: none
 - parallel-safe with: T231
 - files: new src/engine/contactstore.{h,cpp}, tests
@@ -5182,7 +5182,7 @@ no contacts API: its autocomplete (and Gmail's fallback) comes from addresses se
   delete by resource, delete by account/source, `suggest(prefix, limit)` (case-folded match on name
   words and address, ranked contacts > other > history, then last used), `nameFor(email)`.
 - verify: build; ctest: upsert/delete/suggest ranking/nameFor, an address in two sources, clear.
-- notes:
+- notes: Done 2026-10-10 (no sub-agents). ContactStore (src/engine/contactstore.*) in its own contacts.sqlite (not the message DB, so clearing it never touches mail): upsertPerson/removePerson, addHistory (newest name wins), suggest (prefix of a name word or the address; ranked source, newest, position of the address, name; one entry per address, a nameless better entry borrows a name), nameFor, per account/source sync tokens, clearSource/clearAccount/clearAll. 9 tests.
 
 ### T233 — Contacts scopes in the OAuth request
 - status: todo

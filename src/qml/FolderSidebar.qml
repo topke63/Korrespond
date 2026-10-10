@@ -61,12 +61,16 @@ Kirigami.OverlayDrawer {
     topPadding: 0
     bottomPadding: 0
 
-    Kirigami.Theme.colorSet: Kirigami.Theme.Custom
     Kirigami.Theme.inherit: false
     Kirigami.Theme.backgroundColor: MimeTheme.sidebarBackground
     Kirigami.Theme.textColor: MimeTheme.text
     Kirigami.Theme.disabledTextColor: MimeTheme.secondaryText
     Kirigami.Theme.highlightColor: MimeTheme.accent
+
+    // The drawer template's own background takes the theme's window colour.
+    background: Rectangle {
+        color: MimeTheme.sidebarBackground
+    }
 
     // The folder list, with the drag handle for the width on its right edge.
     contentItem: Item {
@@ -78,6 +82,9 @@ Kirigami.OverlayDrawer {
                 Layout.fillWidth: true
                 Layout.preferredHeight: applicationWindow().pageStack.globalToolBar.preferredHeight
 
+                background: Rectangle {
+                    color: MimeTheme.sidebarBackground
+                }
                 contentItem: RowLayout {
                     spacing: Kirigami.Units.smallSpacing
 

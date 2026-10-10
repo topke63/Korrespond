@@ -5,7 +5,6 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Controls as QQC2
-import QtQuick.Templates as T
 import QtQuick.Layouts
 import org.kde.ki18n
 import org.kde.kirigami as Kirigami
@@ -24,7 +23,6 @@ Kirigami.ScrollablePage {
     title: MailController.searchActive ? KI18n.i18nc("@title", "Search") : MailController.currentFolderName
     // Fixed accent for unread: the theme's highlight turns dull when the window is inactive.
     readonly property color unreadColor: MimeTheme.accent
-    Kirigami.Theme.colorSet: Kirigami.Theme.Custom
     Kirigami.Theme.inherit: false
     Kirigami.Theme.backgroundColor: MimeTheme.listBackground
     Kirigami.Theme.textColor: MimeTheme.text
@@ -82,7 +80,7 @@ Kirigami.ScrollablePage {
 
     // The title bar band: the page row's header gets the deep purple instead of the theme's header colour.
     function styleHeader() {
-        const header = (page.Kirigami.ColumnView.globalHeader as Loader)?.item as T.Control;
+        const header = (page.Kirigami.ColumnView.globalHeader as Loader)?.item as Kirigami.AbstractApplicationHeader;
         if (header) {
             header.background = headerBand.createObject(header);
         }

@@ -50,7 +50,6 @@ QQC2.Pane {
     leftPadding: Kirigami.Units.largeSpacing
     rightPadding: Kirigami.Units.largeSpacing
     implicitHeight: Kirigami.Units.gridUnit * 1.8
-    Kirigami.Theme.colorSet: Kirigami.Theme.Custom
     Kirigami.Theme.inherit: false
     Kirigami.Theme.backgroundColor: MimeTheme.sidebarBackground
     Kirigami.Theme.textColor: MimeTheme.text

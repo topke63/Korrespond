@@ -6,7 +6,6 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import QtCore
 import QtQuick.Controls as QQC2
-import QtQuick.Templates as T
 import QtQuick.Dialogs
 import QtQuick.Layouts
 import QtWebEngine
@@ -19,7 +18,6 @@ Kirigami.Page {
 
     readonly property string html: MailController.messageHtml
 
-    Kirigami.Theme.colorSet: Kirigami.Theme.Custom
     Kirigami.Theme.inherit: false
     Kirigami.Theme.backgroundColor: MimeTheme.readingBackground
     Kirigami.Theme.textColor: MimeTheme.text
@@ -279,7 +277,7 @@ Kirigami.Page {
 
     // The title bar band: the page row's header gets the deep purple instead of the theme's header colour.
     function styleHeader() {
-        const header = (page.Kirigami.ColumnView.globalHeader as Loader)?.item as T.Control;
+        const header = (page.Kirigami.ColumnView.globalHeader as Loader)?.item as Kirigami.AbstractApplicationHeader;
         if (header) {
             header.background = headerBand.createObject(header);
         }

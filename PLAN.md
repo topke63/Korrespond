@@ -3971,7 +3971,7 @@ known light look and derive it (macOS light: sidebar `#e8e6ee`-ish, band `#f3f1f
 - notes:
 
 ### T186 — Fix: sidebar and title band ignore MimeTheme
-- status: todo
+- status: done
 - depends on: T177, T182
 - parallel-safe with: none
 - files: src/qml/FolderSidebar.qml, src/qml/MessageListPage.qml, src/qml/MessagePage.qml,
@@ -3986,6 +3986,16 @@ known light look and derive it (macOS light: sidebar `#e8e6ee`-ish, band `#f3f1f
 - verify: build; ctest; screenshots with `PLASMAMAIL_COLOR_SCHEME=dark` and `=light`; sampled
   pixels: dark sidebar ≈ #4c4951, dark band ≈ #251e2c, light sidebar ≈ #e8e6ee, light band ≈ #f3f1f6.
 - notes:
+  Done 2026-10-10. Root causes (found with QT_FORCE_STDERR_LOGGING=1, since QML warnings otherwise
+  go to the journal): `Kirigami.Theme.Custom` is undefined in 6.30 ("Unable to assign [undefined]
+  to ColorSet"), so the colorSet lines are removed (the colour overrides with inherit false work
+  without it); and T177's `as T.Control` cast of the header loader item was null (the item is a
+  ToolBarPageHeader, an Item), now `as Kirigami.AbstractApplicationHeader`. The drawer template's
+  background does not follow the instance's Theme, so FolderSidebar has an explicit background
+  Rectangle (and a transparent-on-sidebar one for its "Mail" ToolBar). Sampled (dark): sidebar
+  #4c4951, band #251e2c incl. search side, status #4c4951, list/reading #1e1e1e; (light): sidebar
+  #e8e6ee, band #f3f1f6, status #e8e6ee, list/reading #ffffff. Header text keeps Breeze Header
+  text colours, readable in both. Screenshots: scratchpad t186-dark.png, t186-light.png.
 
 # Milestone 3j — Sidebar control (user request 2026-10-10: "a collapse option for the left panel;
 # I don't need to see the whole tree of each account, I'd like to choose")

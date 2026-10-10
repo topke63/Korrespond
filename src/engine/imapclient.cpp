@@ -191,6 +191,11 @@ bool ImapClient::isCurrent(quint64 generation) const
     return generation == m_generation && generation != m_failedGeneration;
 }
 
+QString ImapClient::connectionLostText()
+{
+    return u"Connection to the server was lost."_s;
+}
+
 void ImapClient::fail(quint64 generation, const QString &message)
 {
     if (!isCurrent(generation)) {
@@ -234,7 +239,7 @@ KIMAP::Session *ImapClient::session()
     const quint64 generation = ++m_generation;
 
     connect(m_session, &KIMAP::Session::connectionLost, this, [this, generation] {
-        fail(generation, u"Connection to the server was lost."_s);
+        fail(generation, connectionLostText());
     });
     connect(m_session, &KIMAP::Session::connectionFailed, this, [this, generation] {
         fail(generation, u"Could not connect to %1."_s.arg(m_account.imapHost));

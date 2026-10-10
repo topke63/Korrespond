@@ -2920,17 +2920,23 @@ void MailController::onSessionError(AccountSession *session, const QString &mess
     const auto queued = m_inflight.find(session);
     const bool hadJobs = queued != m_inflight.end() && !queued->second.empty();
     m_inflight.erase(session); // its queued answers will not come
-    // A server that closes an idle connection (Yahoo does, every few minutes) is not an error:
-    // nobody asked for anything, so connect again quietly. A second loss within a minute is shown.
-    if (!hadJobs && !m_refreshRetry.contains(session) && !m_checking.contains(session) && !m_awaitingFolders.contains(session) && session != m_pending
-        && !session->client()->hasSession()) {
+    // A server that closes an idle connection (Yahoo and Google do) is not an error: nobody asked
+    // for anything, so connect again quietly. That includes a background check that found the
+    // connection dead. A second loss within a minute only turns the chip red, with no toast.
+    if (!hadJobs && m_requests == 0 && message == ImapClient::connectionLostText() && !m_refreshRetry.contains(session) && !m_awaitingFolders.contains(session)
+        && session != m_pending && !session->client()->hasSession()) {
+        m_checking.erase(session);
+        m_checkQueued.erase(session);
+        updateActivity();
         QElapsedTimer &last = m_idleReconnect[session];
         if (!last.isValid() || last.hasExpired(60000)) {
             last.start();
             qInfo("Idle connection of %s was closed by the server; reconnecting", qPrintable(session->account().email));
             reconnect(session->account().email);
-            return;
+        } else {
+            qWarning("Connection of %s was lost again right after reconnecting: %s", qPrintable(session->account().email), qPrintable(message));
         }
+        return;
     }
     if (m_refreshRetry.erase(session) > 0 && session != m_pending && !session->client()->hasSession()) {
         qInfo("Connection of %s was lost during a refresh; reconnecting", qPrintable(session->account().email));

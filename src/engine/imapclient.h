@@ -60,6 +60,8 @@ class ImapClient : public QObject
 {
     Q_OBJECT
 public:
+    // The error text of a connection that was established and then closed (not a failed connect or login).
+    [[nodiscard]] static QString connectionLostText();
     explicit ImapClient(QObject *parent = nullptr);
     ~ImapClient() override;
 

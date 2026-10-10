@@ -3,7 +3,7 @@ SPDX-FileCopyrightText: 2026 topke <topke63@gmail.com>
 SPDX-License-Identifier: CC0-1.0
 -->
 
-# Plasma Mail
+# Korrespond
 
 A simple IMAP mail client for KDE Plasma, written in C++20 with Qt 6 and Kirigami.
 It is a personal project: it does not use Akonadi, and it talks IMAP/SMTP directly.
@@ -12,7 +12,7 @@ The app follows the Plasma colour scheme. Light and dark (demo data):
 
 | Light | Dark |
 |---|---|
-| ![Plasma Mail, light colour scheme](docs/screenshots/plasma-mail-light.png) | ![Plasma Mail, dark colour scheme](docs/screenshots/plasma-mail-dark.png) |
+| ![Korrespond, light colour scheme](docs/screenshots/korrespond-light.png) | ![Korrespond, dark colour scheme](docs/screenshots/korrespond-dark.png) |
 
 - **Accounts:** Yahoo (app password), Gmail (Google sign-in, OAuth2) and any other IMAP
   provider with a password. Several accounts at once. Outlook is not available yet.
@@ -64,8 +64,8 @@ Runtime: `qqc2-desktop-style`, Cyrus SASL, SQLite (Qt's `QSQLITE` driver), and t
 ## Build
 
 ```sh
-git clone https://github.com/topke63/Plasma-Mail.git
-cd Plasma-Mail
+git clone https://github.com/topke63/Plasma-Mail.git korrespond
+cd korrespond
 cmake --preset release            # or: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo
 cmake --build --preset release
 ```
@@ -82,7 +82,7 @@ ctest --preset release
 ### Run without installing
 
 ```sh
-./build-release/bin/plasma-mail
+./build-release/bin/korrespond
 ```
 
 ## Install
@@ -99,8 +99,8 @@ System-wide:
 sudo cmake --install build-release --prefix /usr
 ```
 
-This installs the `plasma-mail` binary, the application icon (normal and "unread" variants),
-the launcher entry (`org.topke.plasmamail` desktop file) and the notification definitions.
+This installs the `korrespond` binary, the application icon (normal and "unread" variants),
+the launcher entry (`io.github.topke63.korrespond.desktop`) and the notification definitions.
 Log out and in, or run `kbuildsycoca6`, if the launcher entry does not show up at once.
 
 To update: `git pull`, rebuild and install again.
@@ -108,7 +108,7 @@ To update: `git pull`, rebuild and install again.
 ## Build a package
 
 Install the build and runtime packages from [Requirements](#requirements) first.
-Packaging files live in `packaging/`; the AppStream file `data/org.topke.plasmamail.metainfo.xml`
+Packaging files live in `packaging/`; the AppStream file `data/io.github.topke63.korrespond.metainfo.xml`
 is installed by CMake into `share/metainfo`.
 
 ### Arch / CachyOS / Manjaro
@@ -119,8 +119,8 @@ makepkg -si          # build and install; use -s alone to only build
 ```
 
 `makepkg` clones the repository from GitHub, builds with `-DCMAKE_INSTALL_PREFIX=/usr` and
-produces `plasma-mail-git-<version>-x86_64.pkg.tar.zst` in the same folder. Install a built
-package later with `sudo pacman -U plasma-mail-git-*.pkg.tar.zst`.
+produces `korrespond-git-<version>-x86_64.pkg.tar.zst` in the same folder. Install a built
+package later with `sudo pacman -U korrespond-git-*.pkg.tar.zst`.
 
 To package your local, committed checkout instead of the GitHub one, change the `source=` line
 in the `PKGBUILD` to `source=("$pkgname::git+file://$(realpath ../..)")`. Uncommitted changes
@@ -152,33 +152,50 @@ DESTDIR="$PWD/pkgroot" cmake --install build     # the package builder's staging
 
 ### Fedora / openSUSE (`.rpm`)
 
-1. Write `plasma-mail.spec` using the `%cmake_kf6`, `%cmake_build` and `%cmake_install` macros
+1. Write `korrespond.spec` using the `%cmake_kf6`, `%cmake_build` and `%cmake_install` macros
    (Fedora) or `%cmake_kf6`, `%kf6_build`, `%kf6_install` (openSUSE).
 2. Use `BuildRequires: cmake(KPim6IMAP)` and so on, one line per CMake package in
    [Requirements](#requirements); both distributions resolve `cmake(...)` names.
-3. Build with `rpmbuild -ba plasma-mail.spec`, or in a clean chroot with `mock`.
+3. Build with `rpmbuild -ba korrespond.spec`, or in a clean chroot with `mock`.
 
 ### Flatpak
 
 Use the `org.kde.Platform` runtime for Qt and KDE Frameworks. Add `kimap`, `ksmtp`, `qtkeychain`
 and `libkgapi` as modules in the manifest, and the `io.qt.qtwebengine.BaseApp` base app for
-WebEngine. The desktop file is `plasma-mail.desktop` and the AppStream id is
-`org.topke.plasmamail`; the manifest's `app-id` must match the AppStream id.
+WebEngine. The desktop file is `io.github.topke63.korrespond.desktop` and the AppStream id is
+`io.github.topke63.korrespond`; the manifest's `app-id` must match the AppStream id.
 
 ### Check the package
 
 ```sh
-appstreamcli validate data/org.topke.plasmamail.metainfo.xml
-desktop-file-validate data/plasma-mail.desktop
+appstreamcli validate data/io.github.topke63.korrespond.metainfo.xml
+desktop-file-validate data/io.github.topke63.korrespond.desktop
 ```
 
 Note for every format: `kimap` and `ksmtp` must be from KDE Gear 26.08 or newer, and the
 `libkgapi` SASL plugin (`/usr/lib/sasl2/libkdexoauth2.so`) is a runtime dependency; without it
 Gmail sign-in succeeds but the IMAP login fails.
 
+## Upgrading from "Plasma Mail"
+
+Korrespond was called Plasma Mail until version 0.1. On the first start of Korrespond:
+
+- `~/.config/plasmamailrc` is copied to `~/.config/korrespondrc` (the old file stays), and
+  `~/.local/share/plasma-mail/` is moved to `~/.local/share/korrespond/`, so accounts, settings
+  and the local message cache carry over. Nothing is overwritten if the new names already exist.
+- Passwords and tokens in the keychain are found under the old service name `plasma-mail` and
+  copied to `korrespond` the first time each one is needed.
+- The environment variables `PLASMAMAIL_GOOGLE_CLIENT_ID` and `PLASMAMAIL_GOOGLE_CLIENT_SECRET`
+  still work; the other `PLASMAMAIL_*` developer variables are now `KORRESPOND_*`.
+
+An old installation is not removed by installing Korrespond. Delete these by hand:
+`~/.local/bin/plasma-mail`, `~/.local/share/applications/plasma-mail.desktop`,
+`~/.local/share/icons/hicolor/*/apps/org.topke.plasmamail*` and
+`~/.local/share/knotifications6/plasma-mail.notifyrc` (or the same files under `/usr`).
+
 ## Set up accounts
 
-Start Plasma Mail and use **Settings → Accounts → Add Account…** (on first start the setup
+Start Korrespond and use **Settings → Accounts → Add Account…** (on first start the setup
 page opens by itself). Pick the provider in the list:
 
 | Provider | Login | What you need |
@@ -201,10 +218,10 @@ ship one). You only create it once.
 
 1. Open <https://console.cloud.google.com> and create a project.
 2. **Google Auth Platform → Branding / OAuth consent screen:** user type *External*, app name
-   "Plasma Mail". Add your Gmail address as a **test user**, or publish the app "In production"
+   "Korrespond". Add your Gmail address as a **test user**, or publish the app "In production"
    (unverified is fine for personal use).
 3. **Clients → Create client:** type **Desktop app**. Copy the client ID and secret.
-4. Give them to Plasma Mail, either in `~/.config/plasmamailrc`:
+4. Give them to Korrespond, either in `~/.config/korrespondrc`:
 
    ```ini
    [GoogleOAuth]
@@ -212,8 +229,8 @@ ship one). You only create it once.
    ClientSecret=…
    ```
 
-   or as environment variables `PLASMAMAIL_GOOGLE_CLIENT_ID` and
-   `PLASMAMAIL_GOOGLE_CLIENT_SECRET`. Restart Plasma Mail afterwards.
+   or as environment variables `KORRESPOND_GOOGLE_CLIENT_ID` and
+   `KORRESPOND_GOOGLE_CLIENT_SECRET`. Restart Korrespond afterwards.
 5. In the app choose **Gmail** and sign in in your browser. The redirect goes to a temporary
    `http://127.0.0.1:<port>/` that only the app listens on.
 
@@ -221,7 +238,7 @@ The client is never committed anywhere; keep the secret out of version control.
 
 Notes:
 
-- Plasma Mail never sees your Google password; it stores only the OAuth refresh token (in the
+- Korrespond never sees your Google password; it stores only the OAuth refresh token (in the
   keychain) and requests new access tokens itself.
 - The scope is `https://mail.google.com/` (IMAP and SMTP), so the same sign-in covers reading
   and sending.
@@ -273,7 +290,7 @@ Typical servers:
 | GMX | `imap.gmx.net` 993 | `mail.gmx.net` 587 |
 | mailbox.org | `imap.mailbox.org` 993 | `smtp.mailbox.org` 465 |
 
-(Check the provider's own help page; these are the usual values, not something Plasma Mail
+(Check the provider's own help page; these are the usual values, not something Korrespond
 verifies.)
 
 **Not supported:** Outlook.com / Microsoft 365 (they have switched off password login and
@@ -283,14 +300,14 @@ need OAuth2, which is planned), and providers that only offer OAuth2.
 
 | Path | Contents |
 |---|---|
-| `~/.config/plasmamailrc` | accounts (no passwords), storage settings, `[GoogleOAuth]` client |
+| `~/.config/korrespondrc` | accounts (no passwords), storage settings, `[GoogleOAuth]` client |
 | system keychain | app passwords and OAuth tokens |
-| `~/.local/share/plasma-mail/` | local message cache |
+| `~/.local/share/korrespond/` | local message cache |
 
 ## Troubleshooting
 
 - **"No Google OAuth client is set up"** — step 4 of the Gmail setup is missing; restart the app
-  after editing `plasmamailrc`.
+  after editing `korrespondrc`.
 - **Gmail signs in but cannot log in to IMAP** — the `libkdexoauth2` SASL plugin is missing
   (`/usr/lib/sasl2/libkdexoauth2.so`; package `libkgapi` on Arch).
 - **Yahoo says the password is wrong** — you need an app password, not your web login password.
@@ -307,5 +324,5 @@ need OAuth2, which is planned), and providers that only offer OAuth2.
 
 ## License
 
-Plasma Mail is free software, licensed under the GNU General Public License, version 3
+Korrespond is free software, licensed under the GNU General Public License, version 3
 or (at your option) any later version: GPL-3.0-or-later. See [`LICENSES/GPL-3.0-or-later.txt`](LICENSES/GPL-3.0-or-later.txt).

@@ -3,23 +3,23 @@
 
 // imap-probe: manual check of the engine's IMAP code against a real account.
 //
-//   PLASMAMAIL_EMAIL=you@yahoo.com build/bin/imap-probe
+//   KORRESPOND_EMAIL=you@yahoo.com build/bin/imap-probe
 //
-// Environment: PLASMAMAIL_PROVIDER (yahoo, gmail, outlook; default yahoo), PLASMAMAIL_EMAIL,
-// PLASMAMAIL_PASSWORD (optional: if unset, the password is asked for on the terminal without
+// Environment: KORRESPOND_PROVIDER (yahoo, gmail, outlook; default yahoo), KORRESPOND_EMAIL,
+// KORRESPOND_PASSWORD (optional: if unset, the password is asked for on the terminal without
 // echo, so it never ends up in shell history). The password is never printed.
 //
-//   PLASMAMAIL_EMAIL=you@yahoo.com PLASMAMAIL_STORE_DIR=/tmp/store build/bin/imap-probe --sync
+//   KORRESPOND_EMAIL=you@yahoo.com KORRESPOND_STORE_DIR=/tmp/store build/bin/imap-probe --sync
 //
 // --sync stores the chosen folders in a local store instead, then prints messages stored per
-// folder and the total size. Also reads PLASMAMAIL_STORE_DIR (required), PLASMAMAIL_SINCE
-// (yyyy-MM-dd, default all mail) and PLASMAMAIL_MAX_MB (default unlimited). Mail is kept
+// folder and the total size. Also reads KORRESPOND_STORE_DIR (required), KORRESPOND_SINCE
+// (yyyy-MM-dd, default all mail) and KORRESPOND_MAX_MB (default unlimited). Mail is kept
 // forever otherwise. Only reads from the server.
 //
-//   PLASMAMAIL_EMAIL=you@gmail.com build/bin/imap-probe --google
+//   KORRESPOND_EMAIL=you@gmail.com build/bin/imap-probe --google
 //
 // --google signs in to Gmail through the browser (needs the Google OAuth client from
-// plasmamailrc [GoogleOAuth] or PLASMAMAIL_GOOGLE_CLIENT_ID / _SECRET), lists the folders and
+// korrespondrc [GoogleOAuth] or KORRESPOND_GOOGLE_CLIENT_ID / _SECRET), lists the folders and
 // the newest INBOX headers, then refreshes the access token once and lists the folders again
 // over a new session. Prints only "signed in" / "token refreshed", never a token.
 
@@ -97,51 +97,51 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    const QString provider = googleMode ? u"gmail"_s : qEnvironmentVariable("PLASMAMAIL_PROVIDER", u"yahoo"_s);
+    const QString provider = googleMode ? u"gmail"_s : qEnvironmentVariable("KORRESPOND_PROVIDER", u"yahoo"_s);
     Account account;
     if (!Account::applyPreset(account, provider)) {
-        std::cerr << "Unknown PLASMAMAIL_PROVIDER: " << provider.toStdString() << " (use yahoo, gmail or outlook)" << std::endl;
+        std::cerr << "Unknown KORRESPOND_PROVIDER: " << provider.toStdString() << " (use yahoo, gmail or outlook)" << std::endl;
         return 1;
     }
-    account.email = qEnvironmentVariable("PLASMAMAIL_EMAIL");
+    account.email = qEnvironmentVariable("KORRESPOND_EMAIL");
     if (account.email.isEmpty()) {
-        std::cerr << "Set PLASMAMAIL_EMAIL to the account's address." << std::endl;
+        std::cerr << "Set KORRESPOND_EMAIL to the account's address." << std::endl;
         return 1;
     }
-    QString password = qEnvironmentVariable("PLASMAMAIL_PASSWORD");
+    QString password = qEnvironmentVariable("KORRESPOND_PASSWORD");
     if (googleMode) {
         account.authMethod = u"oauth"_s;
     } else if (password.isEmpty()) {
         password = readPasswordFromTerminal();
     }
     if (password.isEmpty() && !googleMode) {
-        std::cerr << "No password: set PLASMAMAIL_PASSWORD or run in a terminal to be asked." << std::endl;
+        std::cerr << "No password: set KORRESPOND_PASSWORD or run in a terminal to be asked." << std::endl;
         return 1;
     }
 
     // --sync: storage settings from the environment, checked before connecting.
-    const QString storeDir = qEnvironmentVariable("PLASMAMAIL_STORE_DIR");
+    const QString storeDir = qEnvironmentVariable("KORRESPOND_STORE_DIR");
     StorageSettings settings;
     settings.enabled = true;
     settings.keepUnit = StorageSettings::Forever;
     settings.sizeUnit = StorageSettings::Unlimited;
     if (syncMode) {
         if (storeDir.isEmpty()) {
-            std::cerr << "Set PLASMAMAIL_STORE_DIR to a directory for the local store." << std::endl;
+            std::cerr << "Set KORRESPOND_STORE_DIR to a directory for the local store." << std::endl;
             return 1;
         }
-        if (qEnvironmentVariableIsSet("PLASMAMAIL_SINCE")) {
-            settings.importSince = QDate::fromString(qEnvironmentVariable("PLASMAMAIL_SINCE"), Qt::ISODate);
+        if (qEnvironmentVariableIsSet("KORRESPOND_SINCE")) {
+            settings.importSince = QDate::fromString(qEnvironmentVariable("KORRESPOND_SINCE"), Qt::ISODate);
             if (!settings.importSince.isValid()) {
-                std::cerr << "PLASMAMAIL_SINCE must be a date like 2026-01-31." << std::endl;
+                std::cerr << "KORRESPOND_SINCE must be a date like 2026-01-31." << std::endl;
                 return 1;
             }
         }
-        if (qEnvironmentVariableIsSet("PLASMAMAIL_MAX_MB")) {
+        if (qEnvironmentVariableIsSet("KORRESPOND_MAX_MB")) {
             bool ok = false;
-            settings.sizeValue = qEnvironmentVariableIntValue("PLASMAMAIL_MAX_MB", &ok);
+            settings.sizeValue = qEnvironmentVariableIntValue("KORRESPOND_MAX_MB", &ok);
             if (!ok || settings.sizeValue < 1) {
-                std::cerr << "PLASMAMAIL_MAX_MB must be a whole number of megabytes, at least 1." << std::endl;
+                std::cerr << "KORRESPOND_MAX_MB must be a whole number of megabytes, at least 1." << std::endl;
                 return 1;
             }
             settings.sizeUnit = StorageSettings::MB;

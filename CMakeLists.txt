@@ -3,7 +3,7 @@
 
 cmake_minimum_required(VERSION 3.22)
 
-project(plasma-mail VERSION 0.1.0 LANGUAGES CXX)
+project(korrespond VERSION 0.1.0 LANGUAGES CXX)
 
 set(QT_MIN_VERSION 6.6)
 set(KF_MIN_VERSION 6.0)
@@ -24,9 +24,9 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# Dev-only key hook (PLASMAMAIL_DEMO_KEY_UNDO): needs Qt6::Test (QTest::keyClick, public API) in the app.
+# Dev-only key hook (KORRESPOND_DEMO_KEY_UNDO): needs Qt6::Test (QTest::keyClick, public API) in the app.
 # Off by default so the shipped binary does not link the test library.
-option(PLASMAMAIL_DEV_HOOKS "Build dev-only demo hooks that need Qt6::Test (key injection)" OFF)
+option(KORRESPOND_DEV_HOOKS "Build dev-only demo hooks that need Qt6::Test (key injection)" OFF)
 find_package(Qt6 ${QT_MIN_VERSION} REQUIRED COMPONENTS Core Gui Widgets Network Sql Qml Quick QuickControls2 WebEngineQuick NetworkAuth Test)
 find_package(KF6 ${KF_MIN_VERSION} REQUIRED COMPONENTS Kirigami I18n CoreAddons Config ColorScheme Mime Notifications NotifyConfig StatusNotifierItem)
 find_package(KF6KirigamiAddons REQUIRED)
@@ -34,7 +34,7 @@ find_package(KPim6IMAP REQUIRED)
 find_package(KPim6SMTP REQUIRED)
 find_package(Qt6Keychain REQUIRED)
 
-add_definitions(-DTRANSLATION_DOMAIN=\"plasma-mail\")
+add_definitions(-DTRANSLATION_DOMAIN=\"korrespond\")
 
 # Only build the main library for now
 add_subdirectory(src)
@@ -42,11 +42,11 @@ add_subdirectory(tools)
 
 # The app icon (file name sc-apps-<name>.svg → hicolor/scalable/apps) and the launcher entry.
 # PNG sizes next to the SVG: some lookups (the window manager's title bar, panels) skip scalable-only icons.
-file(GLOB PLASMA_MAIL_ICON_PNGS ${CMAKE_SOURCE_DIR}/data/icons/*-apps-org.topke.plasmamail*.png)
-ecm_install_icons(ICONS data/icons/sc-apps-org.topke.plasmamail.svg data/icons/sc-apps-org.topke.plasmamail.unread.svg ${PLASMA_MAIL_ICON_PNGS} DESTINATION ${KDE_INSTALL_ICONDIR} THEME hicolor)
-install(FILES data/plasma-mail.desktop DESTINATION ${KDE_INSTALL_APPDIR})
-install(FILES data/org.topke.plasmamail.metainfo.xml DESTINATION ${KDE_INSTALL_METAINFODIR})
-install(FILES data/plasma-mail.notifyrc DESTINATION ${KDE_INSTALL_KNOTIFYRCDIR})
+file(GLOB KORRESPOND_ICON_PNGS ${CMAKE_SOURCE_DIR}/data/icons/*-apps-io.github.topke63.korrespond*.png)
+ecm_install_icons(ICONS data/icons/sc-apps-io.github.topke63.korrespond.svg data/icons/sc-apps-io.github.topke63.korrespond.unread.svg ${KORRESPOND_ICON_PNGS} DESTINATION ${KDE_INSTALL_ICONDIR} THEME hicolor)
+install(FILES data/io.github.topke63.korrespond.desktop DESTINATION ${KDE_INSTALL_APPDIR})
+install(FILES data/io.github.topke63.korrespond.metainfo.xml DESTINATION ${KDE_INSTALL_METAINFODIR})
+install(FILES data/korrespond.notifyrc DESTINATION ${KDE_INSTALL_KNOTIFYRCDIR})
 
 # Only build tests if they exist and BUILD_TESTING is enabled
 if(BUILD_TESTING)

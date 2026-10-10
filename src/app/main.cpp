@@ -8,6 +8,7 @@
 #include <KLocalizedString>
 
 #include "appsettings.h"
+#include "legacyprofile.h"
 #include "mailapplication.h"
 #include "mailcontroller.h"
 #include "mailnotifier.h"
@@ -23,6 +24,7 @@
 #include <QQuickItem>
 #include <QQuickStyle>
 #include <QQuickWindow>
+#include <QStandardPaths>
 #include <QStyleHints>
 #include <QTimer>
 #include <QWindow>
@@ -32,13 +34,13 @@
 #include <QFileInfo>
 #include <QTextStream>
 #include <memory>
-#ifdef PLASMAMAIL_DEV_HOOKS
+#ifdef KORRESPOND_DEV_HOOKS
 #include <QTest>
 #endif
 
 using namespace Qt::StringLiterals;
 
-// Dev only (PLASMAMAIL_DEMO=1): a comma-separated list of milliseconds, e.g. "500,1200".
+// Dev only (KORRESPOND_DEMO=1): a comma-separated list of milliseconds, e.g. "500,1200".
 static QList<int> demoTimes(const char *name)
 {
     QList<int> times;
@@ -88,24 +90,24 @@ static void logDemoWindows(const char *when)
     }
 }
 
-// Dev only: PLASMAMAIL_SCREENSHOT=<file.png> saves the app window in front (never the screen) after
-// PLASMAMAIL_SCREENSHOT_DELAY ms (default 6000) and quits. PLASMAMAIL_SCREENSHOT_OPEN=1 first
+// Dev only: KORRESPOND_SCREENSHOT=<file.png> saves the app window in front (never the screen) after
+// KORRESPOND_SCREENSHOT_DELAY ms (default 6000) and quits. KORRESPOND_SCREENSHOT_OPEN=1 first
 // opens the newest message of the current folder, halfway through the delay.
 static void scheduleScreenshot(QQmlApplicationEngine &engine)
 {
-    const QString file = qEnvironmentVariable("PLASMAMAIL_SCREENSHOT");
+    const QString file = qEnvironmentVariable("KORRESPOND_SCREENSHOT");
     if (file.isEmpty()) {
         return;
     }
     bool ok = false;
-    int delay = qEnvironmentVariableIntValue("PLASMAMAIL_SCREENSHOT_DELAY", &ok);
+    int delay = qEnvironmentVariableIntValue("KORRESPOND_SCREENSHOT_DELAY", &ok);
     if (!ok || delay <= 0) {
         delay = 6000;
     }
 
-    if (qEnvironmentVariableIntValue("PLASMAMAIL_SCREENSHOT_OPEN") == 1) {
+    if (qEnvironmentVariableIntValue("KORRESPOND_SCREENSHOT_OPEN") == 1) {
         QTimer::singleShot(delay / 2, &engine, [&engine] {
-            auto controller = engine.singletonInstance<MailController *>("PlasmaMail", "MailController");
+            auto controller = engine.singletonInstance<MailController *>("Korrespond", "MailController");
             QAbstractItemModel *model = controller ? controller->messageModel() : nullptr;
             if (!model || model->rowCount() == 0) {
                 return;
@@ -115,13 +117,13 @@ static void scheduleScreenshot(QQmlApplicationEngine &engine)
             controller->openMessage(model->index(0, 0).data(accountRole).toString(), model->index(0, 0).data(uidRole).toLongLong());
         });
     }
-    // PLASMAMAIL_SCREENSHOT_SAMPLE=<file.eml> shows that local message in the reading pane (parsed
+    // KORRESPOND_SCREENSHOT_SAMPLE=<file.eml> shows that local message in the reading pane (parsed
     // and rendered as usual; no account, server, cache or flag is touched), a third of the way in.
-    const QString sample = qEnvironmentVariable("PLASMAMAIL_SCREENSHOT_SAMPLE");
+    const QString sample = qEnvironmentVariable("KORRESPOND_SCREENSHOT_SAMPLE");
     if (!sample.isEmpty()) {
         QTimer::singleShot(delay / 3, &engine, [&engine, sample] {
             QFile sampleFile(sample);
-            auto controller = engine.singletonInstance<MailController *>("PlasmaMail", "MailController");
+            auto controller = engine.singletonInstance<MailController *>("Korrespond", "MailController");
             if (controller && sampleFile.open(QIODevice::ReadOnly)) {
                 controller->showSampleMessage(sampleFile.readAll());
             } else {
@@ -129,9 +131,9 @@ static void scheduleScreenshot(QQmlApplicationEngine &engine)
             }
         });
     }
-    // PLASMAMAIL_SCREENSHOT_SETTINGS=<module id> (accounts, notifications, view, sending, shortcuts, storage, about) opens that settings page
+    // KORRESPOND_SCREENSHOT_SETTINGS=<module id> (accounts, notifications, view, sending, shortcuts, storage, about) opens that settings page
     // a third of the way in.
-    const QString settingsModule = qEnvironmentVariable("PLASMAMAIL_SCREENSHOT_SETTINGS");
+    const QString settingsModule = qEnvironmentVariable("KORRESPOND_SCREENSHOT_SETTINGS");
     if (!settingsModule.isEmpty()) {
         QTimer::singleShot(delay / 3, &engine, [&engine, settingsModule] {
             if (!engine.rootObjects().isEmpty()) {
@@ -139,9 +141,9 @@ static void scheduleScreenshot(QQmlApplicationEngine &engine)
             }
         });
     }
-    // PLASMAMAIL_SCREENSHOT_COMPOSE=new|reply opens the message window (empty, or filled like a
+    // KORRESPOND_SCREENSHOT_COMPOSE=new|reply opens the message window (empty, or filled like a
     // reply) and screenshots that one.
-    const QString compose = qEnvironmentVariable("PLASMAMAIL_SCREENSHOT_COMPOSE");
+    const QString compose = qEnvironmentVariable("KORRESPOND_SCREENSHOT_COMPOSE");
     QQuickWindow *composer = nullptr;
     if (!compose.isEmpty()) {
         if (compose == "reply"_L1) {
@@ -149,15 +151,15 @@ static void scheduleScreenshot(QQmlApplicationEngine &engine)
                                          {u"initialSubject"_s, u"Re: Lunch"_s},
                                          {u"initialBody"_s, u"\n\nOn 8. 10. 2026, Alice wrote:\n> Hello Bob,\n>\n> lunch?\n"_s}});
         }
-        engine.loadFromModule("PlasmaMail", "ComposeWindow");
+        engine.loadFromModule("Korrespond", "ComposeWindow");
         composer = qobject_cast<QQuickWindow *>(engine.rootObjects().constLast());
     }
     QTimer::singleShot(delay, &engine, [&engine, file, composer] {
         // The window in front (e.g. the settings window), else the main window.
         auto window = composer ? composer : qobject_cast<QQuickWindow *>(QGuiApplication::focusWindow());
-        // PLASMAMAIL_SCREENSHOT_NEWEST=1: the newest visible window (a message window opened by the
+        // KORRESPOND_SCREENSHOT_NEWEST=1: the newest visible window (a message window opened by the
         // app itself, e.g. by undo send).
-        if (qEnvironmentVariableIntValue("PLASMAMAIL_SCREENSHOT_NEWEST") == 1) {
+        if (qEnvironmentVariableIntValue("KORRESPOND_SCREENSHOT_NEWEST") == 1) {
             const auto windows = QGuiApplication::topLevelWindows();
             for (auto it = windows.crbegin(); it != windows.crend(); ++it) {
                 if (auto quick = qobject_cast<QQuickWindow *>(*it); quick && quick->isVisible()) {
@@ -184,9 +186,13 @@ int main(int argc, char *argv[])
     // QApplication (not QGuiApplication): the tray icon's menu is a QMenu.
     QApplication app(argc, argv);
 
-    KLocalizedString::setApplicationDomain("plasma-mail");
-    KAboutData about(u"plasma-mail"_s,
-                     i18nc("@title", "Plasma Mail"),
+    // Before anything reads the settings: the files of the "Plasma Mail" version come over once.
+    LegacyProfile::migrate(QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation),
+                           QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation));
+
+    KLocalizedString::setApplicationDomain("korrespond");
+    KAboutData about(u"korrespond"_s,
+                     i18nc("@title", "Korrespond"),
                      u"0.1"_s,
                      i18nc("@info", "A simple IMAP mail client for Plasma"),
                      KAboutLicense::GPL_V3,
@@ -195,10 +201,10 @@ int main(int argc, char *argv[])
                      QString(),
                      QString()); // no bug address: not a KDE project, so no bugs.kde.org link
     // Not "org.kde.…" (the default), so the About page shows no KDE donate/get-involved links.
-    about.setDesktopFileName(u"plasma-mail"_s);
+    about.setDesktopFileName(u"io.github.topke63.korrespond"_s);
     about.setLicense(KAboutLicense::GPL_V3, KAboutLicense::OrLaterVersions); // matches the SPDX headers
     // The installed themed icon, else the copy inside the executable.
-    const QIcon appIcon = QIcon::fromTheme(u"org.topke.plasmamail"_s, QIcon(u":/icons/sc-apps-org.topke.plasmamail.svg"_s));
+    const QIcon appIcon = QIcon::fromTheme(u"io.github.topke63.korrespond"_s, QIcon(u":/icons/sc-apps-io.github.topke63.korrespond.svg"_s));
     QGuiApplication::setWindowIcon(appIcon);
     about.setProgramLogo(appIcon); // the About page
     KAboutData::setApplicationData(about);
@@ -208,13 +214,13 @@ int main(int argc, char *argv[])
         QQuickStyle::setStyle(u"org.kde.desktop"_s);
     }
 
-    // Dev only: PLASMAMAIL_COLOR_SCHEME=light|dark|<installed scheme> forces the whole app into
+    // Dev only: KORRESPOND_COLOR_SCHEME=light|dark|<installed scheme> forces the whole app into
     // that KDE colour scheme (light/dark = Breeze Light/Dark). <installed scheme> is the display name
     // ("Breeze Classic") or the scheme file id ("BreezeClassic", the .colors file name); both match
     // case-insensitively. The Kirigami colour sets (sidebar, lists, headers, buttons, menus,
     // dialogs) follow. This process only: autosave is off, so nothing is written to the config.
     // Unset: system scheme.
-    const QString wanted = qEnvironmentVariable("PLASMAMAIL_COLOR_SCHEME").trimmed();
+    const QString wanted = qEnvironmentVariable("KORRESPOND_COLOR_SCHEME").trimmed();
     if (!wanted.isEmpty()) {
         // Written to stderr directly: Qt's qWarning/qInfo go to the journal instead when the
         // environment has JOURNAL_STREAM set, and the dev hook's messages must be seen.
@@ -246,9 +252,9 @@ int main(int argc, char *argv[])
             // Qt's own hint follows the scheme's window lightness (the KDE platform theme may ignore it).
             const bool light = QGuiApplication::palette().window().color().lightnessF() >= 0.5;
             QGuiApplication::styleHints()->setColorScheme(light ? Qt::ColorScheme::Light : Qt::ColorScheme::Dark);
-            report << "PLASMAMAIL_COLOR_SCHEME: activated " << manager->activeSchemeName() << (light ? " (light)" : " (dark)") << Qt::endl;
+            report << "KORRESPOND_COLOR_SCHEME: activated " << manager->activeSchemeName() << (light ? " (light)" : " (dark)") << Qt::endl;
         } else {
-            report << "PLASMAMAIL_COLOR_SCHEME: unknown scheme " << wanted << " - available: " << available.join(u", "_s) << Qt::endl;
+            report << "KORRESPOND_COLOR_SCHEME: unknown scheme " << wanted << " - available: " << available.join(u", "_s) << Qt::endl;
         }
     }
 
@@ -262,10 +268,10 @@ int main(int argc, char *argv[])
             QCoreApplication::exit(1);
         },
         Qt::QueuedConnection);
-    engine.loadFromModule("PlasmaMail", "Main");
+    engine.loadFromModule("Korrespond", "Main");
     demoRoot = engine.rootObjects().isEmpty() ? nullptr : engine.rootObjects().constFirst();
     scheduleScreenshot(engine);
-    if (qEnvironmentVariableIntValue("PLASMAMAIL_DEMO") == 1 && demoRoot) {
+    if (qEnvironmentVariableIntValue("KORRESPOND_DEMO") == 1 && demoRoot) {
         // Dev check (T211): the action collection's ids.
         if (auto *application = demoRoot->property("application").value<MailApplication *>()) {
             qInfo().noquote() << "actions:" << application->actionNames().join(u' ');
@@ -280,9 +286,9 @@ int main(int argc, char *argv[])
                     qInfo().noquote() << "demo: action triggered" << action->objectName();
                 });
             }
-            // Dev only: PLASMAMAIL_DEMO_TRIGGER=<action id>@<ms> triggers that action of the collection
+            // Dev only: KORRESPOND_DEMO_TRIGGER=<action id>@<ms> triggers that action of the collection
             // (as if the user chose it) at <ms>, e.g. file_quit@3000.
-            const QStringList trigger = qEnvironmentVariable("PLASMAMAIL_DEMO_TRIGGER").split(u'@');
+            const QStringList trigger = qEnvironmentVariable("KORRESPOND_DEMO_TRIGGER").split(u'@');
             bool triggerOk = false;
             const int triggerMs = trigger.size() == 2 ? trigger.at(1).toInt(&triggerOk) : 0;
             if (triggerOk && triggerMs > 0) {
@@ -303,58 +309,58 @@ int main(int argc, char *argv[])
     }
 
     // The tray icon and notifications; not in the screenshot and demo runs (they must not put icons
-    // or popups on the desktop), unless PLASMAMAIL_SCREENSHOT_TRAY=1 for a screenshot run.
+    // or popups on the desktop), unless KORRESPOND_SCREENSHOT_TRAY=1 for a screenshot run.
     std::unique_ptr<TrayIcon> tray;
     std::unique_ptr<MailNotifier> notifier;
-    const bool screenshotRun = (!qEnvironmentVariableIsEmpty("PLASMAMAIL_SCREENSHOT") && qEnvironmentVariableIntValue("PLASMAMAIL_SCREENSHOT_TRAY") != 1)
-        || qEnvironmentVariableIntValue("PLASMAMAIL_DEMO") == 1;
-    auto controller = engine.singletonInstance<MailController *>("PlasmaMail", "MailController");
+    const bool screenshotRun = (!qEnvironmentVariableIsEmpty("KORRESPOND_SCREENSHOT") && qEnvironmentVariableIntValue("KORRESPOND_SCREENSHOT_TRAY") != 1)
+        || qEnvironmentVariableIntValue("KORRESPOND_DEMO") == 1;
+    auto controller = engine.singletonInstance<MailController *>("Korrespond", "MailController");
     if (!screenshotRun && controller && !engine.rootObjects().isEmpty()) {
         // "Keep running in the tray" is applied by MailController (lastWindowClosed), not here.
         tray = std::make_unique<TrayIcon>(controller, qobject_cast<QWindow *>(engine.rootObjects().constFirst()));
         notifier = std::make_unique<MailNotifier>(controller, qobject_cast<QWindow *>(engine.rootObjects().constFirst()));
     }
 
-    // Dev only, with PLASMAMAIL_DEMO=1 (never any SMTP): PLASMAMAIL_DEMO_SEND=1 queues a fictional
-    // message ~1 s after start, PLASMAMAIL_DEMO_UNDO=1 also undoes it ~2 s after start, and
-    // PLASMAMAIL_DEMO_QUIT_AFTER=<ms> calls requestQuit() then (to check that quitting flushes pending sends).
-    if (controller && qEnvironmentVariableIntValue("PLASMAMAIL_DEMO") == 1) {
-        if (qEnvironmentVariableIntValue("PLASMAMAIL_DEMO_SEND") == 1) {
+    // Dev only, with KORRESPOND_DEMO=1 (never any SMTP): KORRESPOND_DEMO_SEND=1 queues a fictional
+    // message ~1 s after start, KORRESPOND_DEMO_UNDO=1 also undoes it ~2 s after start, and
+    // KORRESPOND_DEMO_QUIT_AFTER=<ms> calls requestQuit() then (to check that quitting flushes pending sends).
+    if (controller && qEnvironmentVariableIntValue("KORRESPOND_DEMO") == 1) {
+        if (qEnvironmentVariableIntValue("KORRESPOND_DEMO_SEND") == 1) {
             QTimer::singleShot(1000, controller, [controller] {
                 controller->sendMessage({{u"account"_s, u"alice@example.com"_s},
                                          {u"to"_s, u"bob@example.com"_s},
                                          {u"subject"_s, u"Demo: lunch on Friday?"_s},
                                          {u"body"_s, u"Hello Bob,\n\nlunch on Friday?\n\nAlice\n"_s}});
             });
-            if (qEnvironmentVariableIntValue("PLASMAMAIL_DEMO_UNDO") == 1) {
+            if (qEnvironmentVariableIntValue("KORRESPOND_DEMO_UNDO") == 1) {
                 QTimer::singleShot(2000, controller, [controller] {
                     controller->undoSend(-1);
                 });
             }
         }
-        // PLASMAMAIL_DEMO_OPEN=<ms>: opens the first demo message (INBOX of alice@example.com) at <ms>,
-        // so the message actions (archive, mark read, ...) are enabled for PLASMAMAIL_DEMO_TRIGGER.
-        const int openAt = qEnvironmentVariableIntValue("PLASMAMAIL_DEMO_OPEN");
+        // KORRESPOND_DEMO_OPEN=<ms>: opens the first demo message (INBOX of alice@example.com) at <ms>,
+        // so the message actions (archive, mark read, ...) are enabled for KORRESPOND_DEMO_TRIGGER.
+        const int openAt = qEnvironmentVariableIntValue("KORRESPOND_DEMO_OPEN");
         if (openAt > 0) {
-            // PLASMAMAIL_DEMO_OPEN_UID=<uid> (default 1) and PLASMAMAIL_DEMO_OPEN_ACCOUNT (default alice@example.com)
+            // KORRESPOND_DEMO_OPEN_UID=<uid> (default 1) and KORRESPOND_DEMO_OPEN_ACCOUNT (default alice@example.com)
             // pick another demo message, e.g. one of a conversation.
-            const qint64 openUid = qMax(1, qEnvironmentVariableIntValue("PLASMAMAIL_DEMO_OPEN_UID"));
+            const qint64 openUid = qMax(1, qEnvironmentVariableIntValue("KORRESPOND_DEMO_OPEN_UID"));
             const QString openAccount =
-                qEnvironmentVariableIsSet("PLASMAMAIL_DEMO_OPEN_ACCOUNT") ? qEnvironmentVariable("PLASMAMAIL_DEMO_OPEN_ACCOUNT") : u"alice@example.com"_s;
+                qEnvironmentVariableIsSet("KORRESPOND_DEMO_OPEN_ACCOUNT") ? qEnvironmentVariable("KORRESPOND_DEMO_OPEN_ACCOUNT") : u"alice@example.com"_s;
             QTimer::singleShot(openAt, controller, [controller, openUid, openAccount] {
                 controller->selectFolder(openAccount, u"INBOX"_s);
                 controller->openMessage(openAccount, openUid);
             });
         }
-        // PLASMAMAIL_DEMO_MOVE=<folder path>@<ms> moves the open message there; PLASMAMAIL_DEMO_SELECT=
+        // KORRESPOND_DEMO_MOVE=<folder path>@<ms> moves the open message there; KORRESPOND_DEMO_SELECT=
         // <account>/<folder path>@<ms> shows that folder (e.g. alice@example.com/Trash@3000).
-        const QStringList moveAt = qEnvironmentVariable("PLASMAMAIL_DEMO_MOVE").split(u'@');
+        const QStringList moveAt = qEnvironmentVariable("KORRESPOND_DEMO_MOVE").split(u'@');
         if (moveAt.size() == 2 && moveAt.at(1).toInt() > 0) {
             QTimer::singleShot(moveAt.at(1).toInt(), controller, [controller, path = moveAt.at(0)] {
                 controller->moveMessage(path);
             });
         }
-        const QString selectSpec = qEnvironmentVariable("PLASMAMAIL_DEMO_SELECT");
+        const QString selectSpec = qEnvironmentVariable("KORRESPOND_DEMO_SELECT");
         const int selectMs = selectSpec.section(u'@', -1).toInt(); // the account has an @ itself
         if (selectMs > 0) {
             const QString target = selectSpec.left(selectSpec.lastIndexOf(u'@'));
@@ -363,25 +369,25 @@ int main(int argc, char *argv[])
             });
         }
         bool ok = false;
-        const int quitAfter = qEnvironmentVariableIntValue("PLASMAMAIL_DEMO_QUIT_AFTER", &ok);
+        const int quitAfter = qEnvironmentVariableIntValue("KORRESPOND_DEMO_QUIT_AFTER", &ok);
         if (ok && quitAfter > 0) {
             QTimer::singleShot(quitAfter, controller, [controller] {
                 controller->requestQuit();
             });
-            // PLASMAMAIL_DEMO_QUIT_TWICE=1: a second request 300 ms later (must be ignored).
-            if (qEnvironmentVariableIntValue("PLASMAMAIL_DEMO_QUIT_TWICE") == 1) {
+            // KORRESPOND_DEMO_QUIT_TWICE=1: a second request 300 ms later (must be ignored).
+            if (qEnvironmentVariableIntValue("KORRESPOND_DEMO_QUIT_TWICE") == 1) {
                 QTimer::singleShot(quitAfter + 300, controller, [controller] {
                     controller->requestQuit();
                 });
             }
         }
-        // Window close checks: PLASMAMAIL_DEMO_COMPOSE=1 opens a message window at start;
-        // PLASMAMAIL_DEMO_CLOSE_MAIN=<ms> / PLASMAMAIL_DEMO_CLOSE_COMPOSE=<ms> close the main window
+        // Window close checks: KORRESPOND_DEMO_COMPOSE=1 opens a message window at start;
+        // KORRESPOND_DEMO_CLOSE_MAIN=<ms> / KORRESPOND_DEMO_CLOSE_COMPOSE=<ms> close the main window
         // (the first root object) / the composer (the last root object) like a window-manager close.
-        if (qEnvironmentVariableIntValue("PLASMAMAIL_DEMO_COMPOSE") == 1) {
-            engine.loadFromModule("PlasmaMail", "ComposeWindow");
+        if (qEnvironmentVariableIntValue("KORRESPOND_DEMO_COMPOSE") == 1) {
+            engine.loadFromModule("Korrespond", "ComposeWindow");
         }
-        const int closeMain = qEnvironmentVariableIntValue("PLASMAMAIL_DEMO_CLOSE_MAIN");
+        const int closeMain = qEnvironmentVariableIntValue("KORRESPOND_DEMO_CLOSE_MAIN");
         if (closeMain > 0) {
             QTimer::singleShot(closeMain, &engine, [&engine] {
                 if (auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst())) {
@@ -389,7 +395,7 @@ int main(int argc, char *argv[])
                 }
             });
         }
-        const int closeComposer = qEnvironmentVariableIntValue("PLASMAMAIL_DEMO_CLOSE_COMPOSE");
+        const int closeComposer = qEnvironmentVariableIntValue("KORRESPOND_DEMO_CLOSE_COMPOSE");
         if (closeComposer > 0) {
             QTimer::singleShot(closeComposer, &engine, [&engine] {
                 if (auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().constLast())) {
@@ -398,12 +404,12 @@ int main(int argc, char *argv[])
             });
         }
 
-        // PLASMAMAIL_DEMO_COMPOSE_SEND=<ms>[,<ms>...]: message k (1-based) opens at start in its own
-        // window (subject "Demo: message k", with the file PLASMAMAIL_DEMO_ATTACHMENT if set), and
+        // KORRESPOND_DEMO_COMPOSE_SEND=<ms>[,<ms>...]: message k (1-based) opens at start in its own
+        // window (subject "Demo: message k", with the file KORRESPOND_DEMO_ATTACHMENT if set), and
         // its send() runs at the k-th time: the same function the Send button calls. Logs the
         // windows just before and after.
-        const QList<int> composeSendAt = demoTimes("PLASMAMAIL_DEMO_COMPOSE_SEND");
-        const QString demoAttachment = qEnvironmentVariable("PLASMAMAIL_DEMO_ATTACHMENT");
+        const QList<int> composeSendAt = demoTimes("KORRESPOND_DEMO_COMPOSE_SEND");
+        const QString demoAttachment = qEnvironmentVariable("KORRESPOND_DEMO_ATTACHMENT");
         for (int i = 0; i < composeSendAt.size(); ++i) {
             const int k = i + 1;
             const QString name = u"demoComposer%1"_s.arg(k);
@@ -436,15 +442,15 @@ int main(int argc, char *argv[])
                 });
             });
         }
-        // PLASMAMAIL_DEMO_DUMP=<ms>[,<ms>...]: logs the open windows at those times.
-        for (const int ms : demoTimes("PLASMAMAIL_DEMO_DUMP")) {
+        // KORRESPOND_DEMO_DUMP=<ms>[,<ms>...]: logs the open windows at those times.
+        for (const int ms : demoTimes("KORRESPOND_DEMO_DUMP")) {
             QTimer::singleShot(ms, &engine, [] {
                 logDemoWindows("dump");
             });
         }
-        // PLASMAMAIL_DEMO_CLOSE_MESSAGES=<ms>[,<ms>...]: a window-manager close of every open message
+        // KORRESPOND_DEMO_CLOSE_MESSAGES=<ms>[,<ms>...]: a window-manager close of every open message
         // window at those times (the closing rules of ComposeWindow apply; logs what is still open).
-        for (const int ms : demoTimes("PLASMAMAIL_DEMO_CLOSE_MESSAGES")) {
+        for (const int ms : demoTimes("KORRESPOND_DEMO_CLOSE_MESSAGES")) {
             QTimer::singleShot(ms, &engine, [&engine] {
                 for (QWindow *window : QGuiApplication::topLevelWindows()) {
                     if (window->property("initialSubject").isValid()) {
@@ -457,16 +463,16 @@ int main(int argc, char *argv[])
                 });
             });
         }
-#ifdef PLASMAMAIL_DEV_HOOKS
-        // PLASMAMAIL_DEMO_KEY_UNDO=<ms>: a Ctrl+Z key press for the main window at <ms>, through
-        // QTest::keyClick (public API; only with -DPLASMAMAIL_DEV_HOOKS=ON), so the window shortcuts see it
+#ifdef KORRESPOND_DEV_HOOKS
+        // KORRESPOND_DEMO_KEY_UNDO=<ms>: a Ctrl+Z key press for the main window at <ms>, through
+        // QTest::keyClick (public API; only with -DKORRESPOND_DEV_HOOKS=ON), so the window shortcuts see it
         // as a real key press. A plain sendEvent does not reach the shortcut map (QGuiApplicationPrivate).
-        // PLASMAMAIL_DEMO_KEY_UNDO_SEARCH=1 focuses the message list's search field first. Logs the focus
+        // KORRESPOND_DEMO_KEY_UNDO_SEARCH=1 focuses the message list's search field first. Logs the focus
         // item and the pending sends before and after. The window is activated first (the key path
         // needs the focus window; the activation is processed a little later, hence the second timer).
-        const int keyUndo = qEnvironmentVariableIntValue("PLASMAMAIL_DEMO_KEY_UNDO");
+        const int keyUndo = qEnvironmentVariableIntValue("KORRESPOND_DEMO_KEY_UNDO");
         if (keyUndo > 0) {
-            const bool fromSearch = qEnvironmentVariableIntValue("PLASMAMAIL_DEMO_KEY_UNDO_SEARCH") == 1;
+            const bool fromSearch = qEnvironmentVariableIntValue("KORRESPOND_DEMO_KEY_UNDO_SEARCH") == 1;
             QTimer::singleShot(keyUndo, &engine, [&engine, controller, fromSearch] {
                 auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());
                 if (!window) {
@@ -489,15 +495,15 @@ int main(int argc, char *argv[])
                 });
             });
         }
-        // PLASMAMAIL_DEMO_KEYS=<seq>@<ms>[,<seq>@<ms>...]: key presses for the main window (same path
+        // KORRESPOND_DEMO_KEYS=<seq>@<ms>[,<seq>@<ms>...]: key presses for the main window (same path
         // as KEY_UNDO), e.g. "E@3000,Ctrl+B@4000". The sequence "focus:search" focuses the search field
         // instead. Logs the focus item at each step (the window is activated at the first one).
-        // PLASMAMAIL_DEMO_KEYS_TARGET=composer sends the steps to the last root window (the demo composer
-        // of PLASMAMAIL_DEMO_COMPOSE=1) instead; =focus sends them to the window that has the focus now
+        // KORRESPOND_DEMO_KEYS_TARGET=composer sends the steps to the last root window (the demo composer
+        // of KORRESPOND_DEMO_COMPOSE=1) instead; =focus sends them to the window that has the focus now
         // (no activation, so a settings window or a popup window keeps its focus). The sequence "dump"
         // logs the focus item and its text.
-        const QString keyTarget = qEnvironmentVariable("PLASMAMAIL_DEMO_KEYS_TARGET");
-        const QStringList keySteps = qEnvironmentVariable("PLASMAMAIL_DEMO_KEYS").split(u',', Qt::SkipEmptyParts);
+        const QString keyTarget = qEnvironmentVariable("KORRESPOND_DEMO_KEYS_TARGET");
+        const QStringList keySteps = qEnvironmentVariable("KORRESPOND_DEMO_KEYS").split(u',', Qt::SkipEmptyParts);
         for (const QString &step : keySteps) {
             const QString sequence = step.section(u'@', 0, 0);
             const int ms = step.section(u'@', 1).toInt();
@@ -557,8 +563,8 @@ int main(int argc, char *argv[])
                 });
             });
         }
-        // PLASMAMAIL_DEMO_KEY_QUIT=<ms>: a Ctrl+Q key press for the main window at <ms>, same path as KEY_UNDO.
-        const int keyQuit = qEnvironmentVariableIntValue("PLASMAMAIL_DEMO_KEY_QUIT");
+        // KORRESPOND_DEMO_KEY_QUIT=<ms>: a Ctrl+Q key press for the main window at <ms>, same path as KEY_UNDO.
+        const int keyQuit = qEnvironmentVariableIntValue("KORRESPOND_DEMO_KEY_QUIT");
         if (keyQuit > 0) {
             QTimer::singleShot(keyQuit, &engine, [&engine] {
                 auto *window = qobject_cast<QQuickWindow *>(engine.rootObjects().constFirst());

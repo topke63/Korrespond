@@ -19,7 +19,7 @@ static constexpr std::array sizeUnitNames{"MB", "GB", "unlimited"};
 
 static KConfigGroup storageGroup()
 {
-    return KSharedConfig::openConfig(u"plasmamailrc"_s)->group(u"Storage"_s);
+    return KSharedConfig::openConfig(u"korrespondrc"_s)->group(u"Storage"_s);
 }
 
 template<typename Enum, std::size_t N>

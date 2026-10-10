@@ -5,7 +5,7 @@ import QtQuick
 import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.kirigami as Kirigami
-import PlasmaMail
+import Korrespond
 
 // An address field with suggestions from the contacts cache. The text after the last comma is the
 // part being typed: Down/Up move through the suggestions, Enter or Tab take the marked one, a

@@ -8,7 +8,7 @@ import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.ki18n
 import org.kde.kirigami as Kirigami
-import PlasmaMail
+import Korrespond
 
 Kirigami.ScrollablePage {
     id: page
@@ -112,8 +112,8 @@ Kirigami.ScrollablePage {
             font: Kirigami.Theme.smallFont
             color: MailController.googleConfigured ? Kirigami.Theme.textColor : Kirigami.Theme.negativeTextColor
             text: MailController.googleConfigured
-                ? KI18n.i18nc("@info", "Your browser opens so you can sign in with Google. Plasma Mail never sees your Google password.")
-                : KI18n.i18nc("@info", "Google sign-in needs an OAuth client. Add ClientId and ClientSecret to the [GoogleOAuth] group of ~/.config/plasmamailrc, then restart Plasma Mail.")
+                ? KI18n.i18nc("@info", "Your browser opens so you can sign in with Google. Korrespond never sees your Google password.")
+                : KI18n.i18nc("@info", "Google sign-in needs an OAuth client. Add ClientId and ClientSecret to the [GoogleOAuth] group of ~/.config/korrespondrc, then restart Korrespond.")
         }
 
         QQC2.Label {

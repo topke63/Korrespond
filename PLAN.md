@@ -5518,6 +5518,36 @@ Approach: thread ids are computed in the engine and stored, the list model group
   checked: the page by eye on the desktop (user), and editing the SMTP server of an existing account
   (still plasmamailrc; not planned).
 
+### T245 — Rename the app to Korrespond
+- status: done
+- depends on: none
+- files: whole tree except PLAN.md history
+- inputs: user decision 2026-10-10 ("rename it to Korrespond"; name checked: no AUR/Flathub/GitHub/PyPI
+  clash). Old names: display "Plasma Mail", binary/package/domain/notifyrc/service "plasma-mail",
+  app id/icons/metainfo "org.topke.plasmamail", QML URI "PlasmaMail", libs "plasmamail_*",
+  config "plasmamailrc", env "PLASMAMAIL_*", data folder ~/.local/share/plasma-mail,
+  keychain service "plasma-mail".
+- output: display "Korrespond"; binary/package/domain/notifyrc/service "korrespond"; app id, icons, desktop
+  file, metainfo id "io.github.topke63.korrespond"; QML URI "Korrespond"; libs "korrespond_*";
+  config "korrespondrc"; env "KORRESPOND_*". Migration so the user's installed data keeps working:
+  config copied from plasmamailrc once; data folder moved once; keychain reads fall back to the
+  old service (and copy forward); PLASMAMAIL_GOOGLE_CLIENT_ID/SECRET still accepted.
+- verify: clean configure + build, no warnings; ctest; lint baseline; offscreen demo start;
+  migration test with a throw-away HOME; grep finds the old names only in migration code and PLAN.md.
+- notes: Done 2026-10-10. Mechanical rename with sed over all tracked text files (PLAN.md history kept),
+  git mv for the icon/desktop/notifyrc/metainfo/screenshot files. Desktop file and AppStream id are
+  both `io.github.topke63.korrespond` (also the Wayland app id: `setDesktopFileName`); the binary,
+  KAboutData component, notifyrc and tray id are `korrespond`. New: `LegacyProfile::migrate`
+  (config copy + data-folder move, called first thing in main(); legacyprofiletest, 4 cases),
+  `SecretStore::setLegacyService` (read falls back to the "plasma-mail" service and copies forward;
+  2 new secretstoretest cases against the real keychain), legacy Google env vars. Build clean,
+  26/26 tests, lint 31 (release preset; same as before), offscreen demo start in a throw-away profile:
+  plasmamailrc → korrespondrc and plasma-mail/ → korrespond/ done, window size carried over.
+  Not done: the GitHub repository name (still Plasma-Mail; rename it there, GitHub redirects), the
+  user's installed old build (needs `cmake --install` again and removal of the old files, README
+  lists them), the user's KWin rule `plasmamail-desktop3` (class was `plasma-mail`; the window
+  class is now `io.github.topke63.korrespond`).
+
 ## Execution Loop
 
 Execute the plan as a loop. Each iteration handles one task in a fresh context, then ends.

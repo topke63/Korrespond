@@ -27,7 +27,7 @@ private:
 
     static KSharedConfigPtr config()
     {
-        return KSharedConfig::openConfig(u"plasmamailrc"_s);
+        return KSharedConfig::openConfig(u"korrespondrc"_s);
     }
 
 private Q_SLOTS:
@@ -37,7 +37,7 @@ private Q_SLOTS:
         QStandardPaths::setTestModeEnabled(true);
     }
 
-    // Every test starts with an empty plasmamailrc (the test file survives between runs).
+    // Every test starts with an empty korrespondrc (the test file survives between runs).
     void init()
     {
         const KSharedConfigPtr cfg = config();

@@ -10,7 +10,7 @@ using namespace Qt::StringLiterals;
 
 static KSharedConfigPtr config()
 {
-    return KSharedConfig::openConfig(u"plasmamailrc"_s);
+    return KSharedConfig::openConfig(u"korrespondrc"_s);
 }
 
 // The group of the single-account config from milestone 1.

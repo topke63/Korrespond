@@ -8,7 +8,7 @@ import org.kde.kirigami as Kirigami
 import org.kde.kirigamiaddons.settings as KirigamiSettings
 import org.kde.kirigamiaddons.statefulapp as StatefulApp
 import org.kde.kirigamiaddons.statefulapp.private as StatefulPrivate
-import PlasmaMail
+import Korrespond
 
 StatefulApp.StatefulWindow {
     id: mainWindow
@@ -41,7 +41,7 @@ StatefulApp.StatefulWindow {
     // Opens a message window filled with a message that came back (undo send, failed hand-off): the
     // map is what was passed to MailController.sendMessage(). The same creation path as a reply.
     function reopenMessage(data: var, error: string) {
-        const component = Qt.createComponent("PlasmaMail", "ComposeWindow");
+        const component = Qt.createComponent("Korrespond", "ComposeWindow");
         const composer = component.createObject(mainWindow, {
             initialAccount: data.account ?? "",
             initialTo: data.to ?? "",
@@ -62,10 +62,10 @@ StatefulApp.StatefulWindow {
         }
     }
 
-    // Dev only (PLASMAMAIL_DEMO_COMPOSE_SEND in main.cpp): a fresh message window filled as the user
+    // Dev only (KORRESPOND_DEMO_COMPOSE_SEND in main.cpp): a fresh message window filled as the user
     // would have typed it, with its attachments; objectName lets the hook find it again.
     function openDemoComposer(data: var, name: string) {
-        const component = Qt.createComponent("PlasmaMail", "ComposeWindow");
+        const component = Qt.createComponent("Korrespond", "ComposeWindow");
         const composer = component.createObject(mainWindow, {
             objectName: name,
             initialAccount: data.account ?? "",
@@ -81,7 +81,7 @@ StatefulApp.StatefulWindow {
         }
     }
 
-    // Dev only: the PLASMAMAIL_SCREENSHOT_SETTINGS hook in main.cpp opens a settings module.
+    // Dev only: the KORRESPOND_SCREENSHOT_SETTINGS hook in main.cpp opens a settings module.
     function openSettingsModule(moduleId: string) {
         settings.open(moduleId);
     }
@@ -89,7 +89,7 @@ StatefulApp.StatefulWindow {
     // The connection and activity bar; only with an account (not on the first-run setup page).
     footer: MailController.hasAccount ? statusBar : null
 
-    title: KI18n.i18nc("@title:window", "Plasma Mail")
+    title: KI18n.i18nc("@title:window", "Korrespond")
     // The size the user left (kept by the app, so it does not depend on the screen), else a default.
     width: MailController.windowWidth > 0 ? MailController.windowWidth : Kirigami.Units.gridUnit * 75
     height: MailController.windowHeight > 0 ? MailController.windowHeight : Kirigami.Units.gridUnit * 45
@@ -245,7 +245,7 @@ StatefulApp.StatefulWindow {
             },
             KirigamiSettings.ConfigurationModule {
                 moduleId: "about"
-                text: KI18n.i18nc("@action:button", "About Plasma Mail")
+                text: KI18n.i18nc("@action:button", "About Korrespond")
                 icon.name: "help-about"
                 page: () => Qt.createComponent("org.kde.kirigamiaddons.formcard", "AboutPage")
                 category: KI18n.i18nc("@title:group", "About")

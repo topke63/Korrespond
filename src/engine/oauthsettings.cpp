@@ -14,17 +14,21 @@ bool GoogleOAuthSettings::isConfigured() const
 }
 
 // A set but empty variable doesn't hide the config value.
-static QString value(const char *envName, const KConfigGroup &group, const char *key)
+// legacyEnvName: the variable of the version that was called "Plasma Mail".
+static QString value(const char *envName, const char *legacyEnvName, const KConfigGroup &group, const char *key)
 {
-    const QString env = qEnvironmentVariable(envName).trimmed();
+    QString env = qEnvironmentVariable(envName).trimmed();
+    if (env.isEmpty()) {
+        env = qEnvironmentVariable(legacyEnvName).trimmed();
+    }
     return env.isEmpty() ? group.readEntry(key, QString()).trimmed() : env;
 }
 
 GoogleOAuthSettings GoogleOAuthSettings::load()
 {
-    const KConfigGroup group = KSharedConfig::openConfig(u"plasmamailrc"_s)->group(u"GoogleOAuth"_s);
+    const KConfigGroup group = KSharedConfig::openConfig(u"korrespondrc"_s)->group(u"GoogleOAuth"_s);
     GoogleOAuthSettings settings;
-    settings.clientId = value("PLASMAMAIL_GOOGLE_CLIENT_ID", group, "ClientId");
-    settings.clientSecret = value("PLASMAMAIL_GOOGLE_CLIENT_SECRET", group, "ClientSecret");
+    settings.clientId = value("KORRESPOND_GOOGLE_CLIENT_ID", "PLASMAMAIL_GOOGLE_CLIENT_ID", group, "ClientId");
+    settings.clientSecret = value("KORRESPOND_GOOGLE_CLIENT_SECRET", "PLASMAMAIL_GOOGLE_CLIENT_SECRET", group, "ClientSecret");
     return settings;
 }

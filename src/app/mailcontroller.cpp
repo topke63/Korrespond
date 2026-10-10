@@ -48,7 +48,7 @@ static void removeStaleAttachmentFolders()
 {
 #ifdef Q_OS_LINUX
     const QDir temp(QDir::tempPath());
-    const QFileInfoList entries = temp.entryInfoList({u"plasma-mail-*"_s}, QDir::Dirs | QDir::NoDotAndDotDot | QDir::NoSymLinks);
+    const QFileInfoList entries = temp.entryInfoList({u"korrespond-*"_s}, QDir::Dirs | QDir::NoDotAndDotDot | QDir::NoSymLinks);
     const auto pidAlive = [](qint64 pid) {
         return QFileInfo::exists(u"/proc/"_s + QString::number(pid));
     };
@@ -74,6 +74,7 @@ MailController::MailController(QObject *parent)
     , m_messageModel(new MessageListModel(this))
     , m_conversationModel(new ConversationModel(this))
 {
+    m_secrets->setLegacyService(QString::fromLatin1(AccountSecrets::legacyService));
     connect(m_secrets, &SecretStore::passwordRead, this, &MailController::onSecretRead);
     m_googleConfigured = GoogleOAuthSettings::load().isConfigured();
     connect(m_checkTimer, &QTimer::timeout, this, &MailController::checkForNewMail);
@@ -106,8 +107,8 @@ MailController::MailController(QObject *parent)
         }
     }
     m_app = AppSettings::load();
-    if (qEnvironmentVariableIsSet("PLASMAMAIL_SIDEBAR_COLLAPSED")) {
-        m_collapsedOverride = qEnvironmentVariableIntValue("PLASMAMAIL_SIDEBAR_COLLAPSED") == 1;
+    if (qEnvironmentVariableIsSet("KORRESPOND_SIDEBAR_COLLAPSED")) {
+        m_collapsedOverride = qEnvironmentVariableIntValue("KORRESPOND_SIDEBAR_COLLAPSED") == 1;
     }
     m_accounts->setPushEnabled(m_app.pushEnabled);
     m_messageModel->setConversationView(m_app.conversationView);
@@ -115,7 +116,7 @@ MailController::MailController(QObject *parent)
     m_checkTimer->start(std::chrono::seconds(30));
 
     m_storage = StorageSettings::load();
-    m_demo = qEnvironmentVariableIntValue("PLASMAMAIL_DEMO") == 1;
+    m_demo = qEnvironmentVariableIntValue("KORRESPOND_DEMO") == 1;
     // The contacts cache: its own file, so clearing it never touches mail. Demo mode uses a
     // throw-away folder.
     if (m_demo) {
@@ -814,8 +815,8 @@ void MailController::handOff(int id, const QVariantMap &message)
         // Never SMTP or the network in a demo run: the hand-off takes about 1.5 s, then behaves like
         // a success. It is asynchronous so that quitting really waits for it.
         m_demoBusy = true;
-        // PLASMAMAIL_DEMO_FAIL=1: the simulated hand-off fails (to check the reopened message).
-        const bool fail = qEnvironmentVariableIntValue("PLASMAMAIL_DEMO_FAIL") == 1;
+        // KORRESPOND_DEMO_FAIL=1: the simulated hand-off fails (to check the reopened message).
+        const bool fail = qEnvironmentVariableIntValue("KORRESPOND_DEMO_FAIL") == 1;
         QTimer::singleShot(1500, this, [this, id, message, fail, subject = outgoing.subject] {
             m_demoBusy = false;
             if (fail) {
@@ -1203,7 +1204,7 @@ void MailController::savePanelWidths(int sidebar, int list)
 
 bool MailController::notificationsConfigurable() const
 {
-    return !QStandardPaths::locate(QStandardPaths::GenericDataLocation, u"knotifications6/plasma-mail.notifyrc"_s).isEmpty();
+    return !QStandardPaths::locate(QStandardPaths::GenericDataLocation, u"knotifications6/korrespond.notifyrc"_s).isEmpty();
 }
 
 void MailController::saveAppSettings(bool keepInTray, int checkMinutes)
@@ -1257,7 +1258,7 @@ void MailController::setContactsEnabled(bool enabled)
 
 void MailController::configureNotifications()
 {
-    KNotifyConfigWidget::configure(nullptr, u"plasma-mail"_s);
+    KNotifyConfigWidget::configure(nullptr, u"korrespond"_s);
 }
 
 QString MailController::activityText() const
@@ -2685,7 +2686,7 @@ void MailController::setupGoogleAccount(const QString &email, const QString &dis
         return;
     }
     if (!m_googleConfigured) {
-        Q_EMIT errorOccurred(i18n("No Google OAuth client is set up. Add ClientId and ClientSecret to the [GoogleOAuth] group of plasmamailrc."));
+        Q_EMIT errorOccurred(i18n("No Google OAuth client is set up. Add ClientId and ClientSecret to the [GoogleOAuth] group of korrespondrc."));
         return;
     }
     if (sessionFor(account.email)) {
@@ -2982,7 +2983,7 @@ QVariantMap MailController::contactsStatus(const QString &account) const
         status[u"text"_s] = i18n("Contacts are switched off.");
     } else if (!session->account().contacts || (sync && sync->state() == ContactSync::MissingScope)) {
         status[u"state"_s] = u"needed"_s;
-        status[u"text"_s] = i18n("Permission needed: allow Plasma Mail to read your Google contacts.");
+        status[u"text"_s] = i18n("Permission needed: allow Korrespond to read your Google contacts.");
     } else if (!sync) {
         status[u"state"_s] = u"waiting"_s;
         status[u"text"_s] = i18n("Waiting for the account to connect.");
@@ -3091,7 +3092,7 @@ QString MailController::demoOption(const QString &name) const
     if (!m_demo) {
         return {};
     }
-    const QByteArray variable = QByteArray("PLASMAMAIL_DEMO_") + name.toLatin1();
+    const QByteArray variable = QByteArray("KORRESPOND_DEMO_") + name.toLatin1();
     return qEnvironmentVariable(variable.constData());
 }
 
@@ -3102,7 +3103,7 @@ void MailController::allowContacts(const QString &account)
         return;
     }
     if (!m_googleConfigured) {
-        Q_EMIT errorOccurred(i18n("No Google OAuth client is set up. Add ClientId and ClientSecret to the [GoogleOAuth] group of plasmamailrc."));
+        Q_EMIT errorOccurred(i18n("No Google OAuth client is set up. Add ClientId and ClientSecret to the [GoogleOAuth] group of korrespondrc."));
         return;
     }
     if (!session->property("contactsAuthConnected").toBool()) {
@@ -3347,7 +3348,7 @@ void MailController::openAttachment(int index)
         return;
     }
     if (!m_attachmentDir) {
-        m_attachmentDir = std::make_unique<QTemporaryDir>(QDir::tempPath() + u"/plasma-mail-"_s + QString::number(QCoreApplication::applicationPid())
+        m_attachmentDir = std::make_unique<QTemporaryDir>(QDir::tempPath() + u"/korrespond-"_s + QString::number(QCoreApplication::applicationPid())
                                                           + u"-XXXXXX"_s); // mode 0700
     }
     if (!m_attachmentDir->isValid()) {

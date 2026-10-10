@@ -7,9 +7,9 @@
 
 // The Google OAuth client the app signs in with ("Desktop app" type, created by the user in the
 // Google Cloud console). For a desktop app the secret isn't really secret, but it is still
-// kept out of the source: it lives in plasmamailrc, group [GoogleOAuth], keys ClientId and
-// ClientSecret, or in the environment variables PLASMAMAIL_GOOGLE_CLIENT_ID and
-// PLASMAMAIL_GOOGLE_CLIENT_SECRET, which win over the config file when not empty.
+// kept out of the source: it lives in korrespondrc, group [GoogleOAuth], keys ClientId and
+// ClientSecret, or in the environment variables KORRESPOND_GOOGLE_CLIENT_ID and
+// KORRESPOND_GOOGLE_CLIENT_SECRET, which win over the config file when not empty.
 struct GoogleOAuthSettings {
     QString clientId;
     QString clientSecret;

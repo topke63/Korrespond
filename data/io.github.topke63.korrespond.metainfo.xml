@@ -4,8 +4,8 @@ SPDX-FileCopyrightText: 2026 topke <topke63@gmail.com>
 SPDX-License-Identifier: CC0-1.0
 -->
 <component type="desktop-application">
-  <id>org.topke.plasmamail</id>
-  <name>Plasma Mail</name>
+  <id>io.github.topke63.korrespond</id>
+  <name>Korrespond</name>
   <summary>A simple IMAP mail client for Plasma</summary>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0-or-later</project_license>
@@ -13,7 +13,7 @@ SPDX-License-Identifier: CC0-1.0
     <name>topke</name>
   </developer>
   <description>
-    <p>Plasma Mail is a simple mail client for KDE Plasma. It talks IMAP and SMTP directly and does not need Akonadi.</p>
+    <p>Korrespond is a simple mail client for KDE Plasma. It talks IMAP and SMTP directly and does not need Akonadi.</p>
     <ul>
       <li>Yahoo, Gmail (Google sign-in) and any other IMAP provider, several accounts at once</li>
       <li>Conversations, local storage with import date, keep time and size limits</li>
@@ -25,18 +25,18 @@ SPDX-License-Identifier: CC0-1.0
   <screenshots>
     <screenshot type="default">
       <caption>Light colour scheme</caption>
-      <image type="source">https://raw.githubusercontent.com/topke63/Plasma-Mail/main/docs/screenshots/plasma-mail-light.png</image>
+      <image type="source">https://raw.githubusercontent.com/topke63/Plasma-Mail/main/docs/screenshots/korrespond-light.png</image>
     </screenshot>
     <screenshot>
       <caption>Dark colour scheme</caption>
-      <image type="source">https://raw.githubusercontent.com/topke63/Plasma-Mail/main/docs/screenshots/plasma-mail-dark.png</image>
+      <image type="source">https://raw.githubusercontent.com/topke63/Plasma-Mail/main/docs/screenshots/korrespond-dark.png</image>
     </screenshot>
   </screenshots>
-  <launchable type="desktop-id">plasma-mail.desktop</launchable>
+  <launchable type="desktop-id">io.github.topke63.korrespond.desktop</launchable>
   <url type="homepage">https://github.com/topke63/Plasma-Mail</url>
   <url type="bugtracker">https://github.com/topke63/Plasma-Mail/issues</url>
   <provides>
-    <binary>plasma-mail</binary>
+    <binary>korrespond</binary>
   </provides>
   <categories>
     <category>Network</category>

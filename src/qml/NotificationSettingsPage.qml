@@ -6,7 +6,7 @@ import QtQuick.Layouts
 import org.kde.ki18n
 import org.kde.kirigami as Kirigami
 import org.kde.kirigamiaddons.formcard as FormCard
-import PlasmaMail
+import Korrespond
 
 // Settings → Notifications: how often to look for new mail and what closing the window does.
 // Changes apply at once.
@@ -24,7 +24,7 @@ FormCard.FormCardPage {
             id: minutesDelegate
 
             label: KI18n.i18nc("@label:spinbox", "Check for new mail every (minutes)")
-            description: KI18n.i18nc("@info", "Plasma Mail looks at your inboxes this often and shows a notification when new mail arrived.")
+            description: KI18n.i18nc("@info", "Korrespond looks at your inboxes this often and shows a notification when new mail arrived.")
             from: 1
             to: 60
             value: MailController.checkMinutes
@@ -62,7 +62,7 @@ FormCard.FormCardPage {
             icon.name: "preferences-desktop-notification"
             description: MailController.notificationsConfigurable
                 ? KI18n.i18nc("@info", "Choose how the desktop shows and sounds new-mail notifications.")
-                : KI18n.i18nc("@info", "Available once Plasma Mail is installed (cmake --install).")
+                : KI18n.i18nc("@info", "Available once Korrespond is installed (cmake --install).")
             enabled: MailController.notificationsConfigurable
             onClicked: MailController.configureNotifications()
         }

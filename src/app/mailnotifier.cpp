@@ -40,11 +40,11 @@ void MailNotifier::onNewMail(const QString &account, int count, const QString &s
         return;
     }
     auto notification = new KNotification(u"newmail"_s);
-    notification->setComponentName(u"plasma-mail"_s);
-    if (QIcon::hasThemeIcon(u"org.topke.plasmamail"_s)) {
-        notification->setIconName(u"org.topke.plasmamail"_s);
+    notification->setComponentName(u"korrespond"_s);
+    if (QIcon::hasThemeIcon(u"io.github.topke63.korrespond"_s)) {
+        notification->setIconName(u"io.github.topke63.korrespond"_s);
     } else {
-        notification->setPixmap(QIcon(u":/icons/sc-apps-org.topke.plasmamail.svg"_s).pixmap(64, 64)); // not installed yet
+        notification->setPixmap(QIcon(u":/icons/sc-apps-io.github.topke63.korrespond.svg"_s).pixmap(64, 64)); // not installed yet
     }
     if (count == 1) {
         notification->setTitle(senderName(sender));

@@ -4,7 +4,7 @@
 import QtQuick
 import org.kde.ki18n
 import org.kde.kirigamiaddons.formcard as FormCard
-import PlasmaMail
+import Korrespond
 
 // Settings → Message List: how the list groups messages. Applies at once.
 FormCard.FormCardPage {

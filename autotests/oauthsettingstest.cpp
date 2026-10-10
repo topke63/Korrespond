@@ -20,7 +20,7 @@ class OAuthSettingsTest : public QObject
 private:
     static KConfigGroup group()
     {
-        return KSharedConfig::openConfig(u"plasmamailrc"_s)->group(u"GoogleOAuth"_s);
+        return KSharedConfig::openConfig(u"korrespondrc"_s)->group(u"GoogleOAuth"_s);
     }
 
     static void writeConfig(const QString &id, const QString &secret)
@@ -44,8 +44,8 @@ private Q_SLOTS:
         KConfigGroup g = group();
         g.deleteGroup();
         g.sync();
-        qunsetenv("PLASMAMAIL_GOOGLE_CLIENT_ID");
-        qunsetenv("PLASMAMAIL_GOOGLE_CLIENT_SECRET");
+        qunsetenv("KORRESPOND_GOOGLE_CLIENT_ID");
+        qunsetenv("KORRESPOND_GOOGLE_CLIENT_SECRET");
     }
 
     void testNothingSet()
@@ -76,12 +76,12 @@ private Q_SLOTS:
     void testEnvironmentWins()
     {
         writeConfig(u"config-id"_s, u"config-secret"_s);
-        qputenv("PLASMAMAIL_GOOGLE_CLIENT_ID", "env-id");
+        qputenv("KORRESPOND_GOOGLE_CLIENT_ID", "env-id");
         GoogleOAuthSettings settings = GoogleOAuthSettings::load();
         QCOMPARE(settings.clientId, u"env-id"_s);
         QCOMPARE(settings.clientSecret, u"config-secret"_s); // each value on its own
 
-        qputenv("PLASMAMAIL_GOOGLE_CLIENT_SECRET", "env-secret");
+        qputenv("KORRESPOND_GOOGLE_CLIENT_SECRET", "env-secret");
         settings = GoogleOAuthSettings::load();
         QCOMPARE(settings.clientSecret, u"env-secret"_s);
     }
@@ -89,8 +89,8 @@ private Q_SLOTS:
     void testEmptyEnvironmentDoesNotHideConfig()
     {
         writeConfig(u"config-id"_s, u"config-secret"_s);
-        qputenv("PLASMAMAIL_GOOGLE_CLIENT_ID", "");
-        qputenv("PLASMAMAIL_GOOGLE_CLIENT_SECRET", "  ");
+        qputenv("KORRESPOND_GOOGLE_CLIENT_ID", "");
+        qputenv("KORRESPOND_GOOGLE_CLIENT_SECRET", "  ");
         const GoogleOAuthSettings settings = GoogleOAuthSettings::load();
         QCOMPARE(settings.clientId, u"config-id"_s);
         QCOMPARE(settings.clientSecret, u"config-secret"_s);
@@ -129,8 +129,8 @@ private Q_SLOTS:
 
     void testEnvironmentOnly()
     {
-        qputenv("PLASMAMAIL_GOOGLE_CLIENT_ID", "env-id");
-        qputenv("PLASMAMAIL_GOOGLE_CLIENT_SECRET", "env-secret");
+        qputenv("KORRESPOND_GOOGLE_CLIENT_ID", "env-id");
+        qputenv("KORRESPOND_GOOGLE_CLIENT_SECRET", "env-secret");
         QVERIFY(GoogleOAuthSettings::load().isConfigured());
     }
 };

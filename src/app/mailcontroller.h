@@ -278,7 +278,7 @@ public:
     Q_INVOKABLE QVariantList contactSuggestions(const QString &prefix) const;
     // The best known name for an address (contacts, then names seen in mail), or empty.
     Q_INVOKABLE QString contactName(const QString &email) const;
-    // Dev only: the value of PLASMAMAIL_DEMO_<name> in demo mode, else empty (lets a screenshot run
+    // Dev only: the value of KORRESPOND_DEMO_<name> in demo mode, else empty (lets a screenshot run
     // open a page that has no other way to be reached from outside).
     Q_INVOKABLE QString demoOption(const QString &name) const;
     [[nodiscard]] int sidebarWidth() const;
@@ -424,9 +424,9 @@ public:
     Q_INVOKABLE void cleanUpNow();
 
     // Reserved paths of the shared views (not valid IMAP folder names we would ever list).
-    static constexpr auto allInboxesPath = "plasmamail:inboxes";
-    static constexpr auto unreadPath = "plasmamail:unread";
-    static constexpr auto flaggedPath = "plasmamail:flagged";
+    static constexpr auto allInboxesPath = "korrespond:inboxes";
+    static constexpr auto unreadPath = "korrespond:unread";
+    static constexpr auto flaggedPath = "korrespond:flagged";
 
     // How many of the newest messages a folder shows.
     static constexpr int messageLimit = 50;
@@ -554,7 +554,7 @@ private:
     void clearMessage(bool clearUid);
     // With storage on: shows the stored folder list and All Inboxes before connecting.
     void showStoredMail();
-    // Dev hook PLASMAMAIL_DEMO: fictional accounts, folders and messages, in memory only.
+    // Dev hook KORRESPOND_DEMO: fictional accounts, folders and messages, in memory only.
     void loadDemo();
     [[nodiscard]] QList<MessageSummary> demoFolder(const QString &account, const QString &folder) const;
     [[nodiscard]] MessageSummary *demoEntry(const QString &account, const QString &folder, qint64 uid);
@@ -604,7 +604,7 @@ private:
     QSet<int> m_queuedIds; // sent through the queue: no window waits for the answer
     int m_nextSendId = 1;
     AppSettings m_app;
-    // Dev only: PLASMAMAIL_SIDEBAR_COLLAPSED=0|1 shows that state for this run without saving it.
+    // Dev only: KORRESPOND_SIDEBAR_COLLAPSED=0|1 shows that state for this run without saving it.
     std::optional<bool> m_collapsedOverride;
     QString m_activityText;
     QString m_lastAction;
@@ -655,7 +655,7 @@ private:
     StorageSettings m_storage;
     qint64 m_storageUsedBytes = 0;
     bool m_syncing = false;
-    bool m_demo = false; // PLASMAMAIL_DEMO: no network, keychain or store
+    bool m_demo = false; // KORRESPOND_DEMO: no network, keychain or store
     std::map<QString, std::map<QString, QList<MessageSummary>>> m_demoMessages; // account -> folder -> messages
     bool m_showingStored = false; // the view came from the store; refresh it once connected
     int m_requests = 0;

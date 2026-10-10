@@ -6,7 +6,7 @@ import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.ki18n
 import org.kde.kirigami as Kirigami
-import PlasmaMail
+import Korrespond
 
 // The "?" help: every shortcut that is set now, in groups. Read-only; changing a key is in
 // Settings → Shortcuts.

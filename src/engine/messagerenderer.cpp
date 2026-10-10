@@ -349,8 +349,8 @@ bool isRiskyAttachment(const AttachmentData &part)
 
 bool isStaleAttachmentFolder(const QString &name, qint64 ageSeconds, const std::function<bool(qint64 pid)> &pidAlive)
 {
-    static const QRegularExpression pidPattern(u"^plasma-mail-([0-9]{1,10})-[A-Za-z0-9]{6}$"_s);
-    static const QRegularExpression oldPattern(u"^plasma-mail-[A-Za-z0-9]{6}$"_s);
+    static const QRegularExpression pidPattern(u"^korrespond-([0-9]{1,10})-[A-Za-z0-9]{6}$"_s);
+    static const QRegularExpression oldPattern(u"^korrespond-[A-Za-z0-9]{6}$"_s);
     const QRegularExpressionMatch match = pidPattern.match(name);
     if (match.hasMatch()) {
         bool ok = false;

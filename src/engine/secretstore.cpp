@@ -27,6 +27,11 @@ QString SecretStore::service() const
     return m_service;
 }
 
+void SecretStore::setLegacyService(const QString &legacyService)
+{
+    m_legacyService = legacyService;
+}
+
 void SecretStore::writePassword(const QString &key, const QString &password)
 {
     auto job = new QKeychain::WritePasswordJob(m_service, this);
@@ -45,9 +50,37 @@ void SecretStore::readPassword(const QString &key)
     job->setInsecureFallback(false);
     job->setKey(key);
     connect(job, &QKeychain::Job::finished, this, [this, key](QKeychain::Job *job) {
+        if (job->error() == QKeychain::EntryNotFound && !m_legacyService.isEmpty() && m_legacyService != m_service) {
+            readLegacyPassword(key);
+            return;
+        }
         const QString error = errorText(job);
         const QString password = error.isEmpty() ? static_cast<QKeychain::ReadPasswordJob *>(job)->textData() : QString();
         Q_EMIT passwordRead(key, password, error);
+    });
+    job->start();
+}
+
+void SecretStore::readLegacyPassword(const QString &key)
+{
+    auto job = new QKeychain::ReadPasswordJob(m_legacyService, this);
+    job->setInsecureFallback(false);
+    job->setKey(key);
+    connect(job, &QKeychain::Job::finished, this, [this, key](QKeychain::Job *job) {
+        if (job->error() != QKeychain::NoError) {
+            // Not there either: report the plain "not found" the new service gave.
+            Q_EMIT passwordRead(key, QString(), errorText(job));
+            return;
+        }
+        const QString password = static_cast<QKeychain::ReadPasswordJob *>(job)->textData();
+        // Keep a copy under the current service so the next start doesn't need the fallback.
+        auto copy = new QKeychain::WritePasswordJob(m_service, this);
+        copy->setInsecureFallback(false);
+        copy->setKey(key);
+        copy->setTextData(password);
+        connect(copy, &QKeychain::Job::finished, copy, &QObject::deleteLater);
+        copy->start();
+        Q_EMIT passwordRead(key, password, QString());
     });
     job->start();
 }

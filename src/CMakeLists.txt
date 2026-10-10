@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 # Engine: accounts and IMAP access, no UI dependencies.
-add_library(plasmamail_engine STATIC
+add_library(korrespond_engine STATIC
     engine/account.cpp
     engine/addresshistory.cpp
     engine/appsettings.cpp
@@ -13,6 +13,7 @@ add_library(plasmamail_engine STATIC
     engine/idlepolicy.cpp
     engine/imapclient.cpp
     engine/imapidlewatcher.cpp
+    engine/legacyprofile.cpp
     engine/messagecomposer.cpp
     engine/messagerenderer.cpp
     engine/messagestore.cpp
@@ -27,8 +28,8 @@ add_library(plasmamail_engine STATIC
     engine/secretstore.cpp
     engine/storagesettings.cpp
 )
-target_include_directories(plasmamail_engine PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/engine)
-target_link_libraries(plasmamail_engine PUBLIC
+target_include_directories(korrespond_engine PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/engine)
+target_link_libraries(korrespond_engine PUBLIC
     Qt6::Core
     Qt6::Gui
     KF6::ConfigCore
@@ -43,30 +44,30 @@ target_link_libraries(plasmamail_engine PUBLIC
 )
 
 # Models: list models for the UI (QtCore only, no QML).
-add_library(plasmamail_models STATIC
+add_library(korrespond_models STATIC
     app/accountsession.cpp
     models/accountlistmodel.cpp
     models/foldermodel.cpp
     models/messagelistmodel.cpp
     models/conversationmodel.cpp
 )
-target_include_directories(plasmamail_models PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/models ${CMAKE_CURRENT_SOURCE_DIR}/app)
-target_link_libraries(plasmamail_models PUBLIC
-    plasmamail_engine
+target_include_directories(korrespond_models PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/models ${CMAKE_CURRENT_SOURCE_DIR}/app)
+target_link_libraries(korrespond_models PUBLIC
+    korrespond_engine
     KF6::I18n
 )
 
 # App: the controller QML talks to, and (from T19) the QML UI.
 qt_policy(SET QTP0001 NEW)
 qt_policy(SET QTP0004 NEW)
-add_executable(plasma-mail
+add_executable(korrespond
     app/main.cpp
 )
 set_source_files_properties(qml/MimeTheme.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
-qt_add_qml_module(plasma-mail
-    URI PlasmaMail
+qt_add_qml_module(korrespond
+    URI Korrespond
     VERSION 1.0
-    # Lets the all_qmllint / plasma-mail_qmllint targets find Qt and KDE QML modules.
+    # Lets the all_qmllint / korrespond_qmllint targets find Qt and KDE QML modules.
     IMPORT_PATH ${KDE_INSTALL_FULL_QMLDIR}
     SOURCES
         app/mailnotifier.cpp app/mailnotifier.h
@@ -99,17 +100,17 @@ qt_add_qml_module(plasma-mail
 )
 # The icon also lives in the executable, for runs from the build folder where the themed icon
 # is not installed.
-qt_add_resources(plasma-mail app_icon PREFIX "/icons" BASE ${CMAKE_SOURCE_DIR}/data/icons FILES ${CMAKE_SOURCE_DIR}/data/icons/sc-apps-org.topke.plasmamail.svg ${CMAKE_SOURCE_DIR}/data/icons/sc-apps-org.topke.plasmamail.unread.svg)
-if(PLASMAMAIL_DEV_HOOKS)
-    # Dev hook only (PLASMAMAIL_DEMO_KEY_UNDO): QTest::keyClick runs the window's shortcut map.
-    target_compile_definitions(plasma-mail PRIVATE PLASMAMAIL_DEV_HOOKS)
-    target_link_libraries(plasma-mail PRIVATE Qt6::Test)
+qt_add_resources(korrespond app_icon PREFIX "/icons" BASE ${CMAKE_SOURCE_DIR}/data/icons FILES ${CMAKE_SOURCE_DIR}/data/icons/sc-apps-io.github.topke63.korrespond.svg ${CMAKE_SOURCE_DIR}/data/icons/sc-apps-io.github.topke63.korrespond.unread.svg)
+if(KORRESPOND_DEV_HOOKS)
+    # Dev hook only (KORRESPOND_DEMO_KEY_UNDO): QTest::keyClick runs the window's shortcut map.
+    target_compile_definitions(korrespond PRIVATE KORRESPOND_DEV_HOOKS)
+    target_link_libraries(korrespond PRIVATE Qt6::Test)
 endif()
-install(TARGETS plasma-mail ${KDE_INSTALL_TARGETS_DEFAULT_ARGS})
+install(TARGETS korrespond ${KDE_INSTALL_TARGETS_DEFAULT_ARGS})
 # The generated QML type registration includes headers by file name.
-target_include_directories(plasma-mail PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
-target_link_libraries(plasma-mail PRIVATE
-    plasmamail_models
+target_include_directories(korrespond PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/app)
+target_link_libraries(korrespond PRIVATE
+    korrespond_models
     Qt6::Qml
     Qt6::WebEngineQuick
     Qt6::Quick

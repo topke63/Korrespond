@@ -4,7 +4,7 @@
 import QtQuick
 import QtQml
 import QtQuick.Controls as QQC2
-import PlasmaMail
+import Korrespond
 
 // The folders of the open message's account; picking one moves the message there. Used as the
 // toolbar's menu and as a submenu of the message list's context menu.

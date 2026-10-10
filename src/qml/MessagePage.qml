@@ -11,7 +11,7 @@ import QtQuick.Layouts
 import QtWebEngine
 import org.kde.ki18n
 import org.kde.kirigami as Kirigami
-import PlasmaMail
+import Korrespond
 
 Kirigami.Page {
     id: page
@@ -86,7 +86,7 @@ Kirigami.Page {
                 initialReferences: data.references
             };
         }
-        const component = Qt.createComponent("PlasmaMail", "ComposeWindow");
+        const component = Qt.createComponent("Korrespond", "ComposeWindow");
         const composer = component.createObject((page.QQC2.ApplicationWindow.window as Kirigami.ApplicationWindow), initial);
         if (composer) {
             (composer as Window).show();
@@ -264,7 +264,7 @@ Kirigami.Page {
 
         Kirigami.SearchField {
             id: searchField
-            // Dev only: the PLASMAMAIL_DEMO_KEY_UNDO_SEARCH hook in main.cpp finds the field by name.
+            // Dev only: the KORRESPOND_DEMO_KEY_UNDO_SEARCH hook in main.cpp finds the field by name.
             objectName: "searchField"
 
             Layout.preferredWidth: Kirigami.Units.gridUnit * 14

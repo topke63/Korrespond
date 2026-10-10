@@ -400,12 +400,12 @@ private Q_SLOTS:
         watcher.stop();
     }
 
-    // Opt-in (PLASMAMAIL_LONG_TESTS=1): KIMAP's default socket timeout is 60 s. A quiet IDLE
+    // Opt-in (KORRESPOND_LONG_TESTS=1): KIMAP's default socket timeout is 60 s. A quiet IDLE
     // must not be dropped by it, because KIMAP's IdleJob turns the timeout off while idling.
     void quietIdleSurvivesSessionTimeout()
     {
-        if (!qEnvironmentVariableIsSet("PLASMAMAIL_LONG_TESTS")) {
-            QSKIP("set PLASMAMAIL_LONG_TESTS=1 to run (takes about 70 s)");
+        if (!qEnvironmentVariableIsSet("KORRESPOND_LONG_TESTS")) {
+            QSKIP("set KORRESPOND_LONG_TESTS=1 to run (takes about 70 s)");
         }
         FakeImapServer server(true);
         QVERIFY(server.listen());

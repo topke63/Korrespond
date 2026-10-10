@@ -7,7 +7,7 @@
 #include <QDateTime>
 
 // How much mail is kept on this computer. Limits only ever remove local copies; nothing is
-// deleted on the server. Stored in plasmamailrc, group "Storage".
+// deleted on the server. Stored in korrespondrc, group "Storage".
 struct StorageSettings {
     enum KeepUnit {
         Days,

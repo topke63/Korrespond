@@ -43,5 +43,7 @@ struct Account {
 
 namespace AccountSecrets
 {
-inline constexpr auto service = "plasma-mail";
+inline constexpr auto service = "korrespond";
+// The keychain service of the app when it was called "Plasma Mail": read as a fallback, see SecretStore.
+inline constexpr auto legacyService = "plasma-mail";
 }

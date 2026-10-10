@@ -31,7 +31,7 @@ static constexpr int schemaVersion = 3;
 MessageStore::MessageStore(const QString &baseDir)
     : m_baseDir(baseDir)
     // Every instance gets its own connection, so two stores (e.g. in tests) never share one.
-    , m_connectionName(u"plasmamail-store-"_s + QUuid::createUuid().toString(QUuid::WithoutBraces))
+    , m_connectionName(u"korrespond-store-"_s + QUuid::createUuid().toString(QUuid::WithoutBraces))
 {
 }
 

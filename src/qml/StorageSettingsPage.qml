@@ -8,7 +8,7 @@ import org.kde.coreaddons as KCoreAddons
 import org.kde.ki18n
 import org.kde.kirigami as Kirigami
 import org.kde.kirigamiaddons.dateandtime as DateAndTime
-import PlasmaMail
+import Korrespond
 
 Kirigami.ScrollablePage {
     id: page

@@ -1,10 +1,10 @@
 [Desktop Entry]
 Type=Application
-Name=Plasma Mail
+Name=Korrespond
 GenericName=Email Client
 Comment=A simple IMAP mail client for Plasma
-Exec=plasma-mail
-Icon=org.topke.plasmamail
+Exec=korrespond
+Icon=io.github.topke63.korrespond
 Terminal=false
 Categories=Qt;KDE;Network;Email;
 Keywords=mail;email;imap;yahoo;gmail;

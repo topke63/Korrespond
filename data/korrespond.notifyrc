@@ -1,7 +1,7 @@
 [Global]
-IconName=org.topke.plasmamail
-Name=Plasma Mail
-Comment=Plasma Mail
+IconName=io.github.topke63.korrespond
+Name=Korrespond
+Comment=Korrespond
 
 [Event/newmail]
 Name=New mail

@@ -6,7 +6,7 @@ import QtQuick.Layouts
 import org.kde.ki18n
 import org.kde.kirigami as Kirigami
 import org.kde.kirigamiaddons.formcard as FormCard
-import PlasmaMail
+import Korrespond
 
 // Settings → Contacts: the switch for suggestions, sender names and the Google sync, the state
 // of each Google account, "Sync now" and "Clear contacts cache". Changes apply at once.
@@ -84,7 +84,7 @@ FormCard.FormCardPage {
                 FormCard.FormButtonDelegate {
                     visible: modelData.state === "needed"
                     text: KI18n.i18nc("@action:button", "Allow Access to Contacts…")
-                    description: KI18n.i18nc("@info", "Opens Google's sign-in in your browser. Mail stays connected. Plasma Mail only reads contacts.")
+                    description: KI18n.i18nc("@info", "Opens Google's sign-in in your browser. Mail stays connected. Korrespond only reads contacts.")
                     icon.name: "contact-new"
                     onClicked: MailController.allowContacts(modelData.email)
                 }

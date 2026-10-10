@@ -8,7 +8,7 @@ import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.ki18n
 import org.kde.kirigami as Kirigami
-import PlasmaMail
+import Korrespond
 
 // Folder list beside the pages (docked on wide windows, sliding in on narrow ones), with the
 // account and its menu in a header that lines up with the pages' title bars.
@@ -87,8 +87,8 @@ Kirigami.OverlayDrawer {
                         Layout.leftMargin: Kirigami.Units.largeSpacing
                         Layout.preferredWidth: Kirigami.Units.iconSizes.smallMedium
                         Layout.preferredHeight: Kirigami.Units.iconSizes.smallMedium
-                        source: "org.topke.plasmamail"
-                        fallback: ":/icons/sc-apps-org.topke.plasmamail.svg"
+                        source: "io.github.topke63.korrespond"
+                        fallback: ":/icons/sc-apps-io.github.topke63.korrespond.svg"
                         isMask: false
                     }
                     Kirigami.Heading {
@@ -151,7 +151,7 @@ Kirigami.OverlayDrawer {
                                 onTriggered: sidebar.settingsRequested()
                             }
                             QQC2.MenuItem {
-                                text: KI18n.i18nc("@action:inmenu", "About Plasma Mail")
+                                text: KI18n.i18nc("@action:inmenu", "About Korrespond")
                                 icon.name: "help-about"
                                 onTriggered: sidebar.aboutRequested()
                             }

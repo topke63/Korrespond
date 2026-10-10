@@ -20,7 +20,7 @@ class AppSettingsTest : public QObject
 private:
     static KConfigGroup group()
     {
-        return KSharedConfig::openConfig(u"plasmamailrc"_s)->group(u"General"_s);
+        return KSharedConfig::openConfig(u"korrespondrc"_s)->group(u"General"_s);
     }
 
 private Q_SLOTS:
@@ -244,15 +244,15 @@ private Q_SLOTS:
         const AppSettings loaded = AppSettings::load();
         QCOMPARE(loaded.windowWidth, 1765);
         QCOMPARE(loaded.windowHeight, 906);
-        KSharedConfig::openConfig(u"plasmamailrc"_s)->group(u"General"_s).writeEntry("WindowWidth", -5);
+        KSharedConfig::openConfig(u"korrespondrc"_s)->group(u"General"_s).writeEntry("WindowWidth", -5);
         QCOMPARE(AppSettings::load().windowWidth, 0); // nonsense is ignored
     }
 
     void testSavingKeepsOtherGroups()
     {
-        KSharedConfig::openConfig(u"plasmamailrc"_s)->group(u"Storage"_s).writeEntry("Enabled", true);
+        KSharedConfig::openConfig(u"korrespondrc"_s)->group(u"Storage"_s).writeEntry("Enabled", true);
         AppSettings().save();
-        QVERIFY(KSharedConfig::openConfig(u"plasmamailrc"_s)->group(u"Storage"_s).readEntry("Enabled", false));
+        QVERIFY(KSharedConfig::openConfig(u"korrespondrc"_s)->group(u"Storage"_s).readEntry("Enabled", false));
     }
 };
 

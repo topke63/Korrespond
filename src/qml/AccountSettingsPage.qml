@@ -9,7 +9,7 @@ import QtQuick.Layouts
 import org.kde.ki18n
 import org.kde.kirigami as Kirigami
 import org.kde.kirigamiaddons.formcard as FormCard
-import PlasmaMail
+import Korrespond
 
 // Settings → Accounts: the account manager. Lists the accounts; one opens its details.
 FormCard.FormCardPage {
@@ -112,7 +112,7 @@ FormCard.FormCardPage {
         }
     }
 
-    // Dev only (PLASMAMAIL_DEMO_OPEN_ACCOUNT_DETAILS=<email>, demo mode): opens that account's page.
+    // Dev only (KORRESPOND_DEMO_OPEN_ACCOUNT_DETAILS=<email>, demo mode): opens that account's page.
     Component.onCompleted: {
         const email = MailController.demoOption("OPEN_ACCOUNT_DETAILS");
         if (email.length > 0) {

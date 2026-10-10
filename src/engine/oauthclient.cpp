@@ -130,7 +130,7 @@ void OAuthClient::signIn(const QString &email, bool withContacts)
 
     m_replyHandler = new QOAuthHttpServerReplyHandler(QHostAddress::LocalHost, 0, this);
     m_replyHandler->setCallbackHost(u"127.0.0.1"_s);
-    m_replyHandler->setCallbackText(i18n("Plasma Mail received Google's answer. You can close this page and go back to the app."));
+    m_replyHandler->setCallbackText(i18n("Korrespond received Google's answer. You can close this page and go back to the app."));
     // The constructor with an address already listens (loopback only, free port).
     if (!m_replyHandler->isListening()) {
         finish();
@@ -159,7 +159,7 @@ bool OAuthClient::loadClient()
 {
     const GoogleOAuthSettings settings = GoogleOAuthSettings::load();
     if (!settings.isConfigured()) {
-        Q_EMIT failed(i18n("No Google OAuth client is set up. Add ClientId and ClientSecret to the [GoogleOAuth] group of plasmamailrc."));
+        Q_EMIT failed(i18n("No Google OAuth client is set up. Add ClientId and ClientSecret to the [GoogleOAuth] group of korrespondrc."));
         return false;
     }
     m_flow->setClientIdentifier(settings.clientId);

@@ -28,7 +28,7 @@ class AccountSession : public QObject
     Q_OBJECT
 public:
     // storeDir is this account's own store folder (see MessageStore::accountDir()).
-    // demo: dev hook (PLASMAMAIL_DEMO); the store is never opened, so nothing is written.
+    // demo: dev hook (KORRESPOND_DEMO); the store is never opened, so nothing is written.
     AccountSession(const Account &account, const QString &storeDir, const StorageSettings &storage, QObject *parent = nullptr, bool demo = false);
     ~AccountSession() override;
 
@@ -151,7 +151,7 @@ private:
     std::unique_ptr<MessageStore> m_store;
     SyncManager *m_sync;
     StorageSettings m_storage;
-    bool m_demo = false; // PLASMAMAIL_DEMO: never connects
+    bool m_demo = false; // KORRESPOND_DEMO: never connects
     bool m_storeReady = false;
     QList<FolderInfo> m_folders;
     qint64 m_storageUsedBytes = 0;

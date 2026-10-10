@@ -548,14 +548,14 @@ private Q_SLOTS:
         const auto alive = [](qint64) {
             return true;
         };
-        QVERIFY(isStaleAttachmentFolder(u"plasma-mail-4242-aB3dE9"_s, 0, dead));
-        QVERIFY(!isStaleAttachmentFolder(u"plasma-mail-4242-aB3dE9"_s, 999999, alive));
-        QVERIFY(!isStaleAttachmentFolder(u"plasma-mail-0-aB3dE9"_s, 999999, dead));
-        QVERIFY(!isStaleAttachmentFolder(u"plasma-mail-4242-aB3d"_s, 999999, dead)); // wrong length
-        QVERIFY(!isStaleAttachmentFolder(u"plasma-mail-4242-aB3dE9x"_s, 999999, dead));
-        QVERIFY(isStaleAttachmentFolder(u"plasma-mail-aB3dE9"_s, 2 * 24 * 3600, alive));
-        QVERIFY(!isStaleAttachmentFolder(u"plasma-mail-aB3dE9"_s, 3600, dead)); // old style, too young
-        QVERIFY(!isStaleAttachmentFolder(u"plasma-mail-aB3dE9-"_s, 999999, dead));
+        QVERIFY(isStaleAttachmentFolder(u"korrespond-4242-aB3dE9"_s, 0, dead));
+        QVERIFY(!isStaleAttachmentFolder(u"korrespond-4242-aB3dE9"_s, 999999, alive));
+        QVERIFY(!isStaleAttachmentFolder(u"korrespond-0-aB3dE9"_s, 999999, dead));
+        QVERIFY(!isStaleAttachmentFolder(u"korrespond-4242-aB3d"_s, 999999, dead)); // wrong length
+        QVERIFY(!isStaleAttachmentFolder(u"korrespond-4242-aB3dE9x"_s, 999999, dead));
+        QVERIFY(isStaleAttachmentFolder(u"korrespond-aB3dE9"_s, 2 * 24 * 3600, alive));
+        QVERIFY(!isStaleAttachmentFolder(u"korrespond-aB3dE9"_s, 3600, dead)); // old style, too young
+        QVERIFY(!isStaleAttachmentFolder(u"korrespond-aB3dE9-"_s, 999999, dead));
         QVERIFY(!isStaleAttachmentFolder(u"other-4242-aB3dE9"_s, 999999, dead));
     }
 

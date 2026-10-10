@@ -14,7 +14,7 @@
 
 using namespace Qt::StringLiterals;
 
-Q_LOGGING_CATEGORY(idleLog, "plasmamail.idle")
+Q_LOGGING_CATEGORY(idleLog, "korrespond.idle")
 
 ImapIdleWatcher::ImapIdleWatcher(QObject *parent)
     : QObject(parent)

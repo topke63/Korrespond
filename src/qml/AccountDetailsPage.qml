@@ -7,7 +7,7 @@ import QtQuick.Layouts
 import org.kde.ki18n
 import org.kde.kirigami as Kirigami
 import org.kde.kirigamiaddons.formcard as FormCard
-import PlasmaMail
+import Korrespond
 
 // Settings → Accounts → one account: its details and removing it.
 FormCard.FormCardPage {
@@ -79,7 +79,7 @@ FormCard.FormCardPage {
         }
     }
 
-    // Google accounts: whether Plasma Mail may read the contacts (suggestions, sender names).
+    // Google accounts: whether Korrespond may read the contacts (suggestions, sender names).
     property var contacts: MailController.contactsStatus(email)
 
     Connections {
@@ -112,7 +112,7 @@ FormCard.FormCardPage {
 
             visible: page.contacts.state === "needed" || page.contacts.state === "off"
             text: KI18n.i18nc("@action:button", "Allow Access to Contacts…")
-            description: KI18n.i18nc("@info", "Opens Google's sign-in in your browser. Mail stays connected. Plasma Mail only reads contacts.")
+            description: KI18n.i18nc("@info", "Opens Google's sign-in in your browser. Mail stays connected. Korrespond only reads contacts.")
             icon.name: "contact-new"
             onClicked: MailController.allowContacts(page.email)
         }

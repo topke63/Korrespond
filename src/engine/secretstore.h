@@ -18,6 +18,10 @@ public:
 
     [[nodiscard]] QString service() const;
 
+    // Entries stored by an older version under another service name: readPassword() looks there
+    // when the key is missing, and copies what it finds to `service`. Nothing is deleted.
+    void setLegacyService(const QString &legacyService);
+
     void writePassword(const QString &key, const QString &password);
     void readPassword(const QString &key);
     // Deleting a key that doesn't exist counts as success.
@@ -29,5 +33,8 @@ Q_SIGNALS:
     void passwordDeleted(const QString &key, const QString &error);
 
 private:
+    void readLegacyPassword(const QString &key);
+
     QString m_service;
+    QString m_legacyService;
 };

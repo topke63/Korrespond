@@ -6,7 +6,7 @@
 # To build your local, committed checkout instead, replace the source line with
 #   source=("$pkgname::git+file://$(realpath ../..)")
 
-pkgname=plasma-mail-git
+pkgname=korrespond-git
 pkgver=0.1.0
 pkgrel=1
 pkgdesc='Simple IMAP mail client for KDE Plasma'
@@ -36,8 +36,8 @@ depends=(
   qtkeychain-qt6
 )
 makedepends=(cmake extra-cmake-modules git ninja)
-provides=(plasma-mail)
-conflicts=(plasma-mail)
+provides=(korrespond)
+conflicts=(korrespond)
 source=("$pkgname::git+$url.git")
 sha256sums=(SKIP)
 
@@ -45,7 +45,7 @@ pkgver() {
   cd "$pkgname"
   # 0.1.0.r<commits>.g<hash>, from the version in CMakeLists.txt
   local v
-  v=$(sed -n 's/^project(plasma-mail VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)
+  v=$(sed -n 's/^project(korrespond VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)
   printf '%s.r%s.g%s' "$v" "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)"
 }
 

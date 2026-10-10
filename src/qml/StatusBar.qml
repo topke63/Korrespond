@@ -9,7 +9,7 @@ import QtQuick.Layouts
 import org.kde.coreaddons as KCoreAddons
 import org.kde.ki18n
 import org.kde.kirigami as Kirigami
-import PlasmaMail
+import Korrespond
 
 // The slim bar at the bottom of the window: how each account is connected, what the app is
 // doing, and the counters (unread, stored).

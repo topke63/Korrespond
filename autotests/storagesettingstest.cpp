@@ -37,7 +37,7 @@ private Q_SLOTS:
 
     void init()
     {
-        KSharedConfig::openConfig(u"plasmamailrc"_s)->deleteGroup(u"Storage"_s);
+        KSharedConfig::openConfig(u"korrespondrc"_s)->deleteGroup(u"Storage"_s);
     }
 
     void testMaxBytes()

@@ -9,7 +9,7 @@ import QtQuick.Layouts
 import QtWebEngine
 import org.kde.ki18n
 import org.kde.kirigami as Kirigami
-import PlasmaMail
+import Korrespond
 
 // The reading pane for a conversation: its messages stacked, oldest first. Unread messages and the
 // newest are open (header, attachments, body); the others are one line that opens on a click. Each

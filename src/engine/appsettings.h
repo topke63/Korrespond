@@ -7,7 +7,7 @@
 #include <QString>
 #include <QStringList>
 
-// General app options, in plasmamailrc, group [General].
+// General app options, in korrespondrc, group [General].
 struct AppSettings {
     static constexpr int minCheckMinutes = 1;
     static constexpr int maxCheckMinutes = 60;

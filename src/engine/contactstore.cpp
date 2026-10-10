@@ -35,7 +35,7 @@ QString escapeLike(const QString &text)
 
 ContactStore::ContactStore(const QString &baseDir)
     : m_baseDir(baseDir)
-    , m_connectionName(u"plasmamail-contacts-"_s + QUuid::createUuid().toString(QUuid::WithoutBraces))
+    , m_connectionName(u"korrespond-contacts-"_s + QUuid::createUuid().toString(QUuid::WithoutBraces))
 {
 }
 

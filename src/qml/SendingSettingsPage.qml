@@ -6,7 +6,7 @@ import QtQuick.Layouts
 import org.kde.ki18n
 import org.kde.kirigami as Kirigami
 import org.kde.kirigamiaddons.formcard as FormCard
-import PlasmaMail
+import Korrespond
 
 // Settings → Sending: how long a sent message waits so it can still be undone. Changes apply
 // at once, to messages sent afterwards (pending ones keep their deadline).

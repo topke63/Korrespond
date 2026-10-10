@@ -9,7 +9,7 @@ import QtQuick.Controls as QQC2
 import QtQuick.Layouts
 import org.kde.ki18n
 import org.kde.kirigami as Kirigami
-import PlasmaMail
+import Korrespond
 
 // The message window: a new message, or a reply / forward when the initial* values are given
 // (see MailController.composeFor()).

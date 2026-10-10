@@ -15,7 +15,7 @@ using namespace Qt::StringLiterals;
 
 static KConfigGroup generalGroup()
 {
-    return KSharedConfig::openConfig(u"plasmamailrc"_s)->group(u"General"_s);
+    return KSharedConfig::openConfig(u"korrespondrc"_s)->group(u"General"_s);
 }
 
 static int clampMinutes(int minutes)

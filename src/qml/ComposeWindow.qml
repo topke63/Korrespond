@@ -227,12 +227,11 @@ Kirigami.ApplicationWindow {
                     text: KI18n.i18nc("@label", "To:")
                     color: Kirigami.Theme.disabledTextColor
                 }
-                QQC2.TextField {
+                RecipientField {
                     id: toField
 
                     Layout.fillWidth: true
                     placeholderText: KI18n.i18nc("@info:placeholder", "name@example.com, …")
-                    inputMethodHints: Qt.ImhEmailCharactersOnly | Qt.ImhNoAutoUppercase
                     focus: true
                     enabled: !composer.waiting
                 }
@@ -242,11 +241,10 @@ Kirigami.ApplicationWindow {
                     text: KI18n.i18nc("@label", "Cc:")
                     color: Kirigami.Theme.disabledTextColor
                 }
-                QQC2.TextField {
+                RecipientField {
                     id: ccField
 
                     Layout.fillWidth: true
-                    inputMethodHints: Qt.ImhEmailCharactersOnly | Qt.ImhNoAutoUppercase
                     enabled: !composer.waiting
                 }
 
@@ -255,11 +253,10 @@ Kirigami.ApplicationWindow {
                     text: KI18n.i18nc("@label", "Bcc:")
                     color: Kirigami.Theme.disabledTextColor
                 }
-                QQC2.TextField {
+                RecipientField {
                     id: bccField
 
                     Layout.fillWidth: true
-                    inputMethodHints: Qt.ImhEmailCharactersOnly | Qt.ImhNoAutoUppercase
                     enabled: !composer.waiting
                 }
 

@@ -88,6 +88,7 @@ qt_add_qml_module(plasma-mail
         qml/SendingSettingsPage.qml
         qml/ViewSettingsPage.qml
         qml/ConversationView.qml
+        qml/RecipientField.qml
         qml/ShortcutsHelp.qml
         qml/FolderSidebar.qml
         qml/SenderAvatar.qml

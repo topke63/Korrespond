@@ -314,6 +314,44 @@ private Q_SLOTS:
         QCOMPARE(model.rowCount(), 2);
     }
 
+    void testNameFromResolver()
+    {
+        MessageSummary named = summary(1, u"a"_s);
+        named.from = u"Real Name <real@example.com>"_s;
+        MessageSummary bare = summary(2, u"b"_s);
+        bare.from = u"frank@example.net"_s;
+        MessageSummary unknown = summary(3, u"c"_s);
+        unknown.from = u"nobody@example.net"_s;
+        MessageListModel model;
+        QAbstractItemModelTester tester(&model, QAbstractItemModelTester::FailureReportingMode::QtTest);
+        model.setMessages({named, bare, unknown});
+        QCOMPARE(model.data(model.index(1), MessageListModel::FromRole).toString(), u"frank@example.net"_s); // no resolver yet
+
+        int calls = 0;
+        model.setNameResolver([&calls](const QString &address) {
+            ++calls;
+            return address == u"frank@example.net"_s ? u"Frank Demo"_s : address == u"real@example.com"_s ? u"Other Name"_s : QString();
+        });
+        QCOMPARE(model.data(model.index(0), MessageListModel::FromRole).toString(), named.from); // the header's own name wins
+        QCOMPARE(model.data(model.index(1), MessageListModel::FromRole).toString(), u"Frank Demo <frank@example.net>"_s);
+        QCOMPARE(model.data(model.index(2), MessageListModel::FromRole).toString(), unknown.from);
+        QCOMPARE(model.data(model.index(1), MessageListModel::ParticipantsRole).toString(), u"Frank"_s);
+        const int before = calls;
+        model.data(model.index(1), MessageListModel::FromRole); // cached
+        QCOMPARE(calls, before);
+
+        // The contacts changed: the answer is asked again and the row refreshed.
+        QSignalSpy changed(&model, &QAbstractItemModel::dataChanged);
+        model.setNameResolver([](const QString &) {
+            return u"Franklin"_s;
+        });
+        QVERIFY(changed.count() >= 1);
+        QCOMPARE(model.data(model.index(1), MessageListModel::FromRole).toString(), u"Franklin <frank@example.net>"_s);
+
+        model.setConversationView(true);
+        QCOMPARE(model.data(model.index(1), MessageListModel::ParticipantsRole).toString(), u"Franklin"_s);
+    }
+
     void testClear()
     {
         MessageListModel model;

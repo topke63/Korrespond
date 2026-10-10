@@ -28,3 +28,8 @@ QList<SeenAddress> seenAddressesInRaw(const QByteArray &raw);
 
 // True for addresses that nobody writes to: no-reply, do-not-reply, mailer-daemon, bounces.
 bool isAutomatedAddress(const QString &email);
+
+// "Name <address>" ready to put in a To field: the name is quoted when it has characters that an
+// address list treats specially (comma, semicolon, quotes, angle brackets, @, parentheses); the
+// bare address when there is no name.
+QString formatMailbox(const QString &name, const QString &email);

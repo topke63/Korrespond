@@ -3,6 +3,7 @@
 
 #include "messagelistmodel.h"
 
+#include "addresshistory.h"
 #include "threadbuilder.h"
 
 #include <KLocalizedString>
@@ -75,7 +76,7 @@ QVariant MessageListModel::data(const QModelIndex &index, int role) const
         case ThreadCountRole:
             return 1;
         case ParticipantsRole: {
-            const QString name = participantName(message.from);
+            const QString name = participantName(displayFrom(message));
             return participantAddress(message.from) == message.account.toLower() ? i18nc("@item the user themselves in a list of senders", "me") : name;
         }
         case ThreadUnreadRole:
@@ -96,7 +97,7 @@ QVariant MessageListModel::data(const QModelIndex &index, int role) const
     case SubjectRole:
         return message.subject.isEmpty() ? i18nc("@info placeholder for an empty mail subject", "(No subject)") : message.subject;
     case FromRole:
-        return message.from;
+        return displayFrom(message);
     case DateRole:
         return message.date;
     case DateTextRole:
@@ -130,6 +131,44 @@ QHash<int, QByteArray> MessageListModel::roleNames() const
         {ThreadFlaggedRole, "threadFlagged"},
         {ThreadUidsRole, "threadUids"},
     };
+}
+
+void MessageListModel::setNameResolver(const std::function<QString(const QString &)> &resolver)
+{
+    m_resolver = resolver;
+    namesChanged();
+}
+
+void MessageListModel::namesChanged()
+{
+    m_names.clear();
+    if (m_conversationView) {
+        applyRows(buildRows());
+    }
+    if (rowCount() > 0) {
+        Q_EMIT dataChanged(index(0), index(rowCount() - 1), {FromRole, ParticipantsRole});
+    }
+}
+
+QString MessageListModel::displayFrom(const MessageSummary &message) const
+{
+    if (!m_resolver) {
+        return message.from;
+    }
+    const QString address = participantAddress(message.from);
+    if (address.isEmpty()) {
+        return message.from;
+    }
+    // A header with a name keeps it (the sender's own wording).
+    const qsizetype open = message.from.lastIndexOf(u'<');
+    if (open > 0 && !message.from.left(open).trimmed().isEmpty()) {
+        return message.from;
+    }
+    auto it = m_names.find(address);
+    if (it == m_names.end()) {
+        it = m_names.insert(address, m_resolver(address));
+    }
+    return it.value().isEmpty() ? message.from : formatMailbox(it.value(), address);
 }
 
 QString MessageListModel::participantAddress(const QString &from)
@@ -206,7 +245,8 @@ QList<MessageListModel::Row> MessageListModel::buildRows() const
                 continue;
             }
             seen.insert(address);
-            names.append(address == message.account.toLower() ? i18nc("@item the user themselves in a list of senders", "me") : participantName(message.from));
+            names.append(address == message.account.toLower() ? i18nc("@item the user themselves in a list of senders", "me")
+                                                              : participantName(displayFrom(message)));
         }
         for (const MessageSummary *message : list) {
             row.uids.append(message->uid);

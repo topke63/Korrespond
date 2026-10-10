@@ -72,3 +72,22 @@ bool isAutomatedAddress(const QString &email)
     }
     return false;
 }
+
+QString formatMailbox(const QString &name, const QString &email)
+{
+    const QString trimmed = name.trimmed();
+    if (trimmed.isEmpty()) {
+        return email;
+    }
+    static const QString special = u",;<>\"@()[]:\\"_s;
+    bool quote = false;
+    for (const QChar ch : trimmed) {
+        quote = quote || special.contains(ch);
+    }
+    if (!quote) {
+        return trimmed + u" <"_s + email + u'>';
+    }
+    QString escaped = trimmed;
+    escaped.replace(u'\\', u"\\\\"_s).replace(u'"', u"\\\""_s);
+    return u'"' + escaped + u"\" <"_s + email + u'>';
+}

@@ -111,6 +111,11 @@ MailController::MailController(QObject *parent)
     }
     m_accounts->setPushEnabled(m_app.pushEnabled);
     m_messageModel->setConversationView(m_app.conversationView);
+    // Ticks often; checkForNewMail() decides per account whether its interval has passed.
+    m_checkTimer->start(std::chrono::seconds(30));
+
+    m_storage = StorageSettings::load();
+    m_demo = qEnvironmentVariableIntValue("PLASMAMAIL_DEMO") == 1;
     // The contacts cache: its own file, so clearing it never touches mail. Demo mode uses a
     // throw-away folder.
     if (m_demo) {
@@ -119,12 +124,22 @@ MailController::MailController(QObject *parent)
     m_contacts = std::make_unique<ContactStore>(m_demo ? m_demoContactsDir->path() : m_dataDir + u"/contacts"_s);
     if (!m_contacts->open()) {
         qWarning("Cannot open the contacts cache: %s", qPrintable(m_contacts->lastError()));
+    } else if (m_demo) {
+        // Invented people for suggestions in screenshots and key-driven runs.
+        const QString demoAccount = u"alice@example.com"_s;
+        m_contacts->upsertPerson(demoAccount, ContactStore::Google, u"people/d1"_s, u"Carol Demo"_s, {u"carol@example.org"_s});
+        m_contacts->upsertPerson(demoAccount, ContactStore::Google, u"people/d2"_s, u"Carlos Sample"_s, {u"carlos@example.net"_s, u"c.sample@example.com"_s});
+        m_contacts->upsertPerson(demoAccount, ContactStore::Google, u"people/d3"_s, u"Doe, Jane"_s, {u"jane.doe@example.org"_s});
+        m_contacts->upsertPerson(demoAccount, ContactStore::Other, u"otherContacts/d4"_s, u"Caroline Placeholder"_s, {u"caroline@example.com"_s});
+        m_contacts->addHistory(demoAccount, u"carter@example.net"_s, QString(), 1000);
+        m_contacts->upsertPerson(demoAccount, ContactStore::Google, u"people/d5"_s, u"Frank Demo"_s, {u"frank@example.net"_s});
     }
-    // Ticks often; checkForNewMail() decides per account whether its interval has passed.
-    m_checkTimer->start(std::chrono::seconds(30));
-
-    m_storage = StorageSettings::load();
-    m_demo = qEnvironmentVariableIntValue("PLASMAMAIL_DEMO") == 1;
+    // Senders without a name in their header get one from the contacts, in the list and the
+    // reading pane; the list refreshes when the contacts change.
+    m_messageModel->setNameResolver([this](const QString &address) {
+        return m_app.contactsEnabled && m_contacts && m_contacts->isOpen() ? m_contacts->nameFor(address) : QString();
+    });
+    connect(this, &MailController::contactsChanged, m_messageModel, &MessageListModel::namesChanged);
     if (m_demo) {
         // The real accounts are not loaded; no timer, keychain read or connection starts.
         m_checkTimer->stop();
@@ -1463,7 +1478,7 @@ void MailController::loadDemo()
           false},
          {"bob@example.com",
           "Bob Example",
-          "Frank Demo <frank@example.net>",
+          "frank@example.net", // no name in the header: the contact "Frank Demo" supplies it
           "Photos from the trip",
           "The pictures are finally sorted; link below.",
           200,
@@ -2396,6 +2411,11 @@ void MailController::showMessage(AccountSession *session, const QString &folder,
     // The const getters return nullptr for missing headers instead of creating empty ones.
     m_messageSubject = msg.subject() ? msg.subject()->asUnicodeString() : QString();
     m_messageFrom = msg.from() ? msg.from()->asUnicodeString() : QString(); // "Name <address>"
+    if (const MessageSummary shown = m_messageModel->message(session->account().email, uid); shown.uid == uid) {
+        MessageSummary header = shown;
+        header.from = m_messageFrom;
+        m_messageFrom = m_messageModel->displayFrom(header); // a nameless sender gets the contact's name
+    }
     m_messageTo = msg.to() ? msg.to()->displayString() : QString();
     m_messageDate = ::messageDate(msg); // falls back to the Received date
     m_messageHtml = renderBody(msg, false);
@@ -2956,6 +2976,28 @@ QVariantMap MailController::contactsStatus(const QString &account) const
         status[u"lastSync"_s] = sync->lastSync().isValid() ? QLocale().toString(sync->lastSync().toLocalTime(), QLocale::ShortFormat) : QString();
     }
     return status;
+}
+
+QVariantList MailController::contactSuggestions(const QString &prefix) const
+{
+    QVariantList result;
+    if (!m_app.contactsEnabled || !m_contacts || !m_contacts->isOpen()) {
+        return result;
+    }
+    const auto found = m_contacts->suggest(prefix, 8);
+    for (const ContactStore::Suggestion &suggestion : found) {
+        result.append(
+            QVariantMap{{u"name"_s, suggestion.name}, {u"email"_s, suggestion.email}, {u"display"_s, formatMailbox(suggestion.name, suggestion.email)}});
+    }
+    return result;
+}
+
+QString MailController::contactName(const QString &email) const
+{
+    if (!m_app.contactsEnabled || !m_contacts || !m_contacts->isOpen()) {
+        return {};
+    }
+    return m_contacts->nameFor(email);
 }
 
 QString MailController::demoOption(const QString &name) const

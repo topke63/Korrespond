@@ -262,6 +262,11 @@ public:
     // Signs in with Google again in the browser, asking for the contacts scopes; the mail
     // connection stays up. The new refresh token replaces the saved one when it worked.
     Q_INVOKABLE void allowContacts(const QString &account);
+    // Up to 8 addresses that start with `prefix` (a name word or the address): [{name, email,
+    // display}], display being "Name <address>" as to put in a To field. Empty with contacts off.
+    Q_INVOKABLE QVariantList contactSuggestions(const QString &prefix) const;
+    // The best known name for an address (contacts, then names seen in mail), or empty.
+    Q_INVOKABLE QString contactName(const QString &email) const;
     // Dev only: the value of PLASMAMAIL_DEMO_<name> in demo mode, else empty (lets a screenshot run
     // open a page that has no other way to be reached from outside).
     Q_INVOKABLE QString demoOption(const QString &name) const;

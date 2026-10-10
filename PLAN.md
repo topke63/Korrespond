@@ -5236,16 +5236,16 @@ no contacts API: its autocomplete (and Gmail's fallback) comes from addresses se
 - notes: Done 2026-10-10 (no sub-agents). AccountSession::requestContactsAccess() signs in again with a second OAuthClient (asks for the contacts scopes), so the mail login and IMAP connection are untouched; its token is used for People API calls (accessToken()), and its refresh token replaces the kept one. MailController::allowContacts(account) writes that token to the keychain, saves the account (Contacts=true), switches contacts on if they were off and starts the sync; a failed or cancelled sign-in reports the error and changes nothing. contactsStatus(account) feeds the account page: a 'Contacts' card with the state text and, when permission is needed (no scope yet, or the API answered 403), an 'Allow Access to Contacts…' button. Demo: bob@example.com is a Google account without the permission (shots t236-{BreezeLight,BreezeDark}.png, dev hook PLASMAMAIL_DEMO_OPEN_ACCOUNT_DETAILS). Not verified: the real browser round trip and keychain write.
 
 ### T237 — Suggestions API in the controller
-- status: todo
+- status: done
 - depends on: T232
 - files: src/app/mailcontroller.cpp/.h, tests
 - output: `Q_INVOKABLE QVariantList contactSuggestions(const QString &prefix)` (max 8; entries
   `{name, email, display}`), `contactName(email)`; both return nothing when the setting is off.
 - verify: build; ctest through the controller with a seeded store.
-- notes:
+- notes: Done 2026-10-10 (no sub-agents). MailController.contactSuggestions(prefix) → up to 8 {name, email, display} (display via formatMailbox(): quotes names with comma/quote/etc., tested), contactName(email); both empty with contacts off. Demo mode seeds invented contacts into its throw-away store.
 
 ### T238 — Autocomplete in the message window
-- status: todo
+- status: done
 - depends on: T237
 - files: src/qml/ComposeWindow.qml
 - output: To/Cc/Bcc show a suggestion popup under the field while typing the part after the last
@@ -5253,16 +5253,16 @@ no contacts API: its autocomplete (and Gmail's fallback) comes from addresses se
   suggestion is chosen); accepted entries become `Name <address>`.
 - verify: build; offscreen shots (demo contacts, both schemes) and a key-driven run with
   `PLASMAMAIL_DEMO_KEYS_TARGET=composer`.
-- notes:
+- notes: Done 2026-10-10 (no sub-agents). RecipientField.qml (a TextField with a suggestion popup) replaces the To, Cc and Bcc fields: the text after the last comma is the part being typed; Down/Up mark, Enter/Tab take the marked one (no mark: unchanged behaviour), click takes any, Escape closes; a taken one becomes 'Name <address>, '. Verified offscreen with key runs (PLASMAMAIL_DEMO_KEYS_TARGET=composer): 'car' shows 5 suggestions (t238-{BreezeLight,BreezeDark}.png); Down+Return gives 'Carlos Sample <carlos@example.net>, '; Escape then Return leaves 'car'. Not verified: Tab with real focus traversal, IME input.
 
 ### T239 — Names from contacts in the list and the reading pane
-- status: todo
+- status: done
 - depends on: T237
 - files: src/qml/MessageListPage.qml, src/qml/MessagePage.qml, src/qml/SenderAvatar.qml
 - output: a sender that has no display name, or only the address, shows the contact's name; the
   address stays visible in the reading pane. The avatar initial follows the name.
 - verify: build; offscreen shots with demo contacts, both schemes.
-- notes:
+- notes: Done 2026-10-10 (no sub-agents). A sender whose header has no display name gets the contact's name ('Name <address>') in the list (FromRole, participants of conversation rows) and in the reading pane header; a name in the header always wins. MessageListModel.setNameResolver()/namesChanged() (cached per address, refreshed when contactsChanged); the controller resolves through ContactStore::nameFor. Tests in messagelistmodeltest; demo: Frank (t239-BreezeLight.png). The avatar initial follows the shown name. Not done: photos.
 
 ### T240 — Settings → Contacts
 - status: todo

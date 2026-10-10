@@ -6,7 +6,10 @@
 #include "imapclient.h"
 
 #include <QAbstractListModel>
+#include <QHash>
 #include <QList>
+
+#include <functional>
 
 class MessageListModel : public QAbstractListModel
 {
@@ -68,6 +71,15 @@ public:
     // Returns a default MessageSummary (uid 0) if the message is not in the list.
     [[nodiscard]] MessageSummary message(const QString &account, qint64 uid) const;
 
+    // Looks up a name for an address (contacts); used for senders whose header has no display
+    // name. The answers are cached until namesChanged().
+    void setNameResolver(const std::function<QString(const QString &address)> &resolver);
+    // The resolver would answer differently now (the contacts changed): rows are refreshed.
+    void namesChanged();
+    // The sender as shown: the header's own text, or "Name <address>" when it had no name and the
+    // resolver knows one.
+    [[nodiscard]] QString displayFrom(const MessageSummary &message) const;
+
     // Short local-time text: time of day for today, short date otherwise.
     [[nodiscard]] static QString dateText(const QDateTime &dateTime, const QDate &today);
 
@@ -94,4 +106,6 @@ private:
     QList<MessageSummary> m_messages;
     bool m_conversationView = false;
     QList<Row> m_rows; // only in the conversation view
+    std::function<QString(const QString &)> m_resolver;
+    mutable QHash<QString, QString> m_names; // address -> resolved name ("" = none)
 };

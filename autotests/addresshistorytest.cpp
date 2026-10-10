@@ -37,6 +37,20 @@ private Q_SLOTS:
         QVERIFY(seenAddressesInRaw("From: not an address\r\n\r\n").isEmpty());
     }
 
+    void testFormatMailbox()
+    {
+        QCOMPARE(formatMailbox(u"Alice Example"_s, u"alice@example.com"_s), u"Alice Example <alice@example.com>"_s);
+        QCOMPARE(formatMailbox(QString(), u"alice@example.com"_s), u"alice@example.com"_s);
+        QCOMPARE(formatMailbox(u"  "_s, u"alice@example.com"_s), u"alice@example.com"_s);
+        QCOMPARE(formatMailbox(u"Doe, John"_s, u"j@example.com"_s), u"\"Doe, John\" <j@example.com>"_s);
+        QCOMPARE(formatMailbox(u"Say \"hi\""_s, u"j@example.com"_s), u"\"Say \\\"hi\\\"\" <j@example.com>"_s);
+        // The formatted text reads back as the same address.
+        const QList<SeenAddress> back = seenAddressesInRaw(("To: " + formatMailbox(u"Doe, John"_s, u"j@example.com"_s).toUtf8() + "\r\n\r\n"));
+        QCOMPARE(back.size(), 1);
+        QCOMPARE(back.first().email, u"j@example.com"_s);
+        QCOMPARE(back.first().name, u"Doe, John"_s);
+    }
+
     void testAutomatedAddresses()
     {
         QVERIFY(isAutomatedAddress(u"noreply@example.com"_s));

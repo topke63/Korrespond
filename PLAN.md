@@ -5088,7 +5088,7 @@ MessagePage.qml.
   was not needed: PLASMAMAIL_DEMO_KEYS=Ctrl+K@<ms> does it.
 
 ### T215 — Shortcuts help and editor
-- status: todo
+- status: done
 - depends on: T213
 - parallel-safe with: T214
 - files: src/qml/Main.qml, new src/qml/ShortcutsHelp.qml
@@ -5096,7 +5096,20 @@ MessagePage.qml.
 - output: "?" opens a dialog listing actions grouped (Messages, Navigation, App) with their current
   shortcuts; a "Shortcuts" settings page uses StatefulApp's shortcut editor.
 - verify: build; ctest; offscreen shots of the dialog and the settings page in both schemes.
-- notes:
+- notes: Done 2026-10-10 (no sub-agents).
+  "?" opens ShortcutsHelp.qml (Kirigami.Dialog; groups Messages, Navigation, App; rows come from
+  MailApplication::shortcutGroups(), the actions' current keys, so a changed key shows; Undo Send
+  Ctrl+Z is listed too; "Change Shortcuts…" opens Settings → Shortcuts). Settings has a "Shortcuts"
+  module (moduleId "shortcuts") with the Addons' ShortcutsEditor. The editor's model is
+  ShortcutsProxyModel, which leaves out the generated "Go to"/"Move to" entries (without it the
+  editor listed 42 rows instead of 21, and a real Gmail account would add one per label) and
+  forwards updateShortcut/reset/resetAll/save/emptyKeySequence to the Addons model with the row
+  mapped. Verified offscreen (demo, dev build): t215-help-{BreezeLight,BreezeDark}.png,
+  t215-set-{BreezeLight,BreezeDark}.png; proxy 21 of 42 rows; no binding-loop warnings (a first
+  version of the dialog had one on "y"). Not verified: editing a key in the editor and saving
+  (library code, the dialog needs a real key press), whether a saved key survives a restart (T216),
+  the dialog on a narrow window. Known upstream quirk: the editor's own filter field passes the
+  filtered row to updateShortcut.
 
 ### T216 — Check: command bar and shortcuts
 - status: todo

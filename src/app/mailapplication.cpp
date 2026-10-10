@@ -4,6 +4,7 @@
 #include "mailapplication.h"
 
 #include "mailcontroller.h"
+#include "shortcutsproxymodel.h"
 
 #include <KLocalizedString>
 
@@ -19,6 +20,7 @@ MailApplication::MailApplication(QObject *parent)
     : AbstractKirigamiApplication(parent)
 {
     setupActions();
+    m_editorModel = new ShortcutsProxyModel(shortcutsModel(), this);
     m_folderTimer.setSingleShot(true);
     m_folderTimer.setInterval(0);
     connect(&m_folderTimer, &QTimer::timeout, this, &MailApplication::rebuildFolderActions);
@@ -57,6 +59,11 @@ void MailApplication::setController(MailController *controller)
     updateEnabled();
     scheduleFolderActions();
     Q_EMIT controllerChanged();
+}
+
+QObject *MailApplication::shortcutsEditorModel()
+{
+    return m_editorModel;
 }
 
 QStringList MailApplication::actionNames() const
@@ -179,6 +186,60 @@ void MailApplication::setupActions()
     updateEnabled();
 }
 
+QVariantList MailApplication::shortcutGroups() const
+{
+    struct Group {
+        QString title;
+        QList<std::pair<const char *, QString>> items; // action id, text ("" = the action's own text)
+    };
+    const QList<Group> groups = {
+        {i18nc("@title:group shortcuts", "Messages"),
+         {{"compose", {}},
+          {"reply", {}},
+          {"reply_all", {}},
+          {"forward", {}},
+          {"archive", {}},
+          {"delete", {}},
+          {"mark_unread", i18nc("@action", "Mark as Read / Unread")},
+          {"flag", {}}}},
+        {i18nc("@title:group shortcuts", "Navigation"),
+         {{"next_message", {}}, {"previous_message", {}}, {"search", {}}, {"refresh", {}}, {"toggle_sidebar", i18nc("@action", "Show or Hide Folders")}}},
+        {i18nc("@title:group shortcuts", "App"),
+         {{"open_kcommand_bar", i18nc("@action", "Command Bar")},
+          {"shortcuts_help", {}},
+          {"settings", {}},
+          {"options_configure_keybinding", i18nc("@action", "Change Keyboard Shortcuts…")},
+          {"file_quit", {}}}},
+    };
+    auto keys = [](const QAction *action) {
+        QStringList names;
+        const auto sequences = action->shortcuts();
+        for (const QKeySequence &sequence : sequences) {
+            names.append(sequence.toString(QKeySequence::NativeText));
+        }
+        return names.join(i18nc("@item separator between shortcuts", ", "));
+    };
+
+    QVariantList result;
+    for (const Group &group : groups) {
+        QVariantList items;
+        for (const auto &[id, text] : group.items) {
+            const QAction *action = mainCollection()->action(QString::fromLatin1(id));
+            if (!action) {
+                continue;
+            }
+            items.append(QVariantMap{{u"text"_s, text.isEmpty() ? QString(action->text()).remove(u'&') : text}, {u"shortcut"_s, keys(action)}});
+        }
+        if (group.title == i18nc("@title:group shortcuts", "Messages")) {
+            // Not an action: a window-wide Ctrl+Z that only exists while a send is waiting.
+            items.append(QVariantMap{{u"text"_s, i18nc("@action", "Undo Send")},
+                                     {u"shortcut"_s, QKeySequence(Qt::CTRL | Qt::Key_Z).toString(QKeySequence::NativeText)}});
+        }
+        result.append(QVariantMap{{u"title"_s, group.title}, {u"items"_s, items}});
+    }
+    return result;
+}
+
 void MailApplication::scheduleFolderActions()
 {
     m_folderTimer.start();
@@ -194,6 +255,9 @@ void MailApplication::rebuildFolderActions()
     m_moveActions.clear();
     MailController *c = m_controller;
     if (!c || !c->hasAccount()) {
+        if (m_editorModel) {
+            m_editorModel->setHiddenNames({});
+        }
         return;
     }
 
@@ -278,6 +342,13 @@ void MailApplication::rebuildFolderActions()
         m_moveActions.append(action);
     }
     updateEnabled();
+    if (m_editorModel) {
+        QSet<QString> names;
+        for (const QAction *action : std::as_const(m_folderActions)) {
+            names.insert(action->text());
+        }
+        m_editorModel->setHiddenNames(names);
+    }
 }
 
 void MailApplication::updateEnabled()

@@ -67,6 +67,7 @@ qt_add_qml_module(plasma-mail
         app/trayicon.cpp app/trayicon.h
         app/mailcontroller.cpp app/mailcontroller.h
         app/mailapplication.cpp app/mailapplication.h
+        app/shortcutsproxymodel.cpp app/shortcutsproxymodel.h
     QML_FILES
         qml/MimeTheme.qml
         qml/Main.qml
@@ -79,6 +80,7 @@ qt_add_qml_module(plasma-mail
         qml/StorageSettingsPage.qml
         qml/NotificationSettingsPage.qml
         qml/SendingSettingsPage.qml
+        qml/ShortcutsHelp.qml
         qml/FolderSidebar.qml
         qml/SenderAvatar.qml
         qml/AccountSettingsPage.qml

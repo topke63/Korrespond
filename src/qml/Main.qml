@@ -7,6 +7,7 @@ import org.kde.ki18n
 import org.kde.kirigami as Kirigami
 import org.kde.kirigamiaddons.settings as KirigamiSettings
 import org.kde.kirigamiaddons.statefulapp as StatefulApp
+import org.kde.kirigamiaddons.statefulapp.private as StatefulPrivate
 import PlasmaMail
 
 StatefulApp.StatefulWindow {
@@ -113,7 +114,7 @@ StatefulApp.StatefulWindow {
     // The actions that need the window (their keys are the action collection's default shortcuts,
     // Ctrl+Q included: file_quit routes to MailController.requestQuit()). Compose, search, next and
     // previous are handled by the pages. The folder entries (Go to / Move to) are built by MailApplication for the
-    // command bar; Keyboard Shortcuts has no UI yet (T215).
+    // command bar; Keyboard Shortcuts opens ShortcutsHelp (T215).
     Connections {
         target: mailApplication
 
@@ -124,8 +125,9 @@ StatefulApp.StatefulWindow {
             settings.open();
         }
         function onShortcutsHelpRequested() {
-            // The help dialog comes with T215.
-            console.info("shortcuts help requested");
+            if (MailController.hasAccount) {
+                shortcutsHelp.open();
+            }
         }
     }
 
@@ -203,6 +205,12 @@ StatefulApp.StatefulWindow {
                 page: () => sendingPage
             },
             KirigamiSettings.ConfigurationModule {
+                moduleId: "shortcuts"
+                text: KI18n.i18nc("@action:button", "Shortcuts")
+                icon.name: "configure-shortcuts"
+                page: () => shortcutsPage
+            },
+            KirigamiSettings.ConfigurationModule {
                 moduleId: "storage"
                 text: KI18n.i18nc("@action:button", "Local Storage")
                 icon.name: "drive-harddisk"
@@ -269,6 +277,22 @@ StatefulApp.StatefulWindow {
         id: sendingPage
 
         SendingSettingsPage {}
+    }
+
+    Component {
+        id: shortcutsPage
+
+        // The Addons' own editor; changed keys are saved by the action collection.
+        StatefulPrivate.ShortcutsEditor {
+            model: mailApplication.shortcutsEditorModel
+        }
+    }
+
+    ShortcutsHelp {
+        id: shortcutsHelp
+
+        application: mailApplication
+        onChangeRequested: settings.open("shortcuts")
     }
 
     Component {

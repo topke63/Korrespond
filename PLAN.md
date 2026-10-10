@@ -5128,6 +5128,174 @@ MessagePage.qml.
   save(); needs a real key press in the dialog), real keyboards/layouts (? needs Shift on most),
   the bar with a real Gmail account (many labels = many entries), Enter on a folder entry.
 
+# Milestone 8 — Google contacts (user request 2026-10-10: "plan it as Milestone 8 after the command bar")
+
+Planned only; nothing here is built yet. Placed after the command bar (T211–T216) and before the
+conversations (T217+). Same rules as Milestone 7: offscreen, `PLASMAMAIL_DEMO=1`, isolated XDG
+dirs, a fake People API server for every network test (no real Google call, no real mailbox,
+nothing written back to the Google account).
+
+Approach: read-only. The Gmail OAuth request gets two more scopes,
+`https://www.googleapis.com/auth/contacts.readonly` and
+`https://www.googleapis.com/auth/contacts.other.readonly` (the addresses Gmail collected from mail
+you sent; most of the autocomplete value). Contacts are synced incrementally (People API sync
+tokens) into a local SQLite cache and used for recipient autocomplete and sender names. Yahoo has
+no contacts API: its autocomplete (and Gmail's fallback) comes from addresses seen in cached mail.
+
+**What the user has to do (not code):**
+1. Enable the *People API* in the Google Cloud project that holds the OAuth client.
+2. Add the two scopes above to the OAuth consent screen (if the app is in "Testing", the account
+   must be a test user).
+3. Re-authorize the Gmail account once in the app (existing tokens do not carry the new scopes).
+
+- **Open questions** (proposals; the build starts with the defaults below unless the user says
+  otherwise):
+  1. Photos: proposal: not in the first version (initials avatar stays); a later task could fetch
+     `photos` URLs with the token and cache them.
+  2. "Other contacts": include them in autocomplete (proposal: yes, ranked below real contacts).
+  3. Contacts sync on by default for Google accounts that have the scope (proposal: yes; one global
+     switch in Settings → Contacts).
+  4. Write-back (creating a contact from a message, editing): out of scope.
+
+## d. Google contacts
+
+### T231 — People API client
+- status: todo
+- depends on: none
+- parallel-safe with: T232
+- files: new src/engine/peopleclient.{h,cpp}, tests
+- output: class `PeopleClient` (QNetworkAccessManager, bearer token): `listConnections(syncToken,
+  pageToken)` and `listOtherContacts(syncToken, pageToken)`; parses names, email addresses
+  (primary first), photo URL, deleted flag, `nextPageToken`, `nextSyncToken`. Error mapping:
+  401 → `Unauthorized`, 403 with "insufficient"/"scope" → `MissingScope`, 400/410 with an expired
+  sync token → `SyncTokenExpired`, 429/5xx/network → `Temporary`. Base URL overridable (tests).
+- verify: build; ctest with a QTcpServer fake: paging, deletions, each error class, empty answer.
+- notes:
+
+### T232 — Contact store
+- status: todo
+- depends on: none
+- parallel-safe with: T231
+- files: new src/engine/contactstore.{h,cpp}, tests
+- output: SQLite table (same database as the message cache, own schema version): account, source
+  (`google`, `other`, `history`), resource id, display name, email, last used, photo URL. Upsert,
+  delete by resource, delete by account/source, `suggest(prefix, limit)` (case-folded match on name
+  words and address, ranked contacts > other > history, then last used), `nameFor(email)`.
+- verify: build; ctest: upsert/delete/suggest ranking/nameFor, an address in two sources, clear.
+- notes:
+
+### T233 — Contacts scopes in the OAuth request
+- status: todo
+- depends on: none
+- files: src/engine/oauthclient.cpp/.h, src/engine/account.h (flag), tests
+- output: `OAuthClient` requests mail + both contacts scopes when "contacts" is wanted (a flag
+  passed by the controller; default from the setting of T240) and records the scopes Google
+  returned in the token response (`scope` field) so the account knows what it may do. A refresh
+  keeps the old scopes (Google behaviour); nothing else changes for existing logins.
+- verify: build; ctest: request URL contains the scopes only with the flag; response parsing of
+  `scope`; existing OAuth tests unchanged.
+- notes:
+
+### T234 — Contacts sync
+- status: todo
+- depends on: T231, T232, T233
+- files: new src/engine/contactsync.{h,cpp}, src/app/accountsession.cpp, tests
+- output: per Google account with the scope: full sync of both lists on first run and when the sync
+  token expired; incremental sync with the stored token otherwise; at start (after the mail sync
+  has begun), then every 6 h while running. Store updated in batches; the sync token is saved
+  only after a complete run. All failures are non-fatal: `Temporary` retries once after 60 s then
+  waits for the next interval; `Unauthorized` refreshes the token once; `MissingScope` sets the
+  account's "contacts permission missing" state (T236). Never blocks the mail sync or the UI.
+- verify: build; ctest with the fake server: first full sync, incremental with a deletion, expired
+  token → full resync, 403 → state, 429 → retry, quit during a sync.
+- notes:
+
+### T235 — Addresses from cached mail (all accounts)
+- status: todo
+- depends on: T232
+- files: src/engine/contactstore.cpp, src/app/accountsession.cpp, tests
+- output: source `history`: From/To/Cc addresses of the cached messages (with display names) are
+  added as messages are stored and once for the existing cache (batched, low priority); the user's
+  own addresses are skipped; no-reply/list addresses are kept but ranked last. This is the
+  autocomplete for Yahoo and the fallback for Gmail.
+- verify: build; ctest: a stored message adds its addresses once, own address skipped, display name
+  taken from the newest message.
+- notes:
+
+### T236 — Re-authorize for contacts
+- status: todo
+- depends on: T233, T234
+- files: src/app/mailcontroller.cpp/.h, src/qml/AccountSettingsPage.qml
+- output: for a Google account without the contacts scope (or with MissingScope), the account's
+  settings page shows "Contacts: permission needed" and a button "Allow access to contacts" that
+  runs the Google sign-in again with all scopes and replaces the stored refresh token; the mail
+  connection is not dropped while the browser step runs. A failed or cancelled step changes
+  nothing and says so.
+- verify: build; ctest/controller test with a fake OAuth client: success replaces the token and
+  starts a sync; cancel keeps the old token; offscreen shot of the account page in both schemes.
+- notes:
+
+### T237 — Suggestions API in the controller
+- status: todo
+- depends on: T232
+- files: src/app/mailcontroller.cpp/.h, tests
+- output: `Q_INVOKABLE QVariantList contactSuggestions(const QString &prefix)` (max 8; entries
+  `{name, email, display}`), `contactName(email)`; both return nothing when the setting is off.
+- verify: build; ctest through the controller with a seeded store.
+- notes:
+
+### T238 — Autocomplete in the message window
+- status: todo
+- depends on: T237
+- files: src/qml/ComposeWindow.qml
+- output: To/Cc/Bcc show a suggestion popup under the field while typing the part after the last
+  comma (down/up/Enter/Tab accept, Escape closes; the typed text is never replaced when no
+  suggestion is chosen); accepted entries become `Name <address>`.
+- verify: build; offscreen shots (demo contacts, both schemes) and a key-driven run with
+  `PLASMAMAIL_DEMO_KEYS_TARGET=composer`.
+- notes:
+
+### T239 — Names from contacts in the list and the reading pane
+- status: todo
+- depends on: T237
+- files: src/qml/MessageListPage.qml, src/qml/MessagePage.qml, src/qml/SenderAvatar.qml
+- output: a sender that has no display name, or only the address, shows the contact's name; the
+  address stays visible in the reading pane. The avatar initial follows the name.
+- verify: build; offscreen shots with demo contacts, both schemes.
+- notes:
+
+### T240 — Settings → Contacts
+- status: todo
+- depends on: T234, T236
+- files: new src/qml/ContactsSettingsPage.qml, src/qml/Main.qml, src/engine/appsettings.*
+- output: a "Contacts" settings page: switch (setting `ContactsEnabled`, default on), per Google
+  account status (never synced / last sync time / permission needed / error text), "Sync now",
+  "Clear contacts cache" (asks first; history addresses are rebuilt from mail). Switching off
+  stops syncing and hides suggestions and names; the cache is kept until cleared.
+- verify: build; ctest for the setting; offscreen shots in both schemes.
+- notes:
+
+### T241 — Check: contacts
+- status: todo
+- depends on: T238, T239, T240
+- files: none
+- output: end-to-end against the fake People API server in a demo run: sync, autocomplete, sender
+  names, switch off, clear, re-authorize path; no network call without the switch; nothing written
+  to the Google account (the fake server logs only GET).
+- verify: offscreen demo runs + review.
+- notes:
+
+### T242 — Manual check with the user
+- status: todo
+- depends on: T241, the user's prerequisites above
+- files: none
+- output: the user restarts the installed app, re-authorizes Gmail, and checks: contacts appear in
+  autocomplete within a minute, an "other contact" is offered, a sender shows its contact name,
+  Settings → Contacts shows the last sync time, "Clear contacts cache" empties and refills it.
+  Read-only on the real account: no flag, folder or contact is changed.
+- verify: user report.
+- notes:
+
 ## c. Conversations (largest item)
 
 Approach: thread ids are computed in the engine and stored, the list model groups by them.

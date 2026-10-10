@@ -39,7 +39,7 @@ void MailApplication::setController(MailController *controller)
         connect(m_controller, &MailController::currentMessageChanged, this, &MailApplication::updateEnabled);
         // canArchive, canDelete and canMove depend on the folder too.
         connect(m_controller, &MailController::currentFolderChanged, this, &MailApplication::updateEnabled);
-        // Check for Mail is off while a refresh runs.
+        // Refresh is off while a refresh runs.
         connect(m_controller, &MailController::busyChanged, this, &MailApplication::updateEnabled);
     }
     updateEnabled();
@@ -111,7 +111,7 @@ void MailApplication::setupActions()
         c->setFlagged(c->currentMessageAccount(), c->currentUid(), !c->messageFlagged());
     })->setCheckable(true);
     signalAction(u"search"_s, i18nc("@action", "Search"), u"edit-find"_s, &MailApplication::searchRequested);
-    controllerAction(u"refresh"_s, i18nc("@action", "Check for Mail"), u"view-refresh"_s, [](MailController *c) {
+    controllerAction(u"refresh"_s, i18nc("@action", "Refresh"), u"view-refresh"_s, [](MailController *c) {
         c->refresh();
     });
     signalAction(u"toggle_sidebar"_s, i18nc("@action", "Show Folders"), u"sidebar-show"_s, &MailApplication::toggleSidebarRequested);

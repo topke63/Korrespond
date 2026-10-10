@@ -45,6 +45,7 @@ add_subdirectory(tools)
 file(GLOB PLASMA_MAIL_ICON_PNGS ${CMAKE_SOURCE_DIR}/data/icons/*-apps-org.topke.plasmamail*.png)
 ecm_install_icons(ICONS data/icons/sc-apps-org.topke.plasmamail.svg data/icons/sc-apps-org.topke.plasmamail.unread.svg ${PLASMA_MAIL_ICON_PNGS} DESTINATION ${KDE_INSTALL_ICONDIR} THEME hicolor)
 install(FILES data/plasma-mail.desktop DESTINATION ${KDE_INSTALL_APPDIR})
+install(FILES data/org.topke.plasmamail.metainfo.xml DESTINATION ${KDE_INSTALL_METAINFODIR})
 install(FILES data/plasma-mail.notifyrc DESTINATION ${KDE_INSTALL_KNOTIFYRCDIR})
 
 # Only build tests if they exist and BUILD_TESTING is enabled

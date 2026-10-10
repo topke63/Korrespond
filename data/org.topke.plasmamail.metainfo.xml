@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+SPDX-FileCopyrightText: 2026 topke <topke63@gmail.com>
+SPDX-License-Identifier: CC0-1.0
+-->
+<component type="desktop-application">
+  <id>org.topke.plasmamail</id>
+  <name>Plasma Mail</name>
+  <summary>A simple IMAP mail client for Plasma</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <developer id="io.github.topke63">
+    <name>topke</name>
+  </developer>
+  <description>
+    <p>Plasma Mail is a simple mail client for KDE Plasma. It talks IMAP and SMTP directly and does not need Akonadi.</p>
+    <ul>
+      <li>Yahoo, Gmail (Google sign-in) and any other IMAP provider, several accounts at once</li>
+      <li>Conversations, local storage with import date, keep time and size limits</li>
+      <li>Push mail (IMAP IDLE) and new-mail notifications</li>
+      <li>Compose, reply and forward, with recipient autocomplete from your contacts</li>
+      <li>Messages are shown without remote content and without JavaScript</li>
+    </ul>
+  </description>
+  <launchable type="desktop-id">plasma-mail.desktop</launchable>
+  <url type="homepage">https://github.com/topke63/Plasma-Mail</url>
+  <url type="bugtracker">https://github.com/topke63/Plasma-Mail/issues</url>
+  <provides>
+    <binary>plasma-mail</binary>
+  </provides>
+  <categories>
+    <category>Network</category>
+    <category>Email</category>
+  </categories>
+  <content_rating type="oars-1.1"/>
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+  </supports>
+  <releases>
+    <release version="0.1.0" date="2026-10-10"/>
+  </releases>
+</component>

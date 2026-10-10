@@ -1,0 +1,70 @@
+# SPDX-FileCopyrightText: 2026 topke <topke63@gmail.com>
+# SPDX-License-Identifier: CC0-1.0
+# Maintainer: topke <topke63@gmail.com>
+#
+# Builds the current main branch from GitHub:  makepkg -si   (inside packaging/arch/)
+# To build your local, committed checkout instead, replace the source line with
+#   source=("$pkgname::git+file://$(realpath ../..)")
+
+pkgname=plasma-mail-git
+pkgver=0.1.0
+pkgrel=1
+pkgdesc='Simple IMAP mail client for KDE Plasma'
+arch=(x86_64)
+url='https://github.com/topke63/Plasma-Mail'
+license=(GPL-3.0-or-later)
+depends=(
+  cyrus-sasl
+  kcolorscheme
+  kconfig
+  kcoreaddons
+  ki18n
+  kimap
+  kirigami
+  kirigami-addons
+  kmime
+  knotifications
+  knotifyconfig
+  kstatusnotifieritem
+  ksmtp
+  libkgapi
+  qqc2-desktop-style
+  qt6-base
+  qt6-declarative
+  qt6-networkauth
+  qt6-webengine
+  qtkeychain-qt6
+)
+makedepends=(cmake extra-cmake-modules git ninja)
+provides=(plasma-mail)
+conflicts=(plasma-mail)
+source=("$pkgname::git+$url.git")
+sha256sums=(SKIP)
+
+pkgver() {
+  cd "$pkgname"
+  # 0.1.0.r<commits>.g<hash>, from the version in CMakeLists.txt
+  local v
+  v=$(sed -n 's/^project(plasma-mail VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)
+  printf '%s.r%s.g%s' "$v" "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)"
+}
+
+build() {
+  cmake -S "$pkgname" -B build -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX=/usr \
+    -DBUILD_TESTING=OFF
+  cmake --build build
+}
+
+check() {
+  # The unit tests need a build with BUILD_TESTING=ON; run them with `ctest --preset release`
+  # in the source tree instead.
+  :
+}
+
+package() {
+  DESTDIR="$pkgdir" cmake --install build
+  install -Dm644 "$pkgname/LICENSES/GPL-3.0-or-later.txt" \
+    "$pkgdir/usr/share/licenses/$pkgname/GPL-3.0-or-later.txt"
+}

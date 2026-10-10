@@ -4541,6 +4541,291 @@ screenshot checks stay `todo`.
 - notes: the title bar icon is a separate matter: `_NET_WM_ICON` and `_KDE_NET_WM_DESKTOP_FILE` are
   already correct, so a generic title-bar icon would be a KWin/panel cache issue, not an app bug.
 
+# Milestone 7 — Undo send, command bar, conversations (user request 2026-10-10: "ok do it")
+
+Planned only; nothing here is built yet. Order: undo send (small), command bar (medium),
+conversations (largest, split so no task exceeds ~100 lines). Checks run headless as in Milestone 3j
+(`QT_QPA_PLATFORM=offscreen`, `PLASMAMAIL_DEMO=1`, isolated XDG dirs); never a visible window,
+never the user's real accounts.
+
+- **Open questions**:
+  1. Undo send — default delay: proposal 10 s (choices Off / 5 / 10 / 20 / 30 s), one global setting.
+  2. Undo send — quitting during the delay: proposal: send at once and keep the process alive until
+     SMTP finishes (with a "Sending…" tray tooltip), rather than a persistent outbox. OK?
+  3. Command bar — use Kirigami Addons StatefulApp (`AbstractKirigamiApplication` + KActionCollection):
+     gives the command bar, a shortcuts editor and saved custom shortcuts, but adds the KF6 XmlGui
+     dependency. Proposal: yes. Alternative: a hand-rolled Ctrl+K palette (no new dependency, no
+     shortcut editor).
+  4. Command bar — Gmail-style single-key shortcuts (j/k, e, #, r, a, f, c, /, u) on by default, or
+     behind a setting? Two-key "g then i" go-to sequences wanted?
+  5. Conversations — on by default? One setting for all folders (proposal) or per folder?
+  6. Conversations — scope: messages of the current folder only (proposal for the first version),
+     or Gmail-style across folders (include Sent replies in the reading pane)?
+  7. Conversations — archive/delete/move on a conversation row act on all its messages in the
+     current folder (proposal); flag stays per message, the row shows flagged if any is. OK?
+
+## a. Undo send
+
+### T206 — Setting: undo-send delay
+- status: todo
+- depends on: none
+- parallel-safe with: T211, T217
+- files: src/engine/appsettings.h, src/engine/appsettings.cpp, autotests/appsettingstest.cpp
+- inputs: open question 1.
+- output: `AppSettings::undoSendSeconds` (0 = off; default 10), key `UndoSendSeconds`; values
+  outside {0,5,10,20,30} snap to the nearest choice on load.
+- verify: build; ctest (defaults, round trip, snapping).
+- notes:
+
+### T207 — Controller: delayed hand-off and undo
+- status: todo
+- depends on: T206
+- parallel-safe with: none
+- files: src/app/mailcontroller.h, src/app/mailcontroller.cpp
+- inputs: `MailController::sendMessage(QVariantMap)` (hands straight to SMTP today).
+- output: with a delay > 0, `sendMessage` queues the message (id, map, deadline, QTimer) instead
+  of sending; properties `pendingSend` (id, seconds left, subject) and signals `sendQueued`,
+  `sendUndone(QVariantMap message)`; `undoSend(id)` cancels and emits the original map; the timer
+  then calls the existing send path. Quit with a pending send follows open question 2. In demo
+  mode the hand-off only logs "demo: would send" (no SMTP).
+- verify: build; ctest; offscreen demo run with a dev hook `PLASMAMAIL_DEMO_SEND=1` (queues a
+  fictional message at start) logs queued → sent after the delay; with `PLASMAMAIL_DEMO_UNDO=1` it
+  logs undone and no send.
+- notes: keep `sending` true only during the real SMTP hand-off.
+
+### T208 — UI: "Sending… Undo" and reopening the message
+- status: todo
+- depends on: T207
+- parallel-safe with: none
+- files: src/qml/StatusBar.qml, src/qml/Main.qml, src/qml/ComposeWindow.qml
+- inputs: T207 API; ComposeWindow's existing prefill (used by reply/forward).
+- output: the compose window closes when the message is queued; the status bar shows "Sending in
+  N s — Undo" (countdown, Undo button) and a passive notification with an Undo action; Undo reopens
+  ComposeWindow filled with the same from/to/cc/bcc/subject/body/attachments; Ctrl+Z in the main
+  window also undoes while pending.
+- verify: build; ctest; offscreen demo shots (`PLASMAMAIL_DEMO_SEND=1`) of the status bar in
+  BreezeDark and BreezeLight; undo path checked with `PLASMAMAIL_DEMO_UNDO=1` (compose window
+  shot).
+- notes:
+
+### T209 — Settings: undo-send choice
+- status: todo
+- depends on: T206
+- parallel-safe with: T208
+- files: src/qml/Main.qml (settings modules), new src/qml/SendingSettingsPage.qml (+ CMake/qrc)
+- inputs: KirigamiSettings modules as used for notifications/storage.
+- output: a "Sending" settings page with "Undo send: Off / 5 / 10 / 20 / 30 seconds".
+- verify: build; ctest; offscreen shot via `PLASMAMAIL_SCREENSHOT_SETTINGS=sending`.
+- notes:
+
+### T210 — Check: undo send
+- status: todo
+- depends on: T208, T209
+- parallel-safe with: none
+- files: none (fixes become new tasks)
+- inputs: demo hooks.
+- output: queue → countdown → send; undo → compose reopened with identical content (attachments
+  too); delay Off sends at once; quit during delay follows the decision.
+- verify: offscreen demo runs and logs, both schemes.
+- notes:
+
+## b. Command bar and keyboard shortcuts
+
+Fit with KDE: actions become named entries in one action collection (Kirigami Addons StatefulApp,
+open question 3): each has a stable id, text, icon and default shortcut; QML uses them as
+`Kirigami.Action { fromQAction: … }`, so toolbar buttons, context menus, the command bar and the
+shortcuts editor share one definition and user-changed shortcuts are saved by KConfig. Today the
+app has about 20 scattered `Shortcut {}`/`Kirigami.Action` definitions in Main.qml and
+MessagePage.qml.
+
+### T211 — Action collection
+- status: todo
+- depends on: open question 3
+- parallel-safe with: T206, T217
+- files: CMakeLists.txt, src/CMakeLists.txt, new src/app/mailapplication.h/.cpp, src/app/main.cpp
+- inputs: Kirigami Addons 1.15 statefulapp (installed).
+- output: `MailApplication : AbstractKirigamiApplication` registers actions with ids: compose,
+  reply, reply_all, forward, archive, delete, move, mark_read, mark_unread, flag, search,
+  refresh, toggle_sidebar, settings, shortcuts_help, next_message, previous_message,
+  go_to_folder; each forwards to MailController (enabled state bound to it).
+- verify: build; ctest; offscreen demo start without warnings.
+- notes:
+
+### T212 — Views use the actions
+- status: todo
+- depends on: T211
+- parallel-safe with: none
+- files: src/qml/Main.qml, src/qml/MessagePage.qml, src/qml/MessageListPage.qml,
+  src/qml/FolderSidebar.qml
+- inputs: T211 ids.
+- output: existing toolbar actions and `Shortcut {}` blocks replaced by `fromQAction` of the
+  collection; behaviour and current shortcuts unchanged (Ctrl+B, Ctrl+,, R, Shift+R, …).
+- verify: build; ctest; offscreen shots unchanged; grep: no leftover `Shortcut {` duplicates.
+- notes:
+
+### T213 — Keyboard set
+- status: todo
+- depends on: T212, open question 4
+- parallel-safe with: none
+- files: src/app/mailapplication.cpp, src/qml/MessageListPage.qml
+- inputs: proposal: j/k and Down/Up next/previous message, e archive, # delete, r reply, a reply
+  all, f forward, c compose, / search, u mark unread, s flag, Ctrl+K command bar, ? shortcuts help.
+- output: default shortcuts set; single-key shortcuts don't fire while a text field (search,
+  compose) has focus; list navigation moves the selection without marking read until opened.
+- verify: build; ctest; review the focus guard; offscreen start without "ambiguous shortcut" logs.
+- notes:
+
+### T214 — Command bar (Ctrl+K)
+- status: todo
+- depends on: T212
+- parallel-safe with: T215
+- files: src/qml/Main.qml, src/app/mailapplication.cpp
+- inputs: StatefulApp's QuickCommandBar (fuzzy search over the collection).
+- output: Ctrl+K opens the command bar; besides the actions it offers "Go to folder: <name>" and
+  "Move to folder: <name>" entries generated from the current folder list (refreshed when folders
+  change).
+- verify: build; ctest; offscreen demo shot with the bar open (dev hook
+  `PLASMAMAIL_SCREENSHOT_COMMANDBAR=1`) in both schemes.
+- notes: if the bar can't take dynamic entries, register per-folder actions in a separate
+  collection.
+
+### T215 — Shortcuts help and editor
+- status: todo
+- depends on: T213
+- parallel-safe with: T214
+- files: src/qml/Main.qml, new src/qml/ShortcutsHelp.qml
+- inputs: the collection.
+- output: "?" opens a dialog listing actions grouped (Messages, Navigation, App) with their current
+  shortcuts; a "Shortcuts" settings page uses StatefulApp's shortcut editor.
+- verify: build; ctest; offscreen shots of the dialog and the settings page in both schemes.
+- notes:
+
+### T216 — Check: command bar and shortcuts
+- status: todo
+- depends on: T214, T215
+- parallel-safe with: none
+- files: none
+- output: every action reachable from the bar; shortcuts match the help dialog; no shortcut fires in
+  text fields; a changed shortcut survives a restart (isolated config).
+- verify: offscreen demo runs + review.
+- notes:
+
+## c. Conversations (largest item)
+
+Approach: thread ids are computed in the engine and stored, the list model groups by them.
+- Gmail (server has `X-GM-EXT-1`): `X-GM-THRID` from the fetch is the thread id.
+- Otherwise (Yahoo): a JWZ-style pass: References / In-Reply-To link messages by Message-ID
+  (union-find); messages with no links fall back to the normalised subject (strip Re:/Fwd:/AW:/
+  SV: prefixes, case-folded) within 30 days.
+- List row: newest message's date, participants ("Alice, Bob, me"), count badge "3", latest
+  subject and preview; unread dot if any message is unread, flag if any is flagged.
+- Reading pane: the messages stacked oldest → newest; read ones collapsed to one line (sender,
+  date, snippet), unread and the newest expanded; Reply/Reply all/Forward per message.
+- Flags/actions: see open question 7; mark read on open marks all expanded messages read.
+
+### T217 — Threading headers in MessageSummary
+- status: todo
+- depends on: none
+- parallel-safe with: T206, T211
+- files: src/engine/imapclient.h, src/engine/imapclient.cpp, autotests/ (parser test)
+- output: `MessageSummary` gains `messageId`, `inReplyTo`, `references` (QStringList), `gmThreadId`
+  (qint64, 0 = none); a helper fills them from a KMime header block; test with sample headers.
+- verify: build; ctest.
+- notes:
+
+### T218 — Fetch the headers (and X-GM-THRID)
+- status: todo
+- depends on: T217
+- parallel-safe with: none
+- files: src/engine/imapclient.cpp, src/engine/syncmanager.cpp
+- output: list fetches request Message-ID, In-Reply-To, References (header fields, peek) and, when
+  the server lists X-GM-EXT-1, X-GM-THRID; parsed into the summary. No server-side changes.
+- verify: build; ctest; review the fetch scope; one manual check against the user's Gmail is a
+  separate manual task (T226).
+- notes: KIMAP's FetchJob may not expose X-GM-THRID; if not, a raw fetch for that item only.
+
+### T219 — Store: thread columns
+- status: todo
+- depends on: T217
+- parallel-safe with: T218
+- files: src/engine/messagestore.h, src/engine/messagestore.cpp, autotests/messagestoretest.cpp
+- output: schema migration adds message_id, in_reply_to, refs, gm_thrid, thread_id (existing
+  databases upgrade in place); `addMessage`/`messages` persist and load them.
+- verify: build; ctest (fresh DB and upgrade from the old schema).
+- notes: never touch the user's DB in tests; temp dirs only.
+
+### T220 — ThreadBuilder
+- status: todo
+- depends on: T217
+- parallel-safe with: T218, T219
+- files: new src/engine/threadbuilder.h/.cpp, autotests/threadbuildertest.cpp
+- output: pure function: list of summaries → thread id per message (Gmail id first, then
+  References/In-Reply-To union-find, then subject fallback within 30 days); stable ids.
+- verify: build; ctest with fixtures (broken References, missing parents, same subject months
+  apart, Re:/Fwd: variants).
+- notes:
+
+### T221 — List model: conversation rows
+- status: todo
+- depends on: T219, T220
+- parallel-safe with: none
+- files: src/models/messagelistmodel.h/.cpp, src/engine/appsettings.* (ConversationView), tests
+- output: when `conversationView` is on, one row per thread with roles threadCount, participants,
+  threadUnread, threadFlagged, threadUids; off = today's rows.
+- verify: build; ctest.
+- notes:
+
+### T222 — List row UI for conversations
+- status: todo
+- depends on: T221
+- parallel-safe with: T223
+- files: src/qml/MessageListPage.qml
+- output: participants instead of a single sender, count badge, unread dot / flag from the thread
+  roles; settings toggle "Group messages into conversations".
+- verify: build; offscreen demo shots (demo data gains two threads) in both schemes.
+- notes:
+
+### T223 — Controller: open a conversation
+- status: todo
+- depends on: T221
+- parallel-safe with: T222
+- files: src/app/mailcontroller.h, src/app/mailcontroller.cpp
+- output: `openConversation(account, threadId)` builds an ordered list (uid, from, date, snippet,
+  unread, html on demand) exposed as a model; bodies rendered with the existing renderer, fetched
+  lazily; marks read per open question 7.
+- verify: build; ctest; offscreen demo run logs.
+- notes:
+
+### T224 — Reading pane: stacked messages
+- status: todo
+- depends on: T223
+- parallel-safe with: none
+- files: src/qml/MessagePage.qml (+ new src/qml/ConversationView.qml)
+- output: stacked cards as in the approach; one WebEngine view per expanded message (or one view
+  with all expanded bodies — pick by memory cost); Reply/Reply all/Forward per card.
+- verify: build; offscreen demo shots in both schemes.
+- notes: watch WebEngine memory with many expanded messages.
+
+### T225 — Conversation actions
+- status: todo
+- depends on: T223, open question 7
+- parallel-safe with: T224
+- files: src/app/mailcontroller.cpp
+- output: archive/delete/move/mark read on a conversation act on all its messages in the current
+  folder; flag per message; undo of these follows today's behaviour.
+- verify: build; ctest; demo run logs (no real server).
+- notes:
+
+### T226 — Check: conversations
+- status: todo
+- depends on: T222, T224, T225, T218
+- parallel-safe with: none
+- files: none
+- output: offscreen demo checks in both schemes; then a manual check with the user on the real
+  Gmail and Yahoo accounts (read-only browsing, no actions) that threads group sensibly.
+- verify: as output.
+- notes:
+
 ## Execution Loop
 
 Execute the plan as a loop. Each iteration handles one task in a fresh context, then ends.

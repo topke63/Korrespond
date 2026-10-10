@@ -4041,6 +4041,31 @@ known light look and derive it (macOS light: sidebar `#e8e6ee`-ish, band `#f3f1f
   list, so the dot was computed in Python from the .colors files: Breeze Light 2.49 -> 3.21:1,
   Breeze Classic 2.43 -> 3.13:1 (25,152,218). Build, ctest 19/19. The real-window check stays with T196.
 
+### T200 — Fix: sidebar header on schemes without Header colours
+- status: done
+- depends on: T199, T198
+- parallel-safe with: none
+- files: src/qml/FolderSidebar.qml
+- inputs: T196/T199 notes: on Breeze Classic (no `[Colors:Header]`) the sidebar's "Mail" row
+  (logo, title, hide and menu buttons) stayed on Kirigami's dark Header fallback (41,44,48) while the
+  sidebar body and list were light.
+- output: the "Mail" ToolBar takes the Window set when the Header set's background would not read
+  against the Window text (contrast < 4.5, same rule as the T199 bands), otherwise the Header set.
+  Dark and Light unchanged.
+- verify: build; ctest; offscreen screenshots for dark, light, "Breeze Classic"; sampled header
+  pixel: Classic ≈ Window bg (239,240,241); dark and light equal to the T199 values.
+- notes: `headerUseWindow` on the drawer root, from a `headerProbe` Item (Header set) in the
+  column. The probe must stay visible (zero height, Layout.preferredHeight/maximumHeight 0): with
+  `visible: false` Kirigami.Theme resolved the background to black, which wrongly switched Light to
+  the Window set (239,240,241 instead of 222,224,226). The ToolBar sets `Kirigami.Theme.colorSet`
+  itself (overriding the desktop style's Header default), so its background and row contents follow
+  one set; T199's Binding-on-colorSet trick was not needed here since the ToolBar is ours.
+  Sampled (1350x810 offscreen, point (150,8) and (150,38) in the sidebar row): dark (41,44,48),
+  light (222,224,226), Breeze Classic (239,240,241). Dark and light equal the T199 baseline; list
+  band unchanged (dark 41,44,48, light 222,224,226, Classic 239,240,241). Visual strip checked:
+  white on dark, dark on grey and on Classic light. Build, ctest 19/19, no new QML warnings.
+  Not seen in a real window (GUI runs paused).
+
 # Milestone 3j — Sidebar control (user request 2026-10-10: "a collapse option for the left panel;
 # I don't need to see the whole tree of each account, I'd like to choose")
 

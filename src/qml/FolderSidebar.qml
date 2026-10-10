@@ -42,6 +42,10 @@ Kirigami.OverlayDrawer {
     Kirigami.Theme.colorSet: Kirigami.Theme.Window
     Kirigami.Theme.inherit: false
 
+    // The "Mail" row takes the Header set, unless that set's background would not read against the
+    // Window text (a scheme without Header colours gets Kirigami's dark fallback); then the Window set.
+    readonly property bool headerUseWindow: MimeTheme.contrast(headerProbe.Kirigami.Theme.backgroundColor, Kirigami.Theme.textColor) < 4.5
+
     // The drawer template's own background takes the theme's window colour.
     background: Rectangle {
         color: Kirigami.Theme.backgroundColor
@@ -53,9 +57,24 @@ Kirigami.OverlayDrawer {
             anchors.fill: parent
             spacing: 0
 
+            // Only probes the Header set's background for headerUseWindow. It must stay visible: an
+            // invisible item resolves Kirigami.Theme to black, which gave the wrong answer on Light.
+            // Zero height, so the column (spacing 0) leaves no gap.
+            Item {
+                id: headerProbe
+                Layout.preferredHeight: 0
+                Layout.maximumHeight: 0
+                Kirigami.Theme.colorSet: Kirigami.Theme.Header
+                Kirigami.Theme.inherit: false
+            }
+
             QQC2.ToolBar {
                 Layout.fillWidth: true
                 Layout.preferredHeight: applicationWindow().pageStack.globalToolBar.preferredHeight
+                // Replaces the desktop style's Header default, so the background and the row's contents
+                // (logo, title, buttons) are the same set.
+                Kirigami.Theme.colorSet: sidebar.headerUseWindow ? Kirigami.Theme.Window : Kirigami.Theme.Header
+                Kirigami.Theme.inherit: false
 
                 background: Rectangle {
                     color: Kirigami.Theme.backgroundColor

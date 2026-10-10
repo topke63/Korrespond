@@ -4562,6 +4562,13 @@ conversations (largest, split so no task exceeds ~100 lines). Checks run headles
 (`QT_QPA_PLATFORM=offscreen`, `PLASMAMAIL_DEMO=1`, isolated XDG dirs); never a visible window,
 never the user's real accounts.
 
+Answered 2026-10-10 (user: "all proposals OK, start with undo send"): every proposal in the open
+questions below is accepted as written — undo send 10 s default (Off/5/10/20/30, global), quit
+during the delay sends at once; command bar via Kirigami Addons StatefulApp; single-key shortcuts on
+by default (no two-key sequences for now); conversations off/on as one global setting, current
+folder only, actions on the whole thread in the folder, flags per message. Build order: T206–T210
+first, then stop.
+
 - **Open questions**:
   1. Undo send — default delay: proposal 10 s (choices Off / 5 / 10 / 20 / 30 s), one global setting.
   2. Undo send — quitting during the delay: proposal: send at once and keep the process alive until
@@ -4654,7 +4661,7 @@ MessagePage.qml.
 
 ### T211 — Action collection
 - status: todo
-- depends on: open question 3
+- depends on: none (open question 3 answered: StatefulApp)
 - parallel-safe with: T206, T217
 - files: CMakeLists.txt, src/CMakeLists.txt, new src/app/mailapplication.h/.cpp, src/app/main.cpp
 - inputs: Kirigami Addons 1.15 statefulapp (installed).
@@ -4679,7 +4686,7 @@ MessagePage.qml.
 
 ### T213 — Keyboard set
 - status: todo
-- depends on: T212, open question 4
+- depends on: T212
 - parallel-safe with: none
 - files: src/app/mailapplication.cpp, src/qml/MessageListPage.qml
 - inputs: proposal: j/k and Down/Up next/previous message, e archive, # delete, r reply, a reply
@@ -4822,7 +4829,7 @@ Approach: thread ids are computed in the engine and stored, the list model group
 
 ### T225 — Conversation actions
 - status: todo
-- depends on: T223, open question 7
+- depends on: T223
 - parallel-safe with: T224
 - files: src/app/mailcontroller.cpp
 - output: archive/delete/move/mark read on a conversation act on all its messages in the current

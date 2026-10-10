@@ -4016,6 +4016,23 @@ known light look and derive it (macOS light: sidebar `#e8e6ee`-ish, band `#f3f1f
 - verify: build; ctest 19/19; screenshots in both schemes (t192-dark/light.png) clean, no QML warnings.
 - notes: reviewed and committed 2026-10-10 by the planner.
 
+### T199 — Fix: unread dot contrast and title band on schemes without Header colours
+- status: todo
+- depends on: T196 (numeric part)
+- parallel-safe with: none
+- files: src/qml/MimeTheme.qml, src/qml/MessageListPage.qml, src/qml/MessagePage.qml
+- inputs: T196 notes: unread dot (raw highlight) 2.49:1 on Breeze Light, 2.43:1 on Breeze Classic
+  (floor 3:1); Breeze Classic has no `[Colors:Header]`, so Kirigami's Header set falls back to a
+  dark band (41,44,48) on an otherwise light window.
+- output: MimeTheme helpers `contrast(a, b)` (WCAG) and `readableOn(fg, bg, ratio)` (darken or
+  lighten fg in HSL until the ratio is met; no hex); the unread dot uses
+  `readableOn(activeHighlight, viewBackground, 3)`. The title bands use the Header set unless its
+  background is on the other side of light/dark from the Window set (contrast of Header bg vs Window
+  text < 4.5), then the Window set.
+- verify: build; ctest; offscreen screenshots (`QT_QPA_PLATFORM=offscreen`, no window) for
+  dark, light and "Breeze Classic"; dot ≥ 3:1 sampled; Classic band light.
+- notes:
+
 # Milestone 3j — Sidebar control (user request 2026-10-10: "a collapse option for the left panel;
 # I don't need to see the whole tree of each account, I'd like to choose")
 
@@ -4049,7 +4066,7 @@ Queued after the Mimestream palette tasks (T175–T186); same file (FolderSideba
 
 ### T188 — Account trees: persisted collapse, Collapse all / Expand all
 - status: todo
-- depends on: T187, T194, T195 (Milestone 3k code first)
+- depends on: T187, T194, T195, T199 (Milestone 3k code first)
 - parallel-safe with: none
 - files: src/engine/appsettings.h, src/engine/appsettings.cpp, autotests/appsettingstest.cpp,
   src/app/mailcontroller.h, src/app/mailcontroller.cpp, src/qml/FolderSidebar.qml

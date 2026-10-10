@@ -16,6 +16,8 @@ using namespace Qt::StringLiterals;
 static const auto authorizationUrl = u"https://accounts.google.com/o/oauth2/v2/auth"_s;
 static const auto tokenUrl = u"https://oauth2.googleapis.com/token"_s;
 static const auto mailScope = "https://mail.google.com/"_ba;
+static const auto contactsScope = "https://www.googleapis.com/auth/contacts.readonly"_ba;
+static const auto otherContactsScope = "https://www.googleapis.com/auth/contacts.other.readonly"_ba;
 
 OAuthClient::OAuthClient(QObject *parent)
     : QObject(parent)
@@ -89,12 +91,42 @@ OAuthClient::OAuthClient(QObject *parent)
 
 OAuthClient::~OAuthClient() = default;
 
-void OAuthClient::signIn(const QString &email)
+QStringList OAuthClient::scopeTokens(bool withContacts)
+{
+    QStringList scopes = {QString::fromLatin1(mailScope)};
+    if (withContacts) {
+        scopes << QString::fromLatin1(contactsScope) << QString::fromLatin1(otherContactsScope);
+    }
+    return scopes;
+}
+
+bool OAuthClient::hasContactsScope(const QStringList &scopes)
+{
+    return scopes.contains(QString::fromLatin1(contactsScope));
+}
+
+QStringList OAuthClient::grantedScopes() const
+{
+    QStringList scopes;
+    const auto granted = m_flow->grantedScopeTokens();
+    for (const QByteArray &scope : granted) {
+        scopes << QString::fromLatin1(scope);
+    }
+    scopes.sort();
+    return scopes;
+}
+
+void OAuthClient::signIn(const QString &email, bool withContacts)
 {
     finish();
     if (!loadClient()) {
         return;
     }
+    QSet<QByteArray> requested;
+    for (const QString &scope : scopeTokens(withContacts)) {
+        requested.insert(scope.toLatin1());
+    }
+    m_flow->setRequestedScopeTokens(requested);
 
     m_replyHandler = new QOAuthHttpServerReplyHandler(QHostAddress::LocalHost, 0, this);
     m_replyHandler->setCallbackHost(u"127.0.0.1"_s);

@@ -192,6 +192,7 @@ OAuthClient *AccountSession::oauth()
         m_oauth = new OAuthClient(this);
         connect(m_oauth, &OAuthClient::signedIn, this, [this](const QString &accessToken, const QString &refreshToken) {
             m_refreshToken = refreshToken;
+            m_account.contacts = OAuthClient::hasContactsScope(m_oauth->grantedScopes());
             onAccessToken(accessToken);
         });
         connect(m_oauth, &OAuthClient::accessTokenChanged, this, &AccountSession::onAccessToken);
@@ -206,6 +207,8 @@ OAuthClient *AccountSession::oauth()
 // The first token connects; later ones only replace the secret for future logins.
 void AccountSession::onAccessToken(const QString &accessToken)
 {
+    m_accessToken = accessToken;
+    Q_EMIT accessTokenChanged();
     if (m_loggedIn) {
         m_client->setAccessToken(accessToken);
         return;
@@ -214,11 +217,21 @@ void AccountSession::onAccessToken(const QString &accessToken)
     connectWithSecret(accessToken);
 }
 
-void AccountSession::signInWithGoogle()
+void AccountSession::signInWithGoogle(bool withContacts)
 {
     m_loggedIn = false;
     setConnectionState(Connecting);
-    oauth()->signIn(m_account.email);
+    oauth()->signIn(m_account.email, withContacts);
+}
+
+QString AccountSession::accessToken() const
+{
+    return m_accessToken;
+}
+
+bool AccountSession::contactsGranted() const
+{
+    return m_account.contacts;
 }
 
 void AccountSession::connectWithRefreshToken(const QString &refreshToken)

@@ -35,6 +35,7 @@ static Account readAccount(const KConfigGroup &group)
     account.imapPort = group.readEntry("ImapPort", 993);
     account.smtpHost = group.readEntry("SmtpHost", QString());
     account.smtpPort = group.readEntry("SmtpPort", 465);
+    account.contacts = group.readEntry("Contacts", false);
     return account;
 }
 
@@ -48,6 +49,7 @@ static void writeAccount(KConfigGroup &group, const Account &account)
     group.writeEntry("ImapPort", int(account.imapPort));
     group.writeEntry("SmtpHost", account.smtpHost);
     group.writeEntry("SmtpPort", int(account.smtpPort));
+    group.writeEntry("Contacts", account.contacts);
 }
 
 bool Account::isValid() const

@@ -5185,7 +5185,7 @@ no contacts API: its autocomplete (and Gmail's fallback) comes from addresses se
 - notes: Done 2026-10-10 (no sub-agents). ContactStore (src/engine/contactstore.*) in its own contacts.sqlite (not the message DB, so clearing it never touches mail): upsertPerson/removePerson, addHistory (newest name wins), suggest (prefix of a name word or the address; ranked source, newest, position of the address, name; one entry per address, a nameless better entry borrows a name), nameFor, per account/source sync tokens, clearSource/clearAccount/clearAll. 9 tests.
 
 ### T233 — Contacts scopes in the OAuth request
-- status: todo
+- status: done
 - depends on: none
 - files: src/engine/oauthclient.cpp/.h, src/engine/account.h (flag), tests
 - output: `OAuthClient` requests mail + both contacts scopes when "contacts" is wanted (a flag
@@ -5194,7 +5194,7 @@ no contacts API: its autocomplete (and Gmail's fallback) comes from addresses se
   keeps the old scopes (Google behaviour); nothing else changes for existing logins.
 - verify: build; ctest: request URL contains the scopes only with the flag; response parsing of
   `scope`; existing OAuth tests unchanged.
-- notes:
+- notes: Done 2026-10-10 (no sub-agents). OAuthClient::signIn(email, withContacts=false) asks for mail + contacts.readonly + contacts.other.readonly only when asked; grantedScopes() reads Qt's grantedScopeTokens; scopeTokens()/hasContactsScope() are pure and tested. AccountSession records account.contacts from the grant (new Account::contacts, key Contacts, false for accounts saved before), keeps the newest access token (accessToken(), accessTokenChanged()). setupGoogleAccount asks for the contacts scopes while AppSettings::contactsEnabled (new, default true; the switch is T240). A refresh keeps the old scopes (Google behaviour). Not verified against Google: that Qt's granted scopes match the 'scope' field of the real token answer.
 
 ### T234 — Contacts sync
 - status: todo

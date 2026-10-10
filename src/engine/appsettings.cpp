@@ -76,6 +76,7 @@ AppSettings AppSettings::load()
     settings.showHiddenFolders = group.readEntry("ShowHiddenFolders", settings.showHiddenFolders);
     settings.undoSendSeconds = snapUndoSend(group.readEntry("UndoSendSeconds", settings.undoSendSeconds));
     settings.conversationView = group.readEntry("ConversationView", settings.conversationView);
+    settings.contactsEnabled = group.readEntry("ContactsEnabled", settings.contactsEnabled);
     settings.windowWidth = qMax(0, group.readEntry("WindowWidth", settings.windowWidth));
     settings.windowHeight = qMax(0, group.readEntry("WindowHeight", settings.windowHeight));
     const KConfigGroup hidden = hiddenGroup();
@@ -103,6 +104,7 @@ void AppSettings::save() const
     group.writeEntry("ShowHiddenFolders", showHiddenFolders);
     group.writeEntry("UndoSendSeconds", snapUndoSend(undoSendSeconds));
     group.writeEntry("ConversationView", conversationView);
+    group.writeEntry("ContactsEnabled", contactsEnabled);
     group.writeEntry("WindowWidth", windowWidth);
     group.writeEntry("WindowHeight", windowHeight);
     KConfigGroup hidden = hiddenGroup();

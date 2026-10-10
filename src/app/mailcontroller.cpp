@@ -2637,7 +2637,7 @@ void MailController::setupGoogleAccount(const QString &email, const QString &dis
     m_pending = createSession(account);
     m_awaitingFolders.insert(m_pending);
     beginRequest(); // until the folders arrive: the browser sign-in is part of it
-    m_pending->signInWithGoogle();
+    m_pending->signInWithGoogle(m_app.contactsEnabled);
 }
 
 void MailController::cancelSetup()

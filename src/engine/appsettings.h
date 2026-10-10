@@ -42,6 +42,9 @@ struct AppSettings {
     // The message list shows one row per conversation (T221). Off until it has been tried on real
     // mail (T226).
     bool conversationView = false;
+    // Google contacts: suggestions, sender names and the sync (T240). The sign-in asks for the
+    // contacts scopes only while this is on.
+    bool contactsEnabled = true;
     // The main window's size as the user left it (0 = never saved). Kept here, not by screen, so
     // it comes back whichever screen the window opens on.
     int windowWidth = 0;

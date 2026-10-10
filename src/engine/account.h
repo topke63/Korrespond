@@ -20,6 +20,9 @@ struct Account {
     QString smtpHost;
     quint16 smtpPort = 465;
 
+    // Google accounts: the sign-in that holds the refresh token was granted the contacts scopes.
+    bool contacts = false;
+
     [[nodiscard]] bool isValid() const;
 
     // Fills in server settings for a known provider. Returns false for unknown providers.

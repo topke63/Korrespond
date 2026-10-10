@@ -7,6 +7,8 @@
 #include <QStandardPaths>
 #include <QTest>
 
+#include "account.h"
+#include "oauthclient.h"
 #include "oauthsettings.h"
 
 using namespace Qt::StringLiterals;
@@ -92,6 +94,37 @@ private Q_SLOTS:
         const GoogleOAuthSettings settings = GoogleOAuthSettings::load();
         QCOMPARE(settings.clientId, u"config-id"_s);
         QCOMPARE(settings.clientSecret, u"config-secret"_s);
+    }
+
+    void testScopeTokens()
+    {
+        QCOMPARE(OAuthClient::scopeTokens(false), QStringList{u"https://mail.google.com/"_s});
+        const QStringList withContacts = OAuthClient::scopeTokens(true);
+        QCOMPARE(withContacts.size(), 3);
+        QVERIFY(withContacts.contains(u"https://mail.google.com/"_s));
+        QVERIFY(withContacts.contains(u"https://www.googleapis.com/auth/contacts.readonly"_s));
+        QVERIFY(withContacts.contains(u"https://www.googleapis.com/auth/contacts.other.readonly"_s));
+        QVERIFY(OAuthClient::hasContactsScope(withContacts));
+        QVERIFY(!OAuthClient::hasContactsScope(OAuthClient::scopeTokens(false)));
+        QVERIFY(!OAuthClient::hasContactsScope({}));
+    }
+
+    void testAccountRemembersContactsScope()
+    {
+        Account account;
+        account.email = u"me@gmail.com"_s;
+        account.provider = u"gmail"_s;
+        account.authMethod = u"oauth"_s;
+        account.imapHost = u"imap.gmail.com"_s;
+        QVERIFY(!account.contacts);
+        Account plain = account;
+        plain.email = u"other@gmail.com"_s;
+        account.contacts = true;
+        Account::saveAll({account, plain});
+        const QList<Account> loaded = Account::loadAll();
+        QCOMPARE(loaded.size(), 2);
+        QVERIFY(loaded.at(0).contacts);
+        QVERIFY(!loaded.at(1).contacts); // an account saved before has no contacts access
     }
 
     void testEnvironmentOnly()

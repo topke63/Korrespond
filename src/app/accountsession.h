@@ -62,11 +62,16 @@ public:
     void connectWithSecret(const QString &secret);
     // Google (OAuth) accounts: opens the browser to sign in, then logs in and lists the folders.
     // refreshToken() has the token to keep in the keychain once this has succeeded.
-    void signInWithGoogle();
+    // `withContacts` also asks for the contacts scopes (contactsGranted() tells what came back).
+    void signInWithGoogle(bool withContacts = false);
     // Google accounts at startup: gets an access token from the saved refresh token, then logs in
     // and lists the folders. Later renewals reach the client by themselves.
     void connectWithRefreshToken(const QString &refreshToken);
     [[nodiscard]] QString refreshToken() const; // empty until signed in
+    // The newest access token of a Google account (empty before the first), for the People API.
+    [[nodiscard]] QString accessToken() const;
+    // The last sign-in of this run was granted the contacts scopes (else the saved account says).
+    [[nodiscard]] bool contactsGranted() const;
     // Push mail: an own connection in IDLE on INBOX (see ImapIdleWatcher). It logs in with the
     // secret the main connection uses now (kept in the client; renewed OAuth tokens included).
     // startWatcher() does nothing while a watcher runs; it is stopped whenever the main
@@ -92,6 +97,8 @@ public:
     void startSync();
 
 Q_SIGNALS:
+    // A new access token for a Google account (every renewal).
+    void accessTokenChanged();
     // Emitted after the session saved the list and filled folderModel().
     void foldersListed(const QList<FolderInfo> &folders);
     void headersFetched(const QString &folder, ImapClient::HeaderFilter filter, const QList<MessageSummary> &messages);
@@ -122,6 +129,7 @@ private:
     Account m_account;
     OAuthClient *m_oauth = nullptr; // created for Google accounts
     QString m_refreshToken;
+    QString m_accessToken;
     ConnectionState m_connectionState = Idle;
     QString m_lastError;
     QString m_syncText;

@@ -23,7 +23,16 @@ public:
 
     // Opens the browser on Google's sign-in page, with `email` pre-filled. Answers with exactly
     // one signedIn() or failed(); a new call cancels a sign-in still waiting for the browser.
-    void signIn(const QString &email);
+    // With `withContacts` the sign-in also asks for read-only access to the user's contacts and
+    // "other contacts" (People API); without it the grant is the mail scope only, as before.
+    void signIn(const QString &email, bool withContacts = false);
+
+    // The scopes Google granted to the last sign-in (empty before one).
+    [[nodiscard]] QStringList grantedScopes() const;
+    // The scope strings a sign-in asks for.
+    [[nodiscard]] static QStringList scopeTokens(bool withContacts);
+    // True when the granted scopes include the contacts one.
+    [[nodiscard]] static bool hasContactsScope(const QStringList &scopes);
 
     // Gets a fresh access token from a stored refresh token. Answers with accessTokenChanged() or
     // failed(). From then on, and after a sign-in, the token is renewed by itself about

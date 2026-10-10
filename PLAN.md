@@ -5320,7 +5320,7 @@ Approach: thread ids are computed in the engine and stored, the list model group
 - notes: Done 2026-10-10 (no sub-agents): fillThreadingHeaders() in imapclient.cpp (ids without <>, References deduplicated oldest first), called from summaryOf(); tests in messagedatetest.cpp (present and missing headers).
 
 ### T218 — Fetch the headers (and X-GM-THRID)
-- status: todo
+- status: done
 - depends on: T217
 - parallel-safe with: none
 - files: src/engine/imapclient.cpp, src/engine/syncmanager.cpp
@@ -5328,7 +5328,12 @@ Approach: thread ids are computed in the engine and stored, the list model group
   the server lists X-GM-EXT-1, X-GM-THRID; parsed into the summary. No server-side changes.
 - verify: build; ctest; review the fetch scope; one manual check against the user's Gmail is a
   separate manual task (T226).
-- notes: KIMAP's FetchJob may not expose X-GM-THRID; if not, a raw fetch for that item only.
+- notes: KIMAP's FetchJob may not expose X-GM-THRID; if not, a raw fetch for that item only. Done 2026-10-10 (no sub-agents). The list fetch already asks for the full header block
+  (FetchScope::Headers, BODY.PEEK[HEADER]), so Message-ID/In-Reply-To/References arrive with it (T217
+  parses them). For provider "gmail" fetchSummaries sets FetchJob::setGmailExtensionsEnabled(true)
+  and summaryOf reads attributes["X-GM-THRID"] through gmailThreadId() (string/bytes/int, decimal).
+  Not verified against a real server: the attribute's QVariant type in KIMAP and that Gmail accepts
+  the extra items (checked in T226 manually); a non-Gmail account never asks for them.
 
 ### T219 — Store: thread columns
 - status: todo

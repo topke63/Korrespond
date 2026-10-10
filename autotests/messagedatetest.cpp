@@ -46,6 +46,16 @@ private Q_SLOTS:
         QCOMPARE(summary.gmThreadId, qint64(0));
     }
 
+    void testGmailThreadId()
+    {
+        QCOMPARE(gmailThreadId(QVariant(u"1812345678901234567"_s)), qint64(1812345678901234567));
+        QCOMPARE(gmailThreadId(QVariant(QByteArray("42"))), qint64(42));
+        QCOMPARE(gmailThreadId(QVariant(qint64(7))), qint64(7));
+        QCOMPARE(gmailThreadId(QVariant()), qint64(0));
+        QCOMPARE(gmailThreadId(QVariant(u"abc"_s)), qint64(0));
+        QCOMPARE(gmailThreadId(QVariant(u"-5"_s)), qint64(0));
+    }
+
     void testThreadingHeadersMissing()
     {
         KMime::Message message;

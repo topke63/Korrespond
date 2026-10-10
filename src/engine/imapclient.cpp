@@ -49,6 +49,16 @@ QDateTime messageDate(const KMime::Message &message)
     return {};
 }
 
+qint64 gmailThreadId(const QVariant &attribute)
+{
+    if (!attribute.isValid()) {
+        return 0;
+    }
+    bool ok = false;
+    const qlonglong id = attribute.toString().trimmed().toLongLong(&ok);
+    return ok && id > 0 ? id : 0;
+}
+
 static QString bareMessageId(const QByteArray &id)
 {
     return QString::fromLatin1(id).trimmed().remove(u'<').remove(u'>');
@@ -86,6 +96,7 @@ static MessageSummary summaryOf(const KIMAP::Message &msg, const QString &accoun
     summary.uid = msg.uid;
     summary.unread = !msg.flags.contains("\\Seen");
     summary.flagged = msg.flags.contains("\\Flagged");
+    summary.gmThreadId = gmailThreadId(msg.attributes.value("X-GM-THRID"));
     if (const auto &mime = msg.message) {
         if (auto subject = mime->subject()) {
             summary.subject = subject->asUnicodeString();
@@ -698,6 +709,8 @@ void ImapClient::fetchSummaries(const KIMAP::ImapSet &set,
     KIMAP::FetchJob::FetchScope scope;
     scope.mode = KIMAP::FetchJob::FetchScope::Headers;
     fetch->setScope(scope);
+    // Only Gmail understands X-GM-THRID; asking another server would fail the fetch.
+    fetch->setGmailExtensionsEnabled(m_account.provider == "gmail"_L1);
 
     auto messages = std::make_shared<QList<MessageSummary>>();
     connect(fetch, &KIMAP::FetchJob::messagesAvailable, this, [messages, email = m_account.email](const QMap<qint64, KIMAP::Message> &batch) {

@@ -42,6 +42,10 @@ struct MessageSummary {
     qint64 gmThreadId = 0; // Gmail's X-GM-THRID; 0 = none
 };
 
+// Gmail's X-GM-THRID attribute (a decimal number as a string, bytes or integer) → thread id; 0 when
+// missing or not a positive number.
+qint64 gmailThreadId(const QVariant &attribute);
+
 // Message-ID, In-Reply-To and References of a parsed message, into the matching fields of `summary`.
 void fillThreadingHeaders(const KMime::Message &message, MessageSummary &summary);
 

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 #include <KAboutData>
+#include <KColorSchemeManager>
 #include <KLocalizedQmlContext>
 #include <KLocalizedString>
 
@@ -17,6 +18,7 @@
 #include <QQmlApplicationEngine>
 #include <QQuickStyle>
 #include <QQuickWindow>
+#include <QStyleHints>
 #include <QTimer>
 #include <QtWebEngineQuick>
 
@@ -117,6 +119,18 @@ int main(int argc, char *argv[])
     // Breeze look by default; QT_QUICK_CONTROLS_STYLE still wins when set.
     if (qEnvironmentVariableIsEmpty("QT_QUICK_CONTROLS_STYLE")) {
         QQuickStyle::setStyle(u"org.kde.desktop"_s);
+    }
+
+    // Dev only: PLASMAMAIL_COLOR_SCHEME=light|dark forces the whole app into that scheme: Qt's
+    // colour scheme (the KDE platform theme may ignore this one) and the matching Breeze palette,
+    // which MimeTheme.dark and Kirigami's non-Custom colour sets (headers, buttons, menus, dialogs)
+    // follow. Unset: system scheme.
+    const QString scheme = qEnvironmentVariable("PLASMAMAIL_COLOR_SCHEME").toLower();
+    if (scheme == "light"_L1 || scheme == "dark"_L1) {
+        const bool light = scheme == "light"_L1;
+        QGuiApplication::styleHints()->setColorScheme(light ? Qt::ColorScheme::Light : Qt::ColorScheme::Dark);
+        auto *manager = KColorSchemeManager::instance();
+        manager->activateScheme(manager->indexForScheme(light ? u"Breeze Light"_s : u"Breeze Dark"_s));
     }
 
     QQmlApplicationEngine engine;

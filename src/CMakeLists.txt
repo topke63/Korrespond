@@ -99,6 +99,7 @@ target_link_libraries(plasma-mail PRIVATE
     KF6::I18n
     KF6::I18nQml
     KF6::CoreAddons
+    KF6::ColorScheme
     KF6::Notifications
     KF6::NotifyConfig
     KF6::StatusNotifierItem

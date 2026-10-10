@@ -3907,7 +3907,7 @@ known light look and derive it (macOS light: sidebar `#e8e6ee`-ish, band `#f3f1f
 - notes:
 
 ### T182 — Dev hook: force the colour scheme
-- status: todo
+- status: done
 - depends on: T176
 - parallel-safe with: T183
 - files: src/app/main.cpp, src/qml/MimeTheme.qml (only if it needs a property to follow)
@@ -3919,6 +3919,18 @@ known light look and derive it (macOS light: sidebar `#e8e6ee`-ish, band `#f3f1f
   `MimeTheme.dark` follows. Unset: unchanged behaviour.
 - verify: build; ctest; two screenshots with the hook, light and dark, show the two palettes.
 - notes:
+  Done 2026-10-10. `PLASMAMAIL_COLOR_SCHEME=light|dark` in main.cpp: `styleHints()->setColorScheme()`
+  plus `KColorSchemeManager::instance()->activateScheme("Breeze Light"/"Breeze Dark")` (new link:
+  KF6::ColorScheme). Findings: with the KDE platform theme (xcb) `setColorScheme` is ignored (stays
+  at the system scheme; the gtk3 theme honours it), and Kirigami's non-Custom sets (title band,
+  buttons) read the KDE scheme, not the QPalette, so only the manager moves them. Hence
+  `MimeTheme.dark` now reads a `SystemPalette` window lightness (< 0.5) instead of
+  `Qt.styleHints.colorScheme`. Also fixed in a separate commit: the Custom colour property names
+  (`Kirigami.Theme.customTextColor` etc. do not exist in Kirigami 6.30; they are `textColor`,
+  `backgroundColor`, `disabledTextColor`, `highlightColor`), which had made the app fail to load
+  since T175. Screenshots: scratchpad t182-light.png, t182-dark.png; ctest 19/19. Observation for
+  T184/T181: in both schemes the sidebar and title band come out as the Breeze colours, not
+  MimeTheme.sidebarBackground / headerBackground (the drawer ignores the Custom background).
 
 ### T183 — Dev hook: sample message in the reading pane
 - status: todo

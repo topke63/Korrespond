@@ -8,7 +8,10 @@ import QtQuick
 // Colours of the three columns, after Mimestream: a lighter purple-grey sidebar, a deep purple
 // message list and a neutral reading pane, with one blue accent. Follows the system light/dark.
 QtObject {
-    readonly property bool dark: Qt.styleHints.colorScheme !== Qt.Light
+    // From the application palette (not Qt.styleHints.colorScheme, which the KDE platform theme
+    // ignores when PLASMAMAIL_COLOR_SCHEME forces a scheme); a dark window means a dark scheme.
+    readonly property SystemPalette systemPalette: SystemPalette {}
+    readonly property bool dark: systemPalette.window.hslLightness < 0.5
 
     readonly property color sidebarBackground: dark ? "#4c4951" : "#e8e6ee"
     readonly property color listBackground: dark ? "#1e1e1e" : "#ffffff"

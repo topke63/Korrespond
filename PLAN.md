@@ -4524,8 +4524,8 @@ screenshot checks stay `todo`.
 - files: src/qml/FolderSidebar.qml (src/app/main.cpp only if the icon needs exposing to QML)
 - inputs: user: "the icon on the upper left corner of the app window is still generic".
 - output: a Kirigami.Icon (`iconSizes.smallMedium`, not a mask/monochrome) left of the "Mail"
-  heading, source the app icon: theme name `plasma-mail` with fallback to the bundled
-  `:/icons/sc-apps-plasma-mail.svg` (as main.cpp's QIcon::fromTheme fallback), so it works when run
+  heading, source the app icon: theme name `org.topke.plasmamail` (renamed in T204) with fallback to the
+  bundled `:/icons/sc-apps-org.topke.plasmamail.svg` (as main.cpp's QIcon::fromTheme fallback), so it works when run
   from build/bin. Hidden with the sidebar when collapsed (T187's "Show Sidebar" button in the list
   band stays the way back). Correct in light and dark.
 - verify: build; ctest; offscreen start without new QML warnings. Visual check done 2026-10-10

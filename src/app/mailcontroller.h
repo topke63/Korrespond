@@ -143,6 +143,7 @@ class MailController : public QObject
     Q_PROPERTY(int undoSendSeconds READ undoSendSeconds WRITE setUndoSendSeconds NOTIFY appSettingsChanged)
     // One list row per conversation instead of per message (T221).
     Q_PROPERTY(bool conversationView READ conversationView WRITE setConversationView NOTIFY appSettingsChanged)
+    Q_PROPERTY(bool alwaysLoadImages READ alwaysLoadImages WRITE setAlwaysLoadImages NOTIFY appSettingsChanged)
     // The main window's remembered size; 0 when none. Read once at start (no change signal).
     Q_PROPERTY(int windowWidth READ windowWidth CONSTANT)
     Q_PROPERTY(int windowHeight READ windowHeight CONSTANT)
@@ -242,6 +243,8 @@ public:
     void setUndoSendSeconds(int seconds);
     [[nodiscard]] bool conversationView() const;
     void setConversationView(bool on);
+    [[nodiscard]] bool alwaysLoadImages() const;
+    void setAlwaysLoadImages(bool on);
     [[nodiscard]] int windowWidth() const;
     [[nodiscard]] int windowHeight() const;
     // Remembers the main window's size (ignored when too small to be real).

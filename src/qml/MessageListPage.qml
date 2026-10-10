@@ -13,6 +13,9 @@ import Korrespond
 Kirigami.ScrollablePage {
     id: page
 
+    signal settingsRequested()
+    signal aboutRequested()
+
     // Shows message `uid` of `account` in the message column after this page (on narrow windows,
     // moves there).
     function openMessage(account, uid) {
@@ -31,6 +34,10 @@ Kirigami.ScrollablePage {
     Kirigami.Theme.inherit: false
     titleDelegate: RowLayout {
         spacing: 0
+
+        // The title yields to the toolbar: New Message and Refresh keep their room, so a long folder
+        // name or the Show Sidebar button cannot push them out of the header.
+        Layout.maximumWidth: Math.max(0, page.width - Kirigami.Units.gridUnit * 8)
 
         // Brings the docked sidebar back while it is collapsed.
         QQC2.ToolButton {
@@ -198,6 +205,49 @@ Kirigami.ScrollablePage {
             fromQAction: page.application?.action("refresh") ?? null
             displayHint: Kirigami.DisplayHint.IconOnly
             tooltip: KI18n.i18nc("@info:tooltip", "Check for new mail (F5)")
+        },
+        // The main menu lives here, next to the other two, so it stays in reach with the sidebar hidden.
+        Kirigami.Action {
+            icon.name: "overflow-menu"
+            text: KI18n.i18nc("@action:button", "Main Menu")
+            displayHint: Kirigami.DisplayHint.IconOnly
+            tooltip: KI18n.i18nc("@info:tooltip", "Main Menu")
+
+            Kirigami.Action {
+                text: KI18n.i18nc("@action:inmenu", "Collapse All")
+                icon.name: "arrow-right"
+                enabled: MailController.hasAccount
+                onTriggered: MailController.setAllAccountsCollapsed(true)
+            }
+            Kirigami.Action {
+                text: KI18n.i18nc("@action:inmenu", "Expand All")
+                icon.name: "arrow-down"
+                enabled: MailController.collapsedAccounts.length > 0
+                onTriggered: MailController.setAllAccountsCollapsed(false)
+            }
+            Kirigami.Action {
+                separator: true
+            }
+            // Display only: hidden folders still count and sync.
+            Kirigami.Action {
+                text: KI18n.i18nc("@action:inmenu", "Show Hidden Folders")
+                checkable: true
+                checked: MailController.showHiddenFolders
+                onTriggered: MailController.showHiddenFolders = checked
+            }
+            Kirigami.Action {
+                separator: true
+            }
+            Kirigami.Action {
+                text: KI18n.i18nc("@action:inmenu", "Settings…")
+                icon.name: "settings-configure"
+                onTriggered: page.settingsRequested()
+            }
+            Kirigami.Action {
+                text: KI18n.i18nc("@action:inmenu", "About Korrespond")
+                icon.name: "help-about"
+                onTriggered: page.aboutRequested()
+            }
         }
     ]
 

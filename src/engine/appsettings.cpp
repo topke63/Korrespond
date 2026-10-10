@@ -76,6 +76,7 @@ AppSettings AppSettings::load()
     settings.showHiddenFolders = group.readEntry("ShowHiddenFolders", settings.showHiddenFolders);
     settings.undoSendSeconds = snapUndoSend(group.readEntry("UndoSendSeconds", settings.undoSendSeconds));
     settings.conversationView = group.readEntry("ConversationView", settings.conversationView);
+    settings.alwaysLoadImages = group.readEntry("AlwaysLoadImages", settings.alwaysLoadImages);
     settings.contactsEnabled = group.readEntry("ContactsEnabled", settings.contactsEnabled);
     settings.windowWidth = qMax(0, group.readEntry("WindowWidth", settings.windowWidth));
     settings.windowHeight = qMax(0, group.readEntry("WindowHeight", settings.windowHeight));
@@ -104,6 +105,7 @@ void AppSettings::save() const
     group.writeEntry("ShowHiddenFolders", showHiddenFolders);
     group.writeEntry("UndoSendSeconds", snapUndoSend(undoSendSeconds));
     group.writeEntry("ConversationView", conversationView);
+    group.writeEntry("AlwaysLoadImages", alwaysLoadImages);
     group.writeEntry("ContactsEnabled", contactsEnabled);
     group.writeEntry("WindowWidth", windowWidth);
     group.writeEntry("WindowHeight", windowHeight);

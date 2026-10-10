@@ -175,13 +175,6 @@ StatefulApp.StatefulWindow {
         }
         onEnabledChanged: updateOpen()
         Component.onCompleted: updateOpen()
-        onSettingsRequested: {
-            if (modal) {
-                close();
-            }
-            settings.open();
-        }
-        onAboutRequested: settings.open("about")
     }
     // Inside the page row, so the sidebar's header lines up with the pages' title bars.
     pageStack.leftSidebar: sidebar
@@ -345,6 +338,8 @@ StatefulApp.StatefulWindow {
 
         MessageListPage {
             application: mailApplication
+            onSettingsRequested: settings.open()
+            onAboutRequested: settings.open("about")
         }
     }
 

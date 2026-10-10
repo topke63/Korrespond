@@ -15,9 +15,6 @@ import Korrespond
 Kirigami.OverlayDrawer {
     id: sidebar
 
-    signal settingsRequested()
-    signal aboutRequested()
-
     edge: Application.layoutDirection === Qt.RightToLeft ? Qt.RightEdge : Qt.LeftEdge
     // Docked: the width the user chose (live while dragging). Sliding over a narrow window: fixed.
     width: modal ? Kirigami.Units.gridUnit * 14 : Math.min(maxDockedWidth, resizer.dragging ? resizer.liveWidth : MailController.sidebarWidth)
@@ -107,56 +104,6 @@ Kirigami.OverlayDrawer {
                         QQC2.ToolTip.text: text + " (Ctrl+B)"
                         QQC2.ToolTip.visible: hovered
                         QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
-                    }
-                    QQC2.ToolButton {
-                        icon.name: "application-menu"
-                        display: QQC2.AbstractButton.IconOnly
-                        text: KI18n.i18nc("@action:button", "Main Menu")
-                        down: accountMenu.visible
-                        onClicked: accountMenu.popup(this, 0, height)
-
-                        QQC2.ToolTip.text: text
-                        QQC2.ToolTip.visible: hovered
-                        QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
-
-                        QQC2.Menu {
-                            id: accountMenu
-
-                            QQC2.MenuItem {
-                                text: KI18n.i18nc("@action:inmenu", "Collapse All")
-                                icon.name: "arrow-right"
-                                enabled: MailController.hasAccount
-                                onTriggered: MailController.setAllAccountsCollapsed(true)
-                            }
-                            QQC2.MenuItem {
-                                text: KI18n.i18nc("@action:inmenu", "Expand All")
-                                icon.name: "arrow-down"
-                                enabled: MailController.collapsedAccounts.length > 0
-                                onTriggered: MailController.setAllAccountsCollapsed(false)
-                            }
-                            QQC2.MenuSeparator {
-                            }
-                            // Display only: hidden folders still count and sync.
-                            QQC2.MenuItem {
-                                text: KI18n.i18nc("@action:inmenu", "Show Hidden Folders")
-                                checkable: true
-                                checked: MailController.showHiddenFolders
-                                onToggled: MailController.showHiddenFolders = checked
-                            }
-                            QQC2.MenuSeparator {
-                            }
-                            QQC2.MenuItem {
-                                text: KI18n.i18nc("@action:inmenu", "Settings…")
-                                icon.name: "settings-configure"
-                                onTriggered: sidebar.settingsRequested()
-                            }
-                            QQC2.MenuItem {
-                                text: KI18n.i18nc("@action:inmenu", "About Korrespond")
-                                icon.name: "help-about"
-                                onTriggered: sidebar.aboutRequested()
-                            }
-
-                        }
                     }
                 }
             }

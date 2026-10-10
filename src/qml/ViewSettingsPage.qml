@@ -22,4 +22,17 @@ FormCard.FormCardPage {
             onToggled: MailController.conversationView = checked
         }
     }
+
+    FormCard.FormHeader {
+        title: KI18n.i18nc("@title:group", "Message Content")
+    }
+
+    FormCard.FormCard {
+        FormCard.FormSwitchDelegate {
+            text: KI18n.i18nc("@option:check", "Always load remote images")
+            description: KI18n.i18nc("@info", "Images in HTML mail are fetched from the sender's server when the message is opened, which tells the sender that you read it.")
+            checked: MailController.alwaysLoadImages
+            onToggled: MailController.alwaysLoadImages = checked
+        }
+    }
 }

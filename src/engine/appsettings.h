@@ -42,6 +42,8 @@ struct AppSettings {
     // The message list shows one row per conversation (T221). Off until it has been tried on real
     // mail (T226).
     bool conversationView = false;
+    // Remote images in HTML mail load without the per-message "Load images" step.
+    bool alwaysLoadImages = false;
     // Google contacts: suggestions, sender names and the sync (T240). The sign-in asks for the
     // contacts scopes only while this is on.
     bool contactsEnabled = true;

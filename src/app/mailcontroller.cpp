@@ -440,12 +440,12 @@ QString MailController::messageHtml() const
 
 bool MailController::messageHasRemoteImages() const
 {
-    return m_openMessage && m_messageHasRemoteImages && !m_remoteImagesLoaded;
+    return m_openMessage && m_messageHasRemoteImages && !m_remoteImagesLoaded && !m_app.alwaysLoadImages;
 }
 
 bool MailController::remoteImagesLoaded() const
 {
-    return m_remoteImagesLoaded;
+    return m_remoteImagesLoaded || m_app.alwaysLoadImages;
 }
 
 void MailController::loadRemoteImages()
@@ -465,7 +465,7 @@ QString MailController::renderBody(const KMime::Message &msg, bool allowRemoteIm
                            m_bodyText.isValid() ? m_bodyText : palette.color(QPalette::Text),
                            m_bodyBackground.isValid() ? m_bodyBackground : palette.color(QPalette::Base),
                            m_bodyLink.isValid() ? m_bodyLink : palette.color(QPalette::Link),
-                           allowRemoteImages);
+                           allowRemoteImages || m_app.alwaysLoadImages);
 }
 
 void MailController::setMessageColours(const QColor &text, const QColor &background, const QColor &link)
@@ -989,6 +989,33 @@ void MailController::setConversationView(bool on)
     settings.save();
     m_app = settings;
     m_messageModel->setConversationView(on);
+    Q_EMIT appSettingsChanged();
+}
+
+bool MailController::alwaysLoadImages() const
+{
+    return m_app.alwaysLoadImages;
+}
+
+void MailController::setAlwaysLoadImages(bool on)
+{
+    if (m_app.alwaysLoadImages == on) {
+        return;
+    }
+    AppSettings settings = m_app;
+    settings.alwaysLoadImages = on;
+    settings.save();
+    m_app = settings;
+    if (m_openMessage) {
+        m_messageHtml = renderBody(*m_openMessage, m_remoteImagesLoaded);
+        Q_EMIT currentMessageChanged();
+    }
+    for (int row = 0; row < m_conversationModel->rowCount(); ++row) {
+        if (const auto message = m_conversationModel->parsed(row)) {
+            const bool images = on || m_conversationModel->data(m_conversationModel->index(row), ConversationModel::ImagesLoadedRole).toBool();
+            m_conversationModel->setHtml(row, renderBody(*message, images), images);
+        }
+    }
     Q_EMIT appSettingsChanged();
 }
 
@@ -2451,6 +2478,9 @@ void MailController::showMessage(AccountSession *session, const QString &folder,
     const int row = m_conversationModel->indexOf(session->account().email, uid);
     if (row >= 0) {
         m_conversationModel->setBody(row, message, m_messageHtml, m_messageHasRemoteImages, m_messageAttachments);
+        if (m_app.alwaysLoadImages) {
+            m_conversationModel->setHtml(row, m_messageHtml, true);
+        }
     }
     markShown(session, folder, uid);
 }
@@ -2549,7 +2579,11 @@ void MailController::fillConversationItem(AccountSession *session, const QString
     if (m_demo) {
         qInfo("demo: conversation body uid %lld shown, unread=%d", qint64(item.uid), item.unread ? 1 : 0);
     }
-    m_conversationModel->setBody(row, message, renderBody(*message, false), ::messageHasRemoteImages(*message), attachmentNames(*message));
+    const QString html = renderBody(*message, false);
+    m_conversationModel->setBody(row, message, html, ::messageHasRemoteImages(*message), attachmentNames(*message));
+    if (m_app.alwaysLoadImages) {
+        m_conversationModel->setHtml(row, html, true);
+    }
     markShown(session, folder, item.uid);
 }
 

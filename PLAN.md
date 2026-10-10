@@ -5650,13 +5650,16 @@ Approach: thread ids are computed in the engine and stored, the list model group
   sign-in works but the IMAP login fails), QtWebEngineQuick, KF6KirigamiAddons (check the runtime).
 
 ### T248 — Install the build tools and runtimes
-- status: todo
+- status: blocked (waiting for the user to install `flatpak-builder`)
 - depends on: none (the user installs `flatpak-builder`)
 - files: none
 - output: `flatpak-builder --version` works; `flatpak install flathub io.qt.qtwebengine.BaseApp//6.<runtime>`
   and `org.kde.Sdk//6.<runtime>` are installed for the same branch as the Platform; the branch is chosen
   (6.11 if its KDE Gear modules build) and written in the notes.
 - verify: `flatpak-builder --version`; `flatpak list --runtime | grep -E "Sdk|BaseApp"`.
+- notes: 2026-10-10: branch 6.11 chosen (Platform 6.11 already installed; Sdk and BaseApp both exist on
+  flathub for 6.11). Installed with `flatpak install --user flathub org.kde.Sdk//6.11
+  io.qt.qtwebengine.BaseApp//6.11`. Remaining: `sudo pacman -S flatpak-builder` (needs the user).
 
 ### T249 — Manifest skeleton that builds the app against the runtime
 - status: todo

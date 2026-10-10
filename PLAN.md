@@ -3987,6 +3987,81 @@ known light look and derive it (macOS light: sidebar `#e8e6ee`-ish, band `#f3f1f
   pixels: dark sidebar ≈ #4c4951, dark band ≈ #251e2c, light sidebar ≈ #e8e6ee, light band ≈ #f3f1f6.
 - notes:
 
+# Milestone 3j — Sidebar control (user request 2026-10-10: "a collapse option for the left panel;
+# I don't need to see the whole tree of each account, I'd like to choose")
+
+Queued after the Mimestream palette tasks (T175–T186); same file (FolderSidebar.qml).
+
+- **Open questions**:
+  1. Hidden folders: do they still count in shared views (All Inboxes, Unread, Flagged), the tray
+     count and notifications? Proposal: yes — hiding is display-only. T190/T191 build the proposal.
+
+### T187 — Collapse the whole sidebar
+- status: todo
+- depends on: T179
+- parallel-safe with: none
+- files: src/engine/appsettings.h, src/engine/appsettings.cpp, autotests/appsettingstest.cpp,
+  src/app/mailcontroller.h, src/app/mailcontroller.cpp, src/qml/Main.qml, src/qml/FolderSidebar.qml,
+  src/qml/MessageListPage.qml (for the "show sidebar" button while collapsed)
+- inputs: panel widths T130–T131 as the pattern for persisted UI state.
+- output: a sidebar toggle button (icon `sidebar-collapse`/`sidebar-expand`-style, Mimestream-like)
+  in the sidebar header, and while collapsed in the list page's title band; shortcut Ctrl+B (check
+  no conflict) hides/shows the docked sidebar column; `AppSettings::sidebarCollapsed` persisted and
+  restored at start. Narrow windows keep the modal drawer behaviour.
+- verify: build; ctest (new AppSettings test); screenshots collapsed/expanded in both schemes;
+  restart keeps the state.
+- notes:
+
+### T188 — Account trees: persisted collapse, Collapse all / Expand all
+- status: todo
+- depends on: T187
+- parallel-safe with: none
+- files: src/engine/appsettings.h, src/engine/appsettings.cpp, autotests/appsettingstest.cpp,
+  src/app/mailcontroller.h, src/app/mailcontroller.cpp, src/qml/FolderSidebar.qml
+- inputs: FolderSidebar's per-account `expanded` property (default true, not persisted).
+- output: each account's collapsed state stored in AppSettings keyed by account email and restored
+  at start; "Collapse All" / "Expand All" in the sidebar header menu (or a context menu on the
+  account header).
+- verify: build; ctest (new test); toggling + restart keeps the states.
+- notes:
+
+### T189 — Hidden folders: storage and controller
+- status: todo
+- depends on: T188
+- parallel-safe with: none
+- files: src/engine/appsettings.h, src/engine/appsettings.cpp, autotests/appsettingstest.cpp,
+  src/app/mailcontroller.h, src/app/mailcontroller.cpp
+- inputs: open question 1 (proposal: display-only).
+- output: `AppSettings` hidden folder paths per account; MailController `setFolderHidden(account,
+  path, bool)`, `isFolderHidden`, `showHiddenFolders` property (persisted); Inbox can never be
+  hidden. No change to counts, sync or notifications.
+- verify: build; ctest (new tests incl. Inbox refusal).
+- notes:
+
+### T190 — Hidden folders: sidebar UI
+- status: todo
+- depends on: T189
+- parallel-safe with: none
+- files: src/qml/FolderSidebar.qml
+- inputs: T189 API.
+- output: folder row context menu "Hide from Sidebar" / "Show in Sidebar" (not offered for Inbox);
+  hidden folders are left out of the tree unless "Show Hidden Folders" (header menu, checkable) is
+  on, then shown dimmed (`secondaryText`).
+- verify: build; ctest; screenshots in both schemes with show-hidden on and off (use a throwaway
+  hide on a harmless folder and undo it afterwards; that is local UI state only, not a mail change).
+- notes:
+
+### T191 — Check: sidebar control in both schemes
+- status: todo
+- depends on: T190
+- parallel-safe with: none
+- files: none (fixes become new tasks)
+- inputs: `PLASMAMAIL_COLOR_SCHEME=light|dark`, screenshot hook.
+- output: collapse/expand, account collapse, hidden folders, all persisted across restart; menus
+  and dimmed rows readable in both schemes.
+- verify: screenshots + restart checks pass.
+- notes:
+
 ## Execution Loop
 
 Execute the plan as a loop. Each iteration handles one task in a fresh context, then ends.

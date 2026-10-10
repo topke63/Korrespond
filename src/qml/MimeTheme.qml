@@ -5,56 +5,22 @@ pragma Singleton
 
 import QtQuick
 
-// Colours of the three columns, after Mimestream: a lighter purple-grey sidebar, a deep purple
-// message list and a neutral reading pane, with one blue accent. Follows the system light/dark.
+// What the colour scheme does not supply: alphas for tinting the scheme's own colours (selection,
+// hover, dividers) and the label chip colours. Every other colour comes from Kirigami.Theme and
+// follows the Plasma colour scheme.
 QtObject {
-    // From the application palette (not Qt.styleHints.colorScheme, which the KDE platform theme
-    // ignores when PLASMAMAIL_COLOR_SCHEME forces a scheme); a dark window means a dark scheme.
-    readonly property SystemPalette systemPalette: SystemPalette {}
-    readonly property bool dark: systemPalette.window.hslLightness < 0.5
-
-    readonly property color sidebarBackground: dark ? "#4c4951" : "#e8e6ee"
-    readonly property color listBackground: dark ? "#1e1e1e" : "#ffffff"
-    readonly property color readingBackground: dark ? "#1e1e1e" : "#ffffff"
-    // Title bar band over the list and reading pane.
-    readonly property color headerBackground: dark ? "#251e2c" : "#f3f1f6"
-
-    readonly property color text: dark ? "#ececec" : "#1c1b22"
-    // Sidebar folder and account names (Mimestream's are a touch brighter than the list text).
-    readonly property color sidebarText: dark ? "#f3eff5" : "#1c1b22"
-    // Dates and addresses; between the list dates (#a4a4a4) and the reading pane dates (#ababab).
-    readonly property color secondaryText: dark ? "#a8a8a8" : "#6e6e73"
-    // Sidebar section headings and the message preview line.
-    readonly property color sectionText: dark ? "#8c8991" : "#8a8790"
-    readonly property color previewText: dark ? "#aaaaaa" : "#6e6e73"
-    readonly property color accent: dark ? "#1866c5" : "#0a60d6"
-    // Link text in the message body; WebEngine gets it through MailController.
-    readonly property color link: dark ? "#5ea2ff" : "#0a60d6"
-
-    // Tints of the sidebar folder icons and the toolbar icons.
-    readonly property color iconTint: dark ? "#cfc8ba" : "#5c5a66"
-    readonly property color toolbarIcon: dark ? "#9f99a2" : "#6e6e73"
-
-    // Selected and hovered rows.
-    readonly property color sidebarSelected: dark ? "#68656b" : "#d4d1df"
-    readonly property color listSelected: dark ? "#464646" : "#dcdcdc"
-    readonly property color hover: dark ? Qt.rgba(1, 1, 1, 0.06) : Qt.rgba(0, 0, 0, 0.05)
-    // Light alpha 0.10 (not 0.08): 0.08 gave #ebebeb on white, 1.19:1, under the 1.2:1 floor.
-    readonly property color divider: dark ? Qt.rgba(1, 1, 1, 0.08) : Qt.rgba(0, 0, 0, 0.10)
+    // Selected row: the set's highlight colour at this alpha.
+    readonly property real selectedAlpha: 0.3
+    // Hovered row: the set's text colour at this alpha.
+    readonly property real hoverAlpha: 0.06
+    // Row and header dividers; 0.08 gave 1.19:1 on white, under the 1.2:1 floor.
+    readonly property real dividerAlpha: 0.10
     // Hairline between the three columns.
-    readonly property color columnDivider: dark ? "#050505" : "#d0d0d4"
+    readonly property real columnDividerAlpha: 0.2
 
-    // Label tag colours (tag icons), after Mimestream; the light variants are a little deeper to stay
-    // visible on white. Labels do not exist in the app yet (PLAN open question 1), so nothing uses these.
-    readonly property var labelColours: dark ? {
-        "Awaiting": "#f78671",
-        "Delegated": "#ffbd66",
-        "Follow Up": "#f8d075",
-        "Home": "#2ecb94",
-        "Inquiries": "#a9c6e6",
-        "Travel": "#bba3fd",
-        "Website": "#bebbc1"
-    } : {
+    // Label tag colours (tag icons), after Mimestream, deep enough to stay visible on white and on
+    // dark. Labels do not exist in the app yet (PLAN open question 1), so nothing uses these.
+    readonly property var labelColours: {
         "Awaiting": "#e8624a",
         "Delegated": "#f0962a",
         "Follow Up": "#e0b030",
@@ -63,7 +29,7 @@ QtObject {
         "Travel": "#8f72e8",
         "Website": "#9a97a0"
     }
-    // Chip backgrounds where they differ from the tag colour (the same in both schemes).
+    // Chip backgrounds where they differ from the tag colour.
     readonly property var chipBackgrounds: {
         "Home": "#1ba26b",
         "Inquiries": "#b4d1f8",

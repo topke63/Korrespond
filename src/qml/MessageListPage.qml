@@ -21,13 +21,8 @@ Kirigami.ScrollablePage {
     }
 
     title: MailController.searchActive ? KI18n.i18nc("@title", "Search") : MailController.currentFolderName
-    // Fixed accent for unread: the theme's highlight turns dull when the window is inactive.
-    readonly property color unreadColor: MimeTheme.accent
+    Kirigami.Theme.colorSet: Kirigami.Theme.View
     Kirigami.Theme.inherit: false
-    Kirigami.Theme.backgroundColor: MimeTheme.listBackground
-    Kirigami.Theme.textColor: MimeTheme.text
-    Kirigami.Theme.disabledTextColor: MimeTheme.secondaryText
-    Kirigami.Theme.highlightColor: MimeTheme.accent
     titleDelegate: RowLayout {
         spacing: 0
 
@@ -35,7 +30,6 @@ Kirigami.ScrollablePage {
         QQC2.ToolButton {
             visible: MailController.sidebarCollapsed && (page.QQC2.ApplicationWindow.window as Kirigami.ApplicationWindow).wideScreen
             icon.name: "sidebar-expand-left"
-            icon.color: MimeTheme.toolbarIcon
             display: QQC2.AbstractButton.IconOnly
             text: KI18n.i18nc("@action:button", "Show Sidebar")
             onClicked: MailController.sidebarCollapsed = false
@@ -92,10 +86,10 @@ Kirigami.ScrollablePage {
         anchors.top: parent.top
         anchors.bottom: parent.bottom
         width: 1
-        color: MimeTheme.columnDivider
+        color: Qt.alpha(Kirigami.Theme.textColor, MimeTheme.columnDividerAlpha)
     }
 
-    // The title bar band: the page row's header gets the deep purple instead of the theme's header colour.
+    // The title bar band: the page row's header gets the divider on its right edge.
     function styleHeader() {
         const header = (page.Kirigami.ColumnView.globalHeader as Loader)?.item as Kirigami.AbstractApplicationHeader;
         if (header) {
@@ -115,7 +109,10 @@ Kirigami.ScrollablePage {
         id: headerBand
 
         Rectangle {
-            color: MimeTheme.headerBackground
+            // The Header set; the divider takes its text colour.
+            Kirigami.Theme.colorSet: Kirigami.Theme.Header
+            Kirigami.Theme.inherit: false
+            color: Kirigami.Theme.backgroundColor
 
             Rectangle {
                 visible: resizer.visible
@@ -123,7 +120,7 @@ Kirigami.ScrollablePage {
                 anchors.top: parent.top
                 anchors.bottom: parent.bottom
                 width: 1
-                color: MimeTheme.columnDivider
+                color: Qt.alpha(Kirigami.Theme.textColor, MimeTheme.columnDividerAlpha)
             }
         }
     }
@@ -132,7 +129,6 @@ Kirigami.ScrollablePage {
         Kirigami.Action {
             text: KI18n.i18nc("@action:intoolbar", "New Message")
             icon.name: "mail-message-new"
-            icon.color: MimeTheme.toolbarIcon
             displayHint: Kirigami.DisplayHint.IconOnly
             tooltip: KI18n.i18nc("@info:tooltip", "Write a new message (Ctrl+N)")
             shortcut: "Ctrl+N"
@@ -150,7 +146,6 @@ Kirigami.ScrollablePage {
         Kirigami.Action {
             text: KI18n.i18nc("@action:intoolbar", "Refresh")
             icon.name: "view-refresh"
-            icon.color: enabled ? MimeTheme.toolbarIcon : Qt.alpha(MimeTheme.toolbarIcon, 0.4)
             displayHint: Kirigami.DisplayHint.IconOnly
             tooltip: KI18n.i18nc("@info:tooltip", "Check for new mail (F5)")
             shortcut: "F5"
@@ -239,14 +234,14 @@ Kirigami.ScrollablePage {
 
             background: Rectangle {
                 radius: 6
-                color: row.highlighted ? MimeTheme.listSelected
-                     : row.hovered ? MimeTheme.hover : "transparent"
+                color: row.highlighted ? Qt.alpha(Kirigami.Theme.highlightColor, MimeTheme.selectedAlpha)
+                     : row.hovered ? Qt.alpha(Kirigami.Theme.textColor, MimeTheme.hoverAlpha) : "transparent"
             }
 
             contentItem: RowLayout {
                 spacing: Kirigami.Units.smallSpacing
 
-                // Unread: a clear accent dot.
+                // Unread: a dot in the highlight colour.
                 Rectangle {
                     Layout.alignment: Qt.AlignTop
                     Layout.topMargin: Math.round(senderLabel.height / 2 - height / 2)
@@ -255,7 +250,7 @@ Kirigami.ScrollablePage {
                     implicitWidth: 10
                     implicitHeight: 10
                     radius: width / 2
-                    color: page.unreadColor
+                    color: Kirigami.Theme.highlightColor
                     opacity: row.unread ? 1 : 0
                 }
 
@@ -274,7 +269,6 @@ Kirigami.ScrollablePage {
                             text: row.from
                             textFormat: Text.PlainText
                             elide: Text.ElideRight
-                            color: MimeTheme.text
                             font.weight: row.unread ? Font.Bold : Font.DemiBold
                         }
                         // Orange when flagged; faint on hover so any row can be flagged with a click.
@@ -286,7 +280,7 @@ Kirigami.ScrollablePage {
                             opacity: row.flagged ? 1 : row.hovered ? 0.5 : 0
                             enabled: row.flagged || row.hovered
                             icon.name: "flag"
-                            icon.color: row.flagged ? "#f67400" : MimeTheme.secondaryText
+                            icon.color: row.flagged ? Kirigami.Theme.neutralTextColor : Kirigami.Theme.disabledTextColor
                             icon.width: Kirigami.Units.iconSizes.small
                             icon.height: Kirigami.Units.iconSizes.small
                             display: QQC2.AbstractButton.IconOnly
@@ -296,7 +290,7 @@ Kirigami.ScrollablePage {
                         QQC2.Label {
                             text: row.dateText
                             font: Kirigami.Theme.smallFont
-                            color: MimeTheme.secondaryText
+                            color: Kirigami.Theme.disabledTextColor
                         }
                     }
                     QQC2.Label {
@@ -304,7 +298,6 @@ Kirigami.ScrollablePage {
                         text: row.subject.length > 0 ? row.subject : KI18n.i18nc("@info", "(no subject)")
                         textFormat: Text.PlainText
                         elide: Text.ElideRight
-                        color: MimeTheme.text
                     }
                     // Only stored messages have a preview; the row stays two lines otherwise.
                     QQC2.Label {
@@ -313,7 +306,7 @@ Kirigami.ScrollablePage {
                         text: row.preview
                         textFormat: Text.PlainText
                         elide: Text.ElideRight
-                        color: MimeTheme.previewText
+                        color: Kirigami.Theme.disabledTextColor
                     }
                 }
             }

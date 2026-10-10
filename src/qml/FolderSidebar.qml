@@ -39,15 +39,12 @@ Kirigami.OverlayDrawer {
     topPadding: 0
     bottomPadding: 0
 
+    Kirigami.Theme.colorSet: Kirigami.Theme.Window
     Kirigami.Theme.inherit: false
-    Kirigami.Theme.backgroundColor: MimeTheme.sidebarBackground
-    Kirigami.Theme.textColor: MimeTheme.sidebarText
-    Kirigami.Theme.disabledTextColor: MimeTheme.secondaryText
-    Kirigami.Theme.highlightColor: MimeTheme.accent
 
     // The drawer template's own background takes the theme's window colour.
     background: Rectangle {
-        color: MimeTheme.sidebarBackground
+        color: Kirigami.Theme.backgroundColor
     }
 
     // The folder list, with the drag handle for the width on its right edge.
@@ -61,7 +58,7 @@ Kirigami.OverlayDrawer {
                 Layout.preferredHeight: applicationWindow().pageStack.globalToolBar.preferredHeight
 
                 background: Rectangle {
-                    color: MimeTheme.sidebarBackground
+                    color: Kirigami.Theme.backgroundColor
                 }
                 contentItem: RowLayout {
                     spacing: Kirigami.Units.smallSpacing
@@ -76,7 +73,6 @@ Kirigami.OverlayDrawer {
                     }
                     QQC2.ToolButton {
                         icon.name: "sidebar-collapse-left"
-                        icon.color: MimeTheme.toolbarIcon
                         display: QQC2.AbstractButton.IconOnly
                         text: KI18n.i18nc("@action:button", "Hide Sidebar")
                         onClicked: sidebar.modal ? sidebar.close() : MailController.sidebarCollapsed = true
@@ -170,7 +166,7 @@ Kirigami.OverlayDrawer {
 
                                 background: Rectangle {
                                     radius: Kirigami.Units.cornerRadius
-                                    color: accountHeader.hovered ? MimeTheme.hover : "transparent"
+                                    color: accountHeader.hovered ? Qt.alpha(Kirigami.Theme.textColor, MimeTheme.hoverAlpha) : "transparent"
                                 }
                                 contentItem: RowLayout {
                                     spacing: Kirigami.Units.smallSpacing
@@ -179,7 +175,7 @@ Kirigami.OverlayDrawer {
                                         implicitWidth: Kirigami.Units.iconSizes.small
                                         implicitHeight: Kirigami.Units.iconSizes.small
                                         source: accountSection.expanded ? "arrow-down" : "arrow-right"
-                                        color: MimeTheme.sectionText
+                                        color: Kirigami.Theme.disabledTextColor
                                         isMask: true
                                     }
                                     SenderAvatar {
@@ -192,7 +188,7 @@ Kirigami.OverlayDrawer {
                                         elide: Text.ElideRight
                                         font.pointSize: Kirigami.Theme.smallFont.pointSize
                                         font.weight: Font.DemiBold
-                                        color: MimeTheme.sectionText
+                                        color: Kirigami.Theme.disabledTextColor
                                     }
                                 }
                             }
@@ -230,7 +226,7 @@ Kirigami.OverlayDrawer {
             anchors.top: parent.top
             anchors.bottom: parent.bottom
             width: 1
-            color: MimeTheme.columnDivider
+            color: Qt.alpha(Kirigami.Theme.textColor, MimeTheme.columnDividerAlpha)
         }
 
         PanelResizer {
@@ -257,7 +253,7 @@ Kirigami.OverlayDrawer {
         Layout.bottomMargin: Kirigami.Units.smallSpacing
         font.pointSize: Kirigami.Theme.smallFont.pointSize
         font.weight: Font.DemiBold
-        color: MimeTheme.sectionText
+        color: Kirigami.Theme.disabledTextColor
     }
 
     // A clickable folder (or shared view) with a monochrome tinted icon and the soft selection.
@@ -284,8 +280,8 @@ Kirigami.OverlayDrawer {
 
         background: Rectangle {
             radius: Kirigami.Units.cornerRadius
-            color: folderRow.highlighted ? MimeTheme.sidebarSelected
-                 : folderRow.hovered ? MimeTheme.hover : "transparent"
+            color: folderRow.highlighted ? Qt.alpha(Kirigami.Theme.highlightColor, MimeTheme.selectedAlpha)
+                 : folderRow.hovered ? Qt.alpha(Kirigami.Theme.textColor, MimeTheme.hoverAlpha) : "transparent"
         }
         contentItem: RowLayout {
             spacing: Kirigami.Units.mediumSpacing
@@ -294,14 +290,14 @@ Kirigami.OverlayDrawer {
                 implicitWidth: Kirigami.Units.iconSizes.small
                 implicitHeight: Kirigami.Units.iconSizes.small
                 source: folderRow.icon.name
-                color: folderRow.highlighted ? MimeTheme.text : MimeTheme.iconTint
+                color: Kirigami.Theme.textColor
                 isMask: true
             }
             QQC2.Label {
                 Layout.fillWidth: true
                 text: folderRow.text
                 font: folderRow.font
-                color: MimeTheme.sidebarText
+                color: Kirigami.Theme.textColor
                 elide: Text.ElideRight
             }
         }

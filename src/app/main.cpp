@@ -138,7 +138,7 @@ int main(int argc, char *argv[])
 
     // Dev only: PLASMAMAIL_COLOR_SCHEME=light|dark forces the whole app into that scheme: Qt's
     // colour scheme (the KDE platform theme may ignore this one) and the matching Breeze palette,
-    // which MimeTheme.dark and Kirigami's non-Custom colour sets (headers, buttons, menus, dialogs)
+    // which the Kirigami colour sets (sidebar, lists, headers, buttons, menus, dialogs)
     // follow. Unset: system scheme.
     const QString scheme = qEnvironmentVariable("PLASMAMAIL_COLOR_SCHEME").toLower();
     if (scheme == "light"_L1 || scheme == "dark"_L1) {

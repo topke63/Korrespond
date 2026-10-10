@@ -4114,7 +4114,7 @@ screenshot checks stay `todo`.
   2. When may GUI screenshot runs resume, and on which desktop / with which KWin rule?
 
 ### T193 — Colours from the system colour sets
-- status: todo
+- status: done
 - depends on: T187
 - parallel-safe with: none
 - files: src/qml/MimeTheme.qml, src/qml/FolderSidebar.qml, src/qml/StatusBar.qml,
@@ -4130,7 +4130,20 @@ screenshot checks stay `todo`.
 - verify: build; ctest; `qmllint` on the changed files no new warnings; offscreen start
   (`QT_QPA_PLATFORM=offscreen QT_FORCE_STDERR_LOGGING=1 timeout 10 build/bin/plasma-mail`) without
   new QML warnings; `grep -n '"#' ` in the changed QML only finds chip colours.
-- notes:
+- notes: Mapping: sidebar (drawer, its "Mail" ToolBar row), status bar = Window set; list page and
+  reading page = View set; both title bands (header background override, T177) = Header set,
+  explicit `colorSet` + `inherit: false` on the band Rectangle; `inherit: false` only on items whose
+  set changes. Selected rows (folders and messages) = highlightColor at MimeTheme.selectedAlpha 0.3;
+  hover textColor 0.06; reading-pane divider 0.10; column hairlines 0.2; secondary text, preview and
+  sidebar section/account text = disabledTextColor; unread dot = highlightColor (so it dulls with an
+  inactive window, as the system's highlight does); flag = neutralTextColor; toolbar icons default.
+  MimeTheme keeps the four alphas and the label chip colours; `dark`, SystemPalette and the other
+  colours removed (chip tag colours now one palette, the deeper variants). MessagePage's
+  syncBodyColours passes View textColor/backgroundColor/linkColor; the old onDarkChanged re-sync
+  is gone, T194 adds the runtime re-render. main.cpp comment no longer names MimeTheme.dark.
+  Verified: build, ctest 19/19, qmllint warning counts lower than before (no new), offscreen start
+  only the known "not placed in the graphics scene" lines, no hex outside chip colours. Not seen
+  in a window (GUI runs paused).
 
 ### T194 — Message body colours from the system, re-render on scheme change
 - status: todo

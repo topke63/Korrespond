@@ -18,19 +18,12 @@ Kirigami.Page {
 
     readonly property string html: MailController.messageHtml
 
+    Kirigami.Theme.colorSet: Kirigami.Theme.View
     Kirigami.Theme.inherit: false
-    Kirigami.Theme.backgroundColor: MimeTheme.readingBackground
-    Kirigami.Theme.textColor: MimeTheme.text
-    Kirigami.Theme.disabledTextColor: MimeTheme.secondaryText
-    Kirigami.Theme.highlightColor: MimeTheme.accent
 
     // The body's own colours follow the pane.
     function syncBodyColours() {
-        MailController.setMessageColours(MimeTheme.text, MimeTheme.readingBackground, MimeTheme.link);
-    }
-    Connections {
-        target: MimeTheme
-        function onDarkChanged() { page.syncBodyColours(); }
+        MailController.setMessageColours(Kirigami.Theme.textColor, Kirigami.Theme.backgroundColor, Kirigami.Theme.linkColor);
     }
 
     function showHtml() {
@@ -119,7 +112,7 @@ Kirigami.Page {
 
                     QQC2.ToolButton {
                         icon.name: "flag"
-                        icon.color: MailController.messageFlagged ? "#f67400" : MimeTheme.toolbarIcon
+                        icon.color: MailController.messageFlagged ? Kirigami.Theme.neutralTextColor : Kirigami.Theme.textColor
                         text: MailController.messageFlagged ? KI18n.i18nc("@action:button", "Unflag")
                                                             : KI18n.i18nc("@action:button", "Flag")
                         display: QQC2.AbstractButton.IconOnly
@@ -137,7 +130,6 @@ Kirigami.Page {
 
                     QQC2.ToolButton {
                         icon.name: MailController.messageUnread ? "mail-mark-read" : "mail-mark-unread"
-                        icon.color: enabled ? MimeTheme.toolbarIcon : Qt.alpha(MimeTheme.toolbarIcon, 0.4)
                         text: MailController.messageUnread ? KI18n.i18nc("@action:button", "Mark as Read")
                                                            : KI18n.i18nc("@action:button", "Mark as Unread")
                         display: QQC2.AbstractButton.IconOnly
@@ -155,7 +147,6 @@ Kirigami.Page {
 
                     QQC2.ToolButton {
                         icon.name: "archive-insert"
-                        icon.color: enabled ? MimeTheme.toolbarIcon : Qt.alpha(MimeTheme.toolbarIcon, 0.4)
                         text: KI18n.i18nc("@action:button", "Archive")
                         display: QQC2.AbstractButton.IconOnly
                         enabled: MailController.canArchive
@@ -172,7 +163,6 @@ Kirigami.Page {
 
                     QQC2.ToolButton {
                         icon.name: "edit-delete"
-                        icon.color: enabled ? MimeTheme.toolbarIcon : Qt.alpha(MimeTheme.toolbarIcon, 0.4)
                         text: KI18n.i18nc("@action:button", "Delete")
                         display: QQC2.AbstractButton.IconOnly
                         enabled: MailController.canDelete
@@ -192,7 +182,6 @@ Kirigami.Page {
                         id: moveButton
 
                         icon.name: "folder"
-                        icon.color: enabled ? MimeTheme.toolbarIcon : Qt.alpha(MimeTheme.toolbarIcon, 0.4)
                         text: KI18n.i18nc("@action:button", "Move to Folder")
                         display: QQC2.AbstractButton.IconOnly
                         enabled: MailController.canMove
@@ -214,7 +203,6 @@ Kirigami.Page {
 
                     QQC2.ToolButton {
                         icon.name: toolLoader.modelData.icon
-                        icon.color: enabled ? MimeTheme.toolbarIcon : Qt.alpha(MimeTheme.toolbarIcon, 0.4)
                         text: toolLoader.modelData.text
                         display: QQC2.AbstractButton.IconOnly
                         enabled: MailController.canCompose // enable only when we can compose a message
@@ -275,7 +263,7 @@ Kirigami.Page {
     padding: 0
     onHtmlChanged: showHtml()
 
-    // The title bar band: the page row's header gets the deep purple instead of the theme's header colour.
+    // The title bar band: the page row's header gets the Header set explicitly.
     function styleHeader() {
         const header = (page.Kirigami.ColumnView.globalHeader as Loader)?.item as Kirigami.AbstractApplicationHeader;
         if (header) {
@@ -294,7 +282,9 @@ Kirigami.Page {
         id: headerBand
 
         Rectangle {
-            color: MimeTheme.headerBackground
+            Kirigami.Theme.colorSet: Kirigami.Theme.Header
+            Kirigami.Theme.inherit: false
+            color: Kirigami.Theme.backgroundColor
         }
     }
 
@@ -435,7 +425,6 @@ Kirigami.Page {
                 Layout.fillWidth: true
                 level: 1
                 font.weight: Font.Bold
-                color: MimeTheme.text
                 wrapMode: Text.Wrap
                 textFormat: Text.PlainText
                 text: MailController.messageSubject.length > 0 ? MailController.messageSubject
@@ -462,21 +451,20 @@ Kirigami.Page {
                         QQC2.Label {
                             text: page.sender.name
                             textFormat: Text.PlainText
-                            color: MimeTheme.text
                             font.weight: Font.Bold
                         }
                         QQC2.Label {
                             Layout.fillWidth: true
                             text: page.sender.address
                             textFormat: Text.PlainText
-                            color: MimeTheme.secondaryText
+                            color: Kirigami.Theme.disabledTextColor
                             elide: Text.ElideRight
                         }
                         QQC2.Label {
                             Layout.alignment: Qt.AlignRight
                             text: isNaN(MailController.messageDate) ? ""
                                 : MailController.messageDate.toLocaleString(Qt.locale(), Locale.ShortFormat)
-                            color: MimeTheme.secondaryText
+                            color: Kirigami.Theme.disabledTextColor
                             font: Kirigami.Theme.smallFont
                         }
                     }
@@ -485,7 +473,7 @@ Kirigami.Page {
                         visible: MailController.messageTo.length > 0
                         text: KI18n.i18nc("@label recipients of a message", "To: %1", MailController.messageTo)
                         textFormat: Text.PlainText
-                        color: MimeTheme.secondaryText
+                        color: Kirigami.Theme.disabledTextColor
                         font: Kirigami.Theme.smallFont
                         elide: Text.ElideRight
                     }
@@ -564,7 +552,7 @@ Kirigami.Page {
             Layout.fillWidth: true
             Layout.preferredHeight: 1
             visible: page.loaded
-            color: MimeTheme.divider
+            color: Qt.alpha(Kirigami.Theme.textColor, MimeTheme.dividerAlpha)
         }
 
         Kirigami.InlineMessage {

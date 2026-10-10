@@ -133,6 +133,7 @@ class MailController : public QObject
     Q_PROPERTY(int sidebarWidth READ sidebarWidth NOTIFY panelWidthsChanged)
     Q_PROPERTY(int listWidth READ listWidth NOTIFY panelWidthsChanged)
     // Whether the docked folder sidebar is hidden (remembered between runs).
+    Q_PROPERTY(QStringList collapsedAccounts READ collapsedAccounts NOTIFY collapsedAccountsChanged)
     Q_PROPERTY(bool sidebarCollapsed READ sidebarCollapsed WRITE setSidebarCollapsed NOTIFY sidebarCollapsedChanged)
     Q_PROPERTY(int sidebarMinWidth READ sidebarMinWidth CONSTANT)
     Q_PROPERTY(int sidebarMaxWidth READ sidebarMaxWidth CONSTANT)
@@ -215,6 +216,11 @@ public:
     [[nodiscard]] int listWidth() const;
     [[nodiscard]] bool sidebarCollapsed() const;
     void setSidebarCollapsed(bool collapsed);
+    // Accounts whose folder tree is folded in the sidebar (saved at once).
+    [[nodiscard]] QStringList collapsedAccounts() const;
+    Q_INVOKABLE bool isAccountCollapsed(const QString &email) const;
+    Q_INVOKABLE void setAccountCollapsed(const QString &email, bool collapsed);
+    Q_INVOKABLE void setAllAccountsCollapsed(bool collapsed);
     [[nodiscard]] int sidebarMinWidth() const;
     [[nodiscard]] int sidebarMaxWidth() const;
     [[nodiscard]] int sidebarDefaultWidth() const;
@@ -351,6 +357,7 @@ Q_SIGNALS:
     void sendFailed(const QString &message);
     void panelWidthsChanged();
     void sidebarCollapsedChanged();
+    void collapsedAccountsChanged();
     void showMessageRequested();
     // New mail found by a background check. With count == 1, sender ("Name <address>") and
     // subject describe the message; uid is the newest new message of the account's inbox.

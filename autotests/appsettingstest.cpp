@@ -44,6 +44,7 @@ private Q_SLOTS:
         QCOMPARE(settings.sidebarWidth, 252);
         QCOMPARE(settings.listWidth, 360);
         QVERIFY(!settings.sidebarCollapsed);
+        QVERIFY(settings.collapsedAccounts.isEmpty());
     }
 
     void testRoundTrip()
@@ -55,6 +56,8 @@ private Q_SLOTS:
         settings.sidebarWidth = 300;
         settings.listWidth = 600;
         settings.sidebarCollapsed = true;
+        // An address with a comma and a backslash must survive the list encoding.
+        settings.collapsedAccounts = {u"bob@example.com"_s, u"we,ird\\x@example.com"_s};
         settings.save();
         QCOMPARE(AppSettings::load(), settings);
     }

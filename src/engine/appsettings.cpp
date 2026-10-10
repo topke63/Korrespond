@@ -40,6 +40,7 @@ AppSettings AppSettings::load()
     settings.sidebarWidth = clampSidebar(group.readEntry("SidebarWidth", settings.sidebarWidth));
     settings.listWidth = clampList(group.readEntry("ListWidth", settings.listWidth));
     settings.sidebarCollapsed = group.readEntry("SidebarCollapsed", settings.sidebarCollapsed);
+    settings.collapsedAccounts = group.readEntry("CollapsedAccounts", settings.collapsedAccounts);
     return settings;
 }
 
@@ -52,5 +53,6 @@ void AppSettings::save() const
     group.writeEntry("SidebarWidth", clampSidebar(sidebarWidth));
     group.writeEntry("ListWidth", clampList(listWidth));
     group.writeEntry("SidebarCollapsed", sidebarCollapsed);
+    group.writeEntry("CollapsedAccounts", collapsedAccounts);
     group.sync();
 }

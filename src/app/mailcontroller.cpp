@@ -703,6 +703,46 @@ void MailController::setSidebarCollapsed(bool collapsed)
     Q_EMIT sidebarCollapsedChanged();
 }
 
+QStringList MailController::collapsedAccounts() const
+{
+    return m_app.collapsedAccounts;
+}
+
+bool MailController::isAccountCollapsed(const QString &email) const
+{
+    return m_app.collapsedAccounts.contains(email);
+}
+
+void MailController::setAccountCollapsed(const QString &email, bool collapsed)
+{
+    if (collapsed == isAccountCollapsed(email)) {
+        return;
+    }
+    if (collapsed) {
+        m_app.collapsedAccounts.append(email);
+    } else {
+        m_app.collapsedAccounts.removeAll(email);
+    }
+    m_app.save();
+    Q_EMIT collapsedAccountsChanged();
+}
+
+void MailController::setAllAccountsCollapsed(bool collapsed)
+{
+    QStringList list;
+    if (collapsed) {
+        for (const AccountSession *session : std::as_const(m_sessions)) {
+            list.append(session->account().email);
+        }
+    }
+    if (list == m_app.collapsedAccounts) {
+        return;
+    }
+    m_app.collapsedAccounts = list;
+    m_app.save();
+    Q_EMIT collapsedAccountsChanged();
+}
+
 int MailController::sidebarMinWidth() const
 {
     return AppSettings::minSidebarWidth;

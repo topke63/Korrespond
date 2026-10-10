@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include <QStringList>
+
 // General app options, in plasmamailrc, group [General].
 struct AppSettings {
     static constexpr int minCheckMinutes = 1;
@@ -26,6 +28,8 @@ struct AppSettings {
     int listWidth = defaultListWidth;
     // The folder sidebar is hidden on wide windows (a narrow window's sliding sidebar is not kept).
     bool sidebarCollapsed = false;
+    // Accounts (by email) whose folder tree is folded in the sidebar; the others are open.
+    QStringList collapsedAccounts;
 
     // Missing or out-of-range values fall back to the defaults / the nearest allowed value.
     static AppSettings load();

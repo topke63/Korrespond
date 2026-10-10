@@ -4178,7 +4178,7 @@ scripts/desktop3-run.sh or a visible window; never act on the user's real folder
 
 
 ### T188 — Account trees: persisted collapse, Collapse all / Expand all
-- status: todo
+- status: done
 - depends on: T187, T194, T195, T199, T202, T205 (Milestone 3k code first)
 - parallel-safe with: none
 - files: src/engine/appsettings.h, src/engine/appsettings.cpp, autotests/appsettingstest.cpp,
@@ -4188,7 +4188,15 @@ scripts/desktop3-run.sh or a visible window; never act on the user's real folder
   at start; "Collapse All" / "Expand All" in the sidebar header menu (or a context menu on the
   account header).
 - verify: build; ctest (new test); toggling + restart keeps the states.
-- notes:
+- notes: `AppSettings::collapsedAccounts` (QStringList, key "CollapsedAccounts" in [General]; KConfig
+  escapes commas/backslashes, tested). Absent = open, so new accounts start open. MailController:
+  read-only property `collapsedAccounts` (NOTIFY collapsedAccountsChanged, what the sidebar binds to),
+  invokables isAccountCollapsed / setAccountCollapsed / setAllAccountsCollapsed, each saves at once.
+  FolderSidebar: `expanded` is now derived from the list; header click toggles via the controller;
+  "Collapse All" / "Expand All" at the top of the hamburger menu (Collapse All needs an account,
+  Expand All needs a collapsed one). Screenshots (offscreen, demo, config pre-seeded with
+  `CollapsedAccounts=bob@example.com` in $XDG_CONFIG_HOME/plasmamailrc): scratchpad
+  t188-expanded-dark.png, t188-bob-collapsed-{dark,light}.png. ctest 19/19.
 
 ### T189 — Hidden folders: storage and controller
 - status: todo

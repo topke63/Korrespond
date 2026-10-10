@@ -123,6 +123,20 @@ Kirigami.OverlayDrawer {
                             id: accountMenu
 
                             QQC2.MenuItem {
+                                text: KI18n.i18nc("@action:inmenu", "Collapse All")
+                                icon.name: "arrow-right"
+                                enabled: MailController.hasAccount
+                                onTriggered: MailController.setAllAccountsCollapsed(true)
+                            }
+                            QQC2.MenuItem {
+                                text: KI18n.i18nc("@action:inmenu", "Expand All")
+                                icon.name: "arrow-down"
+                                enabled: MailController.collapsedAccounts.length > 0
+                                onTriggered: MailController.setAllAccountsCollapsed(false)
+                            }
+                            QQC2.MenuSeparator {
+                            }
+                            QQC2.MenuItem {
                                 text: KI18n.i18nc("@action:inmenu", "Settings…")
                                 icon.name: "settings-configure"
                                 onTriggered: sidebar.settingsRequested()
@@ -174,7 +188,8 @@ Kirigami.OverlayDrawer {
 
                             required property string email
                             required property var folderModel
-                            property bool expanded: true
+                            // Folded accounts are kept by the controller (saved, restored at start).
+                            readonly property bool expanded: MailController.collapsedAccounts.indexOf(email) < 0
 
                             Layout.fillWidth: true
                             spacing: 1
@@ -190,7 +205,7 @@ Kirigami.OverlayDrawer {
                                 leftPadding: Kirigami.Units.largeSpacing
                                 topPadding: Kirigami.Units.smallSpacing + 3
                                 bottomPadding: Kirigami.Units.smallSpacing + 3
-                                onClicked: accountSection.expanded = !accountSection.expanded
+                                onClicked: MailController.setAccountCollapsed(accountSection.email, accountSection.expanded)
                                 Accessible.name: KI18n.i18nc("@action:button", "Show or hide the folders of %1", accountSection.email)
 
                                 background: Rectangle {

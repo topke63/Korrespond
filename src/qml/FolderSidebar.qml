@@ -63,9 +63,17 @@ Kirigami.OverlayDrawer {
                 contentItem: RowLayout {
                     spacing: Kirigami.Units.smallSpacing
 
+                    // The app logo: the installed themed icon, else the copy inside the executable.
+                    Kirigami.Icon {
+                        Layout.leftMargin: Kirigami.Units.largeSpacing
+                        Layout.preferredWidth: Kirigami.Units.iconSizes.smallMedium
+                        Layout.preferredHeight: Kirigami.Units.iconSizes.smallMedium
+                        source: "plasma-mail"
+                        fallback: ":/icons/sc-apps-plasma-mail.svg"
+                        isMask: false
+                    }
                     Kirigami.Heading {
                         Layout.fillWidth: true
-                        Layout.leftMargin: Kirigami.Units.largeSpacing
                         level: 2
                         font.weight: Font.Bold
                         text: KI18n.i18nc("@title", "Mail")

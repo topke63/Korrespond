@@ -4206,7 +4206,7 @@ screenshot checks stay `todo`.
   window during the run.
 
 ### T198 — App logo in the sidebar header
-- status: todo
+- status: done (visual check todo: GUI runs not yet allowed; confirm the fallback ":/icons/..." renders when run from build/bin)
 - depends on: T187
 - parallel-safe with: none
 - files: src/qml/FolderSidebar.qml (src/app/main.cpp only if the icon needs exposing to QML)

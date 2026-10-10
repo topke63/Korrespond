@@ -481,6 +481,8 @@ private:
     std::map<QString, QList<MessageSummary>> m_sharedParts;
     std::set<AccountSession *> m_sharedRequested;
     SmtpClient *m_smtp = nullptr; // the running send, if any
+    bool m_demoBusy = false; // demo only: the simulated hand-off is running
+    bool m_quitting = false; // the quit handler has run (a second aboutToQuit is ignored)
     // Messages in the undo-send delay, and those whose delay ended while another send was running.
     struct PendingSend {
         int id = 0;
@@ -488,6 +490,8 @@ private:
         QDateTime deadline;
         QTimer *timer = nullptr;
     };
+    // A hand-off is running: the SMTP send, or the demo's simulated one.
+    [[nodiscard]] bool handingOff() const;
     void handOff(int id, const QVariantMap &message);
     void startNextHandOff();
     void finishPendingSend(int id);

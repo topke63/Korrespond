@@ -23,6 +23,7 @@
 #include <KNotifyConfigWidget>
 
 #include <QCoreApplication>
+#include <QDeadlineTimer>
 #include <QDesktopServices>
 #include <QDir>
 #include <QEventLoop>
@@ -32,6 +33,7 @@
 #include <QPalette>
 #include <QSaveFile>
 #include <QStandardPaths>
+#include <QThread>
 #include <QTime>
 #include <QUrl>
 
@@ -80,25 +82,22 @@ MailController::MailController(QObject *parent)
     // owning it is torn down after the event loop, which may not be reached on every exit path).
     if (QCoreApplication *app = QCoreApplication::instance()) {
         connect(app, &QCoreApplication::aboutToQuit, this, [this] {
-            // Quitting during the undo-send delay sends at once: wait (nested loop, at most 60 s)
-            // until every SMTP hand-off finished or failed.
+            // A second quit request while this runs is ignored: it would end the event loop of the
+            // wait below, and Qt then stops dispatching events in any new loop.
+            if (std::exchange(m_quitting, true)) {
+                return;
+            }
+            // Quitting during the undo-send delay sends at once: wait (at most 60 s) until every SMTP
+            // hand-off finished or failed. Events are pumped by hand, not by a nested QEventLoop.
             flushPendingSends();
-            if (m_smtp || !m_handOffQueue.isEmpty()) {
-                qInfo("quit: waiting for %lld message(s) to be sent", qlonglong(m_handOffQueue.size() + (m_smtp ? 1 : 0)));
-                QEventLoop wait;
-                QTimer poll;
-                QTimer limit;
-                limit.setSingleShot(true);
-                connect(&poll, &QTimer::timeout, &wait, [this, &wait] {
-                    if (!m_smtp && m_handOffQueue.isEmpty()) {
-                        wait.quit();
-                    }
-                });
-                connect(&limit, &QTimer::timeout, &wait, &QEventLoop::quit);
-                poll.start(100);
-                limit.start(std::chrono::seconds(60));
-                wait.exec();
-                qInfo(m_smtp || !m_handOffQueue.isEmpty() ? "quit: timed out, some messages were not sent" : "quit: all messages handed off");
+            if (handingOff() || !m_handOffQueue.isEmpty()) {
+                qInfo("quit: waiting for %lld message(s) to be sent", qlonglong(m_handOffQueue.size() + (handingOff() ? 1 : 0)));
+                QDeadlineTimer limit(std::chrono::seconds(60));
+                while ((handingOff() || !m_handOffQueue.isEmpty()) && !limit.hasExpired()) {
+                    QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
+                    QThread::msleep(20);
+                }
+                qInfo(handingOff() || !m_handOffQueue.isEmpty() ? "quit: timed out, some messages were not sent" : "quit: all messages handed off");
             }
             m_attachmentDir.reset();
             for (AccountSession *session : std::as_const(m_sessions)) {
@@ -589,6 +588,7 @@ bool MailController::undoSend(int id)
             continue;
         }
         const PendingSend entry = m_pendingSends.takeAt(i);
+        entry.timer->stop();
         entry.timer->deleteLater();
         if (m_pendingSends.isEmpty()) {
             m_pendingTick->stop();
@@ -624,6 +624,7 @@ void MailController::finishPendingSend(int id)
     for (qsizetype i = 0; i < m_pendingSends.size(); ++i) {
         if (m_pendingSends.at(i).id == id) {
             const PendingSend entry = m_pendingSends.takeAt(i);
+            entry.timer->stop();
             entry.timer->deleteLater();
             if (m_pendingSends.isEmpty()) {
                 m_pendingTick->stop();
@@ -638,6 +639,9 @@ void MailController::finishPendingSend(int id)
 
 void MailController::flushPendingSends()
 {
+    if (!m_pendingSends.isEmpty()) {
+        qInfo("quit: sending %lld pending message(s) now", qlonglong(m_pendingSends.size()));
+    }
     while (!m_pendingSends.isEmpty()) {
         finishPendingSend(m_pendingSends.first().id);
     }
@@ -646,15 +650,20 @@ void MailController::flushPendingSends()
 // SMTP takes one message at a time: the next queued one starts when the running one is done.
 void MailController::startNextHandOff()
 {
-    while (!m_smtp && !m_handOffQueue.isEmpty()) {
+    while (!handingOff() && !m_handOffQueue.isEmpty()) {
         const auto [id, message] = m_handOffQueue.takeFirst();
         handOff(id, message);
     }
 }
 
+bool MailController::handingOff() const
+{
+    return m_smtp || m_demoBusy;
+}
+
 void MailController::handOff(int id, const QVariantMap &message)
 {
-    if (m_smtp) {
+    if (handingOff()) {
         Q_EMIT sendFailed(i18n("Another message is still being sent."));
         return;
     }
@@ -699,10 +708,16 @@ void MailController::handOff(int id, const QVariantMap &message)
 
     qInfo("send handed off id=%d", id);
     if (m_demo) {
-        // Never SMTP or the network in a demo run: behaves like a success.
-        qInfo("demo: would send %s", qPrintable(outgoing.subject));
-        setLastAction(i18n("Message sent"));
-        Q_EMIT messageSent();
+        // Never SMTP or the network in a demo run: the hand-off takes about 1.5 s, then behaves like
+        // a success. It is asynchronous so that quitting really waits for it.
+        m_demoBusy = true;
+        QTimer::singleShot(1500, this, [this, subject = outgoing.subject] {
+            m_demoBusy = false;
+            qInfo("demo: would send %s", qPrintable(subject));
+            setLastAction(i18n("Message sent"));
+            Q_EMIT messageSent();
+            startNextHandOff();
+        });
         return;
     }
     m_smtp = new SmtpClient(this);

@@ -52,6 +52,13 @@ ecm_add_test(
     LINK_LIBRARIES plasmamail_engine Qt6::Test
 )
 
+# Test for the contacts sync (fake People API server)
+ecm_add_test(
+    contactsynctest.cpp
+    TEST_NAME contactsynctest
+    LINK_LIBRARIES plasmamail_engine Qt6::Test Qt6::Network
+)
+
 # Test for the Google People API client (fake HTTP server)
 ecm_add_test(
     peopleclienttest.cpp

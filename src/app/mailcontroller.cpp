@@ -6,6 +6,8 @@
 #include "accountlistmodel.h"
 #include "accountsession.h"
 #include "appsettings.h"
+#include "contactstore.h"
+#include "contactsync.h"
 #include "conversationmodel.h"
 #include "foldermodel.h"
 #include "folderutils.h"
@@ -109,6 +111,15 @@ MailController::MailController(QObject *parent)
     }
     m_accounts->setPushEnabled(m_app.pushEnabled);
     m_messageModel->setConversationView(m_app.conversationView);
+    // The contacts cache: its own file, so clearing it never touches mail. Demo mode uses a
+    // throw-away folder.
+    if (m_demo) {
+        m_demoContactsDir = std::make_unique<QTemporaryDir>();
+    }
+    m_contacts = std::make_unique<ContactStore>(m_demo ? m_demoContactsDir->path() : m_dataDir + u"/contacts"_s);
+    if (!m_contacts->open()) {
+        qWarning("Cannot open the contacts cache: %s", qPrintable(m_contacts->lastError()));
+    }
     // Ticks often; checkForNewMail() decides per account whether its interval has passed.
     m_checkTimer->start(std::chrono::seconds(30));
 
@@ -2844,6 +2855,37 @@ void MailController::onSessionError(AccountSession *session, const QString &mess
     }
 }
 
+void MailController::startContactSync(AccountSession *session)
+{
+    if (m_demo || !m_app.contactsEnabled || !m_contacts || !m_contacts->isOpen() || !session->account().contacts
+        || session->account().authMethod != "oauth"_L1) {
+        return;
+    }
+    auto *sync = session->findChild<ContactSync *>();
+    if (!sync) {
+        sync = new ContactSync(session->account().email, m_contacts.get(), session);
+        // The session renews its access token by itself; the sync always uses the newest.
+        connect(session, &AccountSession::accessTokenChanged, sync, [session, sync] {
+            sync->setAccessToken(session->accessToken());
+        });
+        // A refused token: the session's next renewal is awaited, then the sync runs again.
+        connect(sync, &ContactSync::tokenRejected, sync, [sync, session] {
+            QTimer::singleShot(std::chrono::seconds(30), sync, [sync, session] {
+                sync->setAccessToken(session->accessToken());
+                sync->start();
+            });
+        });
+        connect(sync, &ContactSync::stateChanged, this, &MailController::contactsChanged);
+        connect(sync, &ContactSync::finished, this, [this](bool ok, bool changed) {
+            if (ok && changed) {
+                Q_EMIT contactsChanged();
+            }
+        });
+    }
+    sync->setAccessToken(session->accessToken());
+    sync->startPeriodic();
+}
+
 void MailController::onSessionFolders(AccountSession *session)
 {
     if (!isKnown(session)) {
@@ -2861,6 +2903,7 @@ void MailController::onSessionFolders(AccountSession *session)
         }
         checkInbox(session); // the first one records what is there and counts the unread
         startPush(session);
+        startContactSync(session);
         return;
     }
 
@@ -2887,6 +2930,7 @@ void MailController::onSessionFolders(AccountSession *session)
             m_sessions.append(session);
             session->setStorageSettings(m_storage); // they may have changed while it was verified
             saveAccounts();
+            startContactSync(session);
             m_accounts->setSessions(m_sessions);
             updateStorageUsage();
             updateSyncing();

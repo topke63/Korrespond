@@ -5197,7 +5197,7 @@ no contacts API: its autocomplete (and Gmail's fallback) comes from addresses se
 - notes: Done 2026-10-10 (no sub-agents). OAuthClient::signIn(email, withContacts=false) asks for mail + contacts.readonly + contacts.other.readonly only when asked; grantedScopes() reads Qt's grantedScopeTokens; scopeTokens()/hasContactsScope() are pure and tested. AccountSession records account.contacts from the grant (new Account::contacts, key Contacts, false for accounts saved before), keeps the newest access token (accessToken(), accessTokenChanged()). setupGoogleAccount asks for the contacts scopes while AppSettings::contactsEnabled (new, default true; the switch is T240). A refresh keeps the old scopes (Google behaviour). Not verified against Google: that Qt's granted scopes match the 'scope' field of the real token answer.
 
 ### T234 — Contacts sync
-- status: todo
+- status: done
 - depends on: T231, T232, T233
 - files: new src/engine/contactsync.{h,cpp}, src/app/accountsession.cpp, tests
 - output: per Google account with the scope: full sync of both lists on first run and when the sync
@@ -5208,7 +5208,7 @@ no contacts API: its autocomplete (and Gmail's fallback) comes from addresses se
   account's "contacts permission missing" state (T236). Never blocks the mail sync or the UI.
 - verify: build; ctest with the fake server: first full sync, incremental with a deletion, expired
   token → full resync, 403 → state, 429 → retry, quit during a sync.
-- notes:
+- notes: Done 2026-10-10 (no sub-agents). ContactSync (src/engine/contactsync.*): per Google account, both sources one after the other; full sync without a token, incremental with one; entries upserted page by page, deleted/address-less ones removed; the sync token is saved only after the last page; an expired token clears that source and starts it over once; a temporary failure retries once after 60 s then ends the run; 401 emits tokenRejected (the controller reruns it 30 s later with the session's newest token); 403 gives MissingScope / ApiDisabled; the periodic timer runs it every 6 h. Only GET requests. MailController owns the ContactStore (dataDir/contacts; a throw-away folder in demo mode) and starts a sync per session with account.contacts, in onSessionFolders and after a new account is saved (never in demo mode or with contacts switched off). 10 tests against a fake server. Not verified with Google itself.
 
 ### T235 — Addresses from cached mail (all accounts)
 - status: todo

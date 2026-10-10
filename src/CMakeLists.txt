@@ -6,6 +6,7 @@ add_library(plasmamail_engine STATIC
     engine/account.cpp
     engine/appsettings.cpp
     engine/contactstore.cpp
+    engine/contactsync.cpp
     engine/folderutils.cpp
     engine/threadbuilder.cpp
     engine/idlepolicy.cpp

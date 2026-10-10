@@ -38,6 +38,8 @@ class AccountListModel;
 class AccountSession;
 class FolderModel;
 class ConversationModel;
+class ContactStore;
+class ContactSync;
 class MessageListModel;
 class MessageStore;
 class SecretStore;
@@ -413,6 +415,8 @@ Q_SIGNALS:
     void unreadCountChanged();
     void appSettingsChanged();
     void conversationChanged();
+    // The contacts cache changed (a sync finished with news, or a sync state changed).
+    void contactsChanged();
     void activityChanged();
     void sendingChanged();
     void messageSent(int id);
@@ -500,6 +504,9 @@ private:
     void showMessage(AccountSession *session, const QString &folder, qint64 uid, const std::shared_ptr<KMime::Message> &message);
     // Marks a shown message read (list, counts, server, store) when it is unread in the open folder.
     void markShown(AccountSession *session, const QString &folder, qint64 uid);
+    // Starts the contacts sync of a Google account that has the contacts scopes (a no-op for the
+    // others, with contacts switched off, or in demo mode). Safe to call again.
+    void startContactSync(AccountSession *session);
     // Fills the stacked conversation from the list's conversation of (account, uid), or empties it.
     void openConversationFor(AccountSession *session, qint64 uid);
     // Loads the body of one conversation message (store, demo data or server).
@@ -524,6 +531,8 @@ private:
     void setLastAction(const QString &text);
 
     QString m_dataDir; // AppDataLocation
+    std::unique_ptr<QTemporaryDir> m_demoContactsDir; // demo mode keeps its contacts out of the real data
+    std::unique_ptr<ContactStore> m_contacts;
     QList<AccountSession *> m_sessions; // saved accounts, in order
     AccountSession *m_pending = nullptr; // being verified by setupAccount()
     QString m_pendingPassword;

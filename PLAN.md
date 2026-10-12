@@ -5903,7 +5903,7 @@ Approach: thread ids are computed in the engine and stored, the list model group
 - notes:
 
 ### T267 — `EmojiModel`: curated emoji list with search
-- status: todo
+- status: done
 - depends on: none
 - parallel-safe with: T259–T262
 - files: src/app/emojimodel.h, src/app/emojimodel.cpp (+ CMake entry)
@@ -5915,7 +5915,11 @@ Approach: thread ids are computed in the engine and stored, the list model group
   `Q_PROPERTY(QString category)` limits to one category (empty = all).
 - verify: `autotests/emojimodeltest.cpp`: non-empty; filter "smile" returns only rows whose name
   contains it; category filter; no duplicate emoji.
-- notes:
+- notes: `src/models/emojimodel.{h,cpp}`, 322 emoji (more than the ~250 planned), category ids
+  smileys, people, animals, food, travel, activities, objects, symbols (`categories` property, constant).
+  Roles `emoji`, `name`, `category`; `filter` and `category` properties; `categoryEmoji(id)` gives a tab icon.
+  Names are English and are not translated. Not registered for QML yet: T268 needs a QML_FOREIGN header
+  like `src/app/formathandlerforeign.h`. Emoji with a variation selector (e.g. ✌️) are stored with it.
 
 ### T268 — Emoji picker popup
 - status: todo

@@ -171,6 +171,13 @@ ecm_add_test(
     LINK_LIBRARIES korrespond_models Qt6::Test
 )
 
+# Test for EmojiModel
+ecm_add_test(
+    emojimodeltest.cpp
+    TEST_NAME emojimodeltest
+    LINK_LIBRARIES korrespond_models Qt6::Test
+)
+
 # Test for NewMailTracker
 ecm_add_test(
     newmailtrackertest.cpp

@@ -48,6 +48,7 @@ target_link_libraries(korrespond_engine PUBLIC
 add_library(korrespond_models STATIC
     app/accountsession.cpp
     models/accountlistmodel.cpp
+    models/emojimodel.cpp
     models/foldermodel.cpp
     models/formathandler.cpp
     models/messagelistmodel.cpp

@@ -5894,13 +5894,13 @@ Approach: thread ids are computed in the engine and stored, the list model group
   The visual check (send, press Undo) is the user's, in T266.
 
 ### T266 — Check with the user, then docs
-- status: todo
+- status: done
 - depends on: T265, T271
 - files: README.md (feature list)
 - output: the user confirms formatting in new message, reply and forward; README mentions it;
   global verify passes.
 - verify: global verify.
-- notes:
+- notes: user confirmed formatting and emoji work (2026-10-12); README line added (b1b0c6c); ctest passes (29 tests).
 
 ### T267 — `EmojiModel`: curated emoji list with search
 - status: done
@@ -5966,12 +5966,12 @@ Approach: thread ids are computed in the engine and stored, the list model group
   change to `outgoingmessage.cpp` was needed: the built bytes are all 7-bit and parse back to the same strings.
 
 ### T271 — Emoji check with the user
-- status: todo
+- status: done
 - depends on: T269, T270
 - output: the user sends an emoji message to themselves (Yahoo and Gmail) and confirms it
   arrives intact; failures become new tasks.
 - verify: user confirmation.
-- notes:
+- notes: user sent a formatted message with an emoji to themselves on 2026-10-12; it arrived intact.
 
 ## Execution Loop
 

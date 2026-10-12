@@ -157,6 +157,13 @@ ecm_add_test(
     LINK_LIBRARIES korrespond_engine Qt6::Test
 )
 
+# Test for ComposeHtml
+ecm_add_test(
+    composehtmltest.cpp
+    TEST_NAME composehtmltest
+    LINK_LIBRARIES korrespond_engine Qt6::Test
+)
+
 # Test for NewMailTracker
 ecm_add_test(
     newmailtrackertest.cpp

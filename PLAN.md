@@ -5808,7 +5808,7 @@ Approach: thread ids are computed in the engine and stored, the list model group
   The plain and HTML parts are built twice (no-attachment and mixed branch); a shared helper would be a later cleanup.
 
 ### T261 — `ComposeHtml`: HTML from a `QTextDocument`
-- status: todo
+- status: done
 - depends on: none
 - parallel-safe with: T259, T260
 - files: src/app/composehtml.h, src/app/composehtml.cpp (+ CMake entry)
@@ -5818,7 +5818,10 @@ Approach: thread ids are computed in the engine and stored, the list model group
   at least one fragment is bold, italic, underlined or struck through.
 - verify: `autotests/composehtmltest.cpp` (plain text → hasFormatting false; mixed styles; nested
   bold+italic; `<` `&` escaped; pasted coloured/linked text → only the four styles).
-- notes:
+- notes: lives in `src/engine/composehtml.{h,cpp}` (not src/app: the engine already links Qt6::Gui, so the
+  test links `korrespond_engine`). API: `ComposeHtml::fromDocument(const QTextDocument &)` returns
+  `{html, hasFormatting}`. Gotcha: Qt underlines anchor text, so underline is ignored on anchors; a pasted
+  link alone is not "formatting". Spaces kept with `&nbsp;`, tab becomes four.
 
 ### T262 — `FormatHandler`: toggle styles on the selection
 - status: todo

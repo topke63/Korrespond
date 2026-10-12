@@ -6,6 +6,7 @@ add_library(korrespond_engine STATIC
     engine/account.cpp
     engine/addresshistory.cpp
     engine/appsettings.cpp
+    engine/composehtml.cpp
     engine/contactstore.cpp
     engine/contactsync.cpp
     engine/folderutils.cpp

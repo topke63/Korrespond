@@ -801,6 +801,7 @@ void MailController::handOff(int id, const QVariantMap &message)
     outgoing.bcc = field(u"bcc"_s);
     outgoing.subject = message.value(u"subject"_s).toString();
     outgoing.body = message.value(u"body"_s).toString();
+    outgoing.html = message.value(u"html"_s).toString();
     outgoing.inReplyTo = message.value(u"inReplyTo"_s).toString();
     outgoing.references = message.value(u"references"_s).toStringList();
     const QVariantList attached = message.value(u"attachments"_s).toList();

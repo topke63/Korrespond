@@ -58,6 +58,10 @@ public:
     bool strikeOut() const;
     void setStrikeOut(bool on);
 
+    // The text as HTML (see ComposeHtml) when any of it is bold, italic, underlined or struck through;
+    // an empty string when the text has no formatting, so it can go out as plain text.
+    Q_INVOKABLE QString formattedHtml() const;
+
     // Replaces the whole text, without any formatting.
     Q_INVOKABLE void setPlainText(const QString &text);
 

@@ -104,6 +104,20 @@ private Q_SLOTS:
         QVERIFY(formatOf(document, 2).fontWeight() >= QFont::Bold);
     }
 
+    void testFormattedHtmlOnlyWhenFormatted()
+    {
+        QTextDocument document;
+        document.setPlainText(u"say hi"_s);
+        FormatHandler handler;
+        QVERIFY(handler.formattedHtml().isEmpty()); // no document
+        handler.setDocument(&document);
+        QVERIFY(handler.formattedHtml().isEmpty());
+        handler.setSelectionStart(4);
+        handler.setSelectionEnd(6);
+        handler.setBold(true);
+        QCOMPARE(handler.formattedHtml(), u"<div>say <b>hi</b></div>"_s);
+    }
+
     void testSetPlainTextDropsFormatting()
     {
         QTextDocument document;

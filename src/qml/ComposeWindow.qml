@@ -109,6 +109,7 @@ Kirigami.ApplicationWindow {
             bcc: bccField.text,
             subject: subjectField.text,
             body: plainBody(),
+            html: formatter.formattedHtml(),
             inReplyTo: initialInReplyTo,
             references: initialReferences,
             attachments: attachments.map(file => file.path)

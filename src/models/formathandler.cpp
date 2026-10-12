@@ -3,6 +3,8 @@
 
 #include "formathandler.h"
 
+#include "composehtml.h"
+
 #include <QQuickTextDocument>
 #include <QTextDocument>
 
@@ -175,4 +177,13 @@ void FormatHandler::setPlainText(const QString &text)
         m_document->setPlainText(text);
         Q_EMIT formatChanged();
     }
+}
+
+QString FormatHandler::formattedHtml() const
+{
+    if (!m_document) {
+        return {};
+    }
+    const ComposeHtml::Result result = ComposeHtml::fromDocument(*m_document);
+    return result.hasFormatting ? result.html : QString();
 }

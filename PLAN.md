@@ -5866,14 +5866,18 @@ Approach: thread ids are computed in the engine and stored, the list model group
   is 33 now, not the 2 in the baseline note; not from this task).
 
 ### T264 — Send: pass `html` from the window to the engine
-- status: todo
+- status: done
 - depends on: T259, T260, T261, T263
 - files: src/qml/ComposeWindow.qml, src/app/mailcontroller.cpp (line ~803, where `body` is read)
 - output: the send map gets `body` = `toPlainText()` and, only when `hasFormatting`, `html`;
   `MailController` copies `html` into `OutgoingMessage::html`.
 - verify: manual: send a bold word to yourself; the received message has both parts; an
   unformatted message arrives as `text/plain` as before.
-- notes:
+- notes: `FormatHandler::formattedHtml()` (Q_INVOKABLE) returns `ComposeHtml` output only when the text has
+  formatting, else an empty string; ComposeWindow's send map has `html: formatter.formattedHtml()` and
+  `mailcontroller.cpp` copies `html` to `OutgoingMessage::html`. Unit-tested (`formathandlertest`), all 28
+  tests pass. The real send (received message has both parts; unformatted stays text/plain) is for the
+  user's check in T266 — not done here because it would put mail in their mailbox.
 
 ### T265 — Undo send and reopen keep the formatting
 - status: todo

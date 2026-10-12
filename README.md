@@ -17,7 +17,8 @@ The app follows the Plasma colour scheme. Light and dark (demo data):
 - **Accounts:** Yahoo (app password), Gmail (Google sign-in, OAuth2) and any other IMAP
   provider with a password. Several accounts at once. Outlook is not available yet.
 - **Mail:** folders, conversations, local storage with import date / keep time / size limits,
-  IMAP IDLE (push) and new-mail notifications, compose / reply / forward over SMTP.
+  IMAP IDLE (push) and new-mail notifications, compose / reply / forward over SMTP,
+  with bold / italic / underline / strike-through (sent as HTML plus a plain-text copy) and an emoji picker.
 - **Contacts:** recipient autocomplete and sender names (Google People API for Gmail, addresses
   seen in cached mail otherwise).
 - **Safe viewing:** messages are shown without remote content and without JavaScript.

@@ -11,7 +11,8 @@ import org.kde.kirigami as Kirigami
 import Korrespond
 
 // A popup to pick one emoji: a search field, the categories and a grid. Emits picked() with the
-// emoji; the popup closes after a pick unless `keepOpen` is set (several emoji in a row).
+// emoji; the popup closes after a pick unless `keepOpen` is set or Shift is held (several emoji in
+// a row).
 QQC2.Popup {
     id: picker
 
@@ -23,7 +24,7 @@ QQC2.Popup {
     readonly property int cellSize: Kirigami.Units.gridUnit * 2
 
     width: cellSize * 8 + padding * 2 + Kirigami.Units.largeSpacing
-    height: Kirigami.Units.gridUnit * 18
+    height: Kirigami.Units.gridUnit * 15
     padding: Kirigami.Units.smallSpacing
     modal: false
     focus: true
@@ -144,7 +145,7 @@ QQC2.Popup {
 
     function pick(emoji: string): void {
         picked(emoji);
-        if (!keepOpen) {
+        if (!keepOpen && !(Qt.application.keyboardModifiers & Qt.ShiftModifier)) {
             close();
         }
     }

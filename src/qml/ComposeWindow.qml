@@ -349,6 +349,31 @@ Kirigami.ApplicationWindow {
                         QQC2.ToolTip.visible: hovered
                         QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
                     }
+
+                    QQC2.ToolButton {
+                        id: emojiButton
+
+                        icon.name: "face-smile"
+                        text: KI18n.i18nc("@action:button", "Emoji")
+                        display: QQC2.AbstractButton.IconOnly
+                        focusPolicy: Qt.NoFocus
+                        enabled: !composer.waiting
+                        down: pressed || emojiPicker.visible
+                        onClicked: emojiPicker.visible ? emojiPicker.close() : emojiPicker.open()
+                        QQC2.ToolTip.text: KI18n.i18nc("@info:tooltip", "Emoji (Ctrl+;)")
+                        QQC2.ToolTip.visible: hovered && !emojiPicker.visible
+                        QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
+
+                        EmojiPicker {
+                            id: emojiPicker
+
+                            y: emojiButton.height
+                            onPicked: emoji => {
+                                bodyArea.insert(bodyArea.cursorPosition, emoji);
+                            }
+                            onClosed: bodyArea.forceActiveFocus()
+                        }
+                    }
                 }
             }
 
@@ -359,6 +384,12 @@ Kirigami.ApplicationWindow {
                 selectionStart: bodyArea.selectionStart
                 selectionEnd: bodyArea.selectionEnd
                 cursorPosition: bodyArea.cursorPosition
+            }
+
+            Shortcut {
+                sequence: "Ctrl+;"
+                enabled: !composer.waiting
+                onActivated: emojiButton.clicked()
             }
 
             Shortcut {

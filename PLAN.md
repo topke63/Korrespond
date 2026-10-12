@@ -5938,7 +5938,7 @@ Approach: thread ids are computed in the engine and stored, the list model group
   module for the models library) is out of scope; the repo-wide count is now 35.
 
 ### T269 — Emoji button in the new-message toolbar
-- status: todo
+- status: done
 - depends on: T263, T268
 - files: src/qml/ComposeWindow.qml
 - output: a toolbar button (icon `face-smile`, shortcut Ctrl+;) opens the picker; picking inserts
@@ -5946,7 +5946,12 @@ Approach: thread ids are computed in the engine and stored, the list model group
   focus to the editor; the popup stays open on Shift-click for several emoji.
 - verify: manual: pick two emoji in a new message; they appear at the cursor in the right order
   and the window's "unsaved changes" prompt triggers.
-- notes:
+- notes: button (face-smile) + Ctrl+; shortcut in ComposeWindow.qml; the picker is a child of the button so it
+  opens right below the toolbar; a pick calls `bodyArea.insert(cursorPosition, emoji)` and closing returns
+  focus to the editor. Shift held at the pick keeps the popup open (done in `EmojiPicker.pick`, so
+  `keepOpen` stays for callers). Checked on screen with the screenshot hook (popup opened by a temporary
+  line, removed again): search field, category row and the grid with colour emoji render; height is 15
+  grid units so it fits the default window (30 units). Inserting by a real click is for the user's T271.
 
 ### T270 — Emoji survive building the message
 - status: todo

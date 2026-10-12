@@ -5772,7 +5772,8 @@ Approach: thread ids are computed in the engine and stored, the list model group
   font size or alignment); HTML plus plain-text alternative; the quoted original in a reply or
   forward stays plain `> ` text in the editor (the original's HTML is not carried over).
 - **Out of scope**: lists, quote blocks, links, colours, fonts, alignment, signatures, inline
-  images, saving drafts, quoting the original's HTML. Pasted rich text keeps only the four styles
+  images, saving drafts, quoting the original's HTML, an emoji picker in the subject or address
+  fields (emoji typed or pasted there already work). Pasted rich text keeps only the four styles
   (everything else is dropped by T260's HTML writer).
 - **Design**: the body editor becomes a rich-text `TextArea`; a small C++ `FormatHandler`
   (the Qt "texteditor" pattern) applies styles to the selection through the `QTextDocument`;
@@ -5863,11 +5864,66 @@ Approach: thread ids are computed in the engine and stored, the list model group
 
 ### T266 — Check with the user, then docs
 - status: todo
-- depends on: T265
+- depends on: T265, T271
 - files: README.md (feature list)
 - output: the user confirms formatting in new message, reply and forward; README mentions it;
   global verify passes.
 - verify: global verify.
+- notes:
+
+### T267 — `EmojiModel`: curated emoji list with search
+- status: todo
+- depends on: none
+- parallel-safe with: T259–T262
+- files: src/app/emojimodel.h, src/app/emojimodel.cpp (+ CMake entry)
+- decision: own small picker, not `org.kde.plasma.emoji` (that QML module belongs to
+  plasma-desktop, so it would be missing in the Flatpak sandbox, T248+).
+- output: `QAbstractListModel` with roles `emoji`, `name`, `category`, built from a static table
+  of ~250 common emoji in 8 categories (smileys, people, animals, food, travel, activities,
+  objects, symbols); `Q_PROPERTY(QString filter)` matches the name case-insensitively and
+  `Q_PROPERTY(QString category)` limits to one category (empty = all).
+- verify: `autotests/emojimodeltest.cpp`: non-empty; filter "smile" returns only rows whose name
+  contains it; category filter; no duplicate emoji.
+- notes:
+
+### T268 — Emoji picker popup
+- status: todo
+- depends on: T267
+- files: src/qml/EmojiPicker.qml (+ CMake QML list)
+- output: `QQC2.Popup` with a search field, a row of category buttons and a scrollable grid
+  (Noto Color Emoji font) bound to `EmojiModel`; signal `picked(string emoji)`; Esc closes.
+- verify: qmllint warning count not raised; manual: the popup opens from a test button and the
+  grid shows colour emoji.
+- notes:
+
+### T269 — Emoji button in the new-message toolbar
+- status: todo
+- depends on: T263, T268
+- files: src/qml/ComposeWindow.qml
+- output: a toolbar button (icon `face-smile`, shortcut Ctrl+;) opens the picker; picking inserts
+  the emoji at the cursor in `bodyArea` (`bodyArea.insert(cursorPosition, emoji)`) and returns
+  focus to the editor; the popup stays open on Shift-click for several emoji.
+- verify: manual: pick two emoji in a new message; they appear at the cursor in the right order
+  and the window's "unsaved changes" prompt triggers.
+- notes:
+
+### T270 — Emoji survive building the message
+- status: todo
+- depends on: T259
+- parallel-safe with: T261–T269
+- files: autotests/outgoingmessagetest.cpp
+- output: test case with emoji (including a multi-code-point one, e.g. 👍🏽 and 🇷🇸) in subject,
+  `body` and `html`; the built message parses back to the same strings.
+- verify: `ctest -R outgoingmessage`. If it fails, the encoding bug is fixed in
+  `outgoingmessage.cpp` as part of this task.
+- notes:
+
+### T271 — Emoji check with the user
+- status: todo
+- depends on: T269, T270
+- output: the user sends an emoji message to themselves (Yahoo and Gmail) and confirms it
+  arrives intact; failures become new tasks.
+- verify: user confirmation.
 - notes:
 
 ## Execution Loop

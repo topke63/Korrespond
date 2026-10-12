@@ -164,6 +164,13 @@ ecm_add_test(
     LINK_LIBRARIES korrespond_engine Qt6::Test
 )
 
+# Test for FormatHandler
+ecm_add_test(
+    formathandlertest.cpp
+    TEST_NAME formathandlertest
+    LINK_LIBRARIES korrespond_models Qt6::Test
+)
+
 # Test for NewMailTracker
 ecm_add_test(
     newmailtrackertest.cpp

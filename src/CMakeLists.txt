@@ -49,6 +49,7 @@ add_library(korrespond_models STATIC
     app/accountsession.cpp
     models/accountlistmodel.cpp
     models/foldermodel.cpp
+    models/formathandler.cpp
     models/messagelistmodel.cpp
     models/conversationmodel.cpp
 )

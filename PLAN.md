@@ -5824,7 +5824,7 @@ Approach: thread ids are computed in the engine and stored, the list model group
   link alone is not "formatting". Spaces kept with `&nbsp;`, tab becomes four.
 
 ### T262 — `FormatHandler`: toggle styles on the selection
-- status: todo
+- status: done
 - depends on: none
 - parallel-safe with: T259–T261
 - files: src/app/formathandler.h, src/app/formathandler.cpp (+ CMake entry)
@@ -5835,7 +5835,14 @@ Approach: thread ids are computed in the engine and stored, the list model group
 - verify: `autotests/formathandlertest.cpp` drives a bare `QTextDocument`: select a range, set
   `bold`, check the fragment's `fontWeight`; setting twice toggles off; empty selection changes
   the typing format.
-- notes:
+- notes: lives in `src/models/formathandler.{h,cpp}` (models lib, so the test links it; no QML_ELEMENT:
+  T263 must register it with `qmlRegisterType<FormatHandler>("Korrespond", 1, 0, "FormatHandler")` in
+  `src/app/main.cpp`). It takes a `QTextDocument *document` (QML: `bodyArea.textDocument.textDocument`),
+  `selectionStart`, `selectionEnd`, `cursorPosition`; `bold/italic/underline/strikeOut` read/write;
+  `setPlainText()`. **Deviation from the plan**: with no selection it styles the *word under the cursor*
+  (the Qt texteditor example's behaviour), not the typing format, because a QML TextEdit's typing format
+  is not reachable. T263 may add a way for Ctrl+B at an empty position to bold what is typed next
+  (e.g. a pending-format flag) if the user wants it.
 
 ### T263 — Body editor becomes rich text, with the style buttons
 - status: todo

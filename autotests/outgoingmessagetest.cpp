@@ -160,6 +160,33 @@ private Q_SLOTS:
         QCOMPARE(parts.at(1)->decodedText(), message.html);
     }
 
+    void testHtmlWithAttachments()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        QFile file(dir.filePath(u"note.txt"_s));
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        file.write("note\n");
+        file.close();
+        OutgoingMessage message = sample();
+        message.html = u"<div><b>Zdravo</b></div>"_s;
+        message.attachments = {file.fileName()};
+        const OutgoingMessage::Built built = message.build(now);
+        QVERIFY2(built.error.isEmpty(), qPrintable(built.error));
+        const auto parsed = parse(built.data);
+        QCOMPARE(parsed->contentType()->mimeType(), QByteArray("multipart/mixed"));
+        const auto parts = parsed->contents();
+        QCOMPARE(parts.size(), 2);
+        QCOMPARE(parts.at(0)->contentType()->mimeType(), QByteArray("multipart/alternative"));
+        const auto alternatives = parts.at(0)->contents();
+        QCOMPARE(alternatives.size(), 2);
+        QCOMPARE(alternatives.at(0)->contentType()->mimeType(), QByteArray("text/plain"));
+        QCOMPARE(alternatives.at(0)->decodedText(), message.body);
+        QCOMPARE(alternatives.at(1)->contentType()->mimeType(), QByteArray("text/html"));
+        QCOMPARE(alternatives.at(1)->decodedText(), message.html);
+        QCOMPARE(parts.at(1)->contentDisposition()->filename(), u"note.txt"_s);
+    }
+
     void testAttachments()
     {
         QTemporaryDir dir;

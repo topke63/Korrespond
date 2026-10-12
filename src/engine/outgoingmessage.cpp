@@ -140,7 +140,22 @@ OutgoingMessage::Built OutgoingMessage::build(const QDateTime &now) const
         text->contentType()->setCharset("utf-8");
         text->contentTransferEncoding()->setEncoding(KMime::Headers::CEquPr);
         text->setBody(body.toUtf8());
-        message.appendContent(std::move(text));
+        if (html.isEmpty()) {
+            message.appendContent(std::move(text));
+        } else {
+            // The text is one alternative group: plain first, then the HTML.
+            auto alternative = std::make_unique<KMime::Content>();
+            alternative->contentType()->setMimeType("multipart/alternative");
+            alternative->contentType()->setBoundary(KMime::multiPartBoundary());
+            alternative->appendContent(std::move(text));
+            auto formatted = std::make_unique<KMime::Content>();
+            formatted->contentType()->setMimeType("text/html");
+            formatted->contentType()->setCharset("utf-8");
+            formatted->contentTransferEncoding()->setEncoding(KMime::Headers::CEquPr);
+            formatted->setBody(html.toUtf8());
+            alternative->appendContent(std::move(formatted));
+            message.appendContent(std::move(alternative));
+        }
         for (const Attachment &attachment : files) {
             auto part = std::make_unique<KMime::Content>();
             part->contentType()->setMimeType(attachment.mimeType);

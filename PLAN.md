@@ -5797,14 +5797,15 @@ Approach: thread ids are computed in the engine and stored, the list model group
   Plain part first, HTML last (the last alternative is the preferred one).
 
 ### T260 — `OutgoingMessage::html` with attachments
-- status: todo
+- status: done
 - depends on: T259
 - files: src/engine/outgoingmessage.cpp, autotests/outgoingmessagetest.cpp
 - output: with attachments and `html`, the message is `multipart/mixed` whose first part is the
   `multipart/alternative` of T259, followed by the attachments.
 - verify: test case builds a message with one attachment and `html`; part structure is
   mixed → (alternative → plain, html), attachment.
-- notes:
+- notes: structure verified by `testHtmlWithAttachments`: mixed → (alternative → plain, html), attachment.
+  The plain and HTML parts are built twice (no-attachment and mixed branch); a shared helper would be a later cleanup.
 
 ### T261 — `ComposeHtml`: HTML from a `QTextDocument`
 - status: todo

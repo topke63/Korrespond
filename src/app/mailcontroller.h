@@ -127,7 +127,8 @@ class MailController : public QObject
     // as messages are read here); 0 until the first check.
     Q_PROPERTY(int unreadCount READ unreadCount NOTIFY unreadCountChanged)
     // What the app is doing right now, for the status bar: "Connecting…", "Moving message…", an
-    // account's sync progress, "Checking for new mail…" or "Loading…"; empty when idle.
+    // account's sync progress or "Loading…"; empty when idle. Routine background work (the periodic
+    // check, a quiet reconnect) is not shown.
     Q_PROPERTY(QString activityText READ activityText NOTIFY activityChanged)
     // The last thing that happened, for the status bar: "Message sent · 17:05". Event and time
     // only, never message content; empty until something happened (not stored).
@@ -629,6 +630,8 @@ private:
     bool m_batchWasOpen = false; // the open message was one of the batch
     QString m_lastConnectionError;
     std::map<AccountSession *, QElapsedTimer> m_idleReconnect; // when a closed idle connection was last re-opened
+    std::set<AccountSession *> m_quietReconnect; // reconnecting after a routine loss: no "Connecting…" in the bar
+    std::set<AccountSession *> m_quietKeychain; // of those, the ones whose keychain read is still pending
     std::set<AccountSession *> m_refreshRetry; // refreshed, no answer yet: a lost connection is retried once
     std::set<AccountSession *> m_awaitingFolders; // sessions with a folder-list request in flight (counted as busy)
     AccountListModel *m_accounts;

@@ -286,6 +286,9 @@ AccountSession *MailController::createSession(const Account &account)
         if (session->connectionState() == AccountSession::Connected && session != m_pending && !session->folders().isEmpty()) {
             startPush(session);
         }
+        if (session->connectionState() != AccountSession::Connecting) {
+            m_quietReconnect.erase(session); // settled: connected, or failed and shown as such
+        }
     });
     connect(session, &AccountSession::connectionStateChanged, this, &MailController::updateActivity);
     connect(session, &AccountSession::storageUsageChanged, this, &MailController::updateStorageUsage);
@@ -302,6 +305,8 @@ void MailController::discardSession(AccountSession *session, bool deleteStore)
     m_sharedRequested.erase(session);
     m_inflight.erase(session);
     m_idleReconnect.erase(session);
+    m_quietReconnect.erase(session);
+    m_quietKeychain.erase(session);
     forgetChecks(session);
     session->stopWatcher();
     if (m_awaitingFolders.erase(session) > 0) {
@@ -1297,8 +1302,10 @@ QString MailController::activityText() const
     if (!m_moving.empty()) {
         return i18nc("@info:status", "Moving message…");
     }
-    if (anySession([](const AccountSession *s) {
-            return s->connectionState() == AccountSession::Connecting;
+    // Connecting again after the server closed an idle connection is expected and not shown; the
+    // first connection and a reconnect the user asked for are.
+    if (anySession([this](const AccountSession *s) {
+            return s->connectionState() == AccountSession::Connecting && !m_quietReconnect.contains(const_cast<AccountSession *>(s));
         })) {
         return i18nc("@info:status", "Connecting…");
     }
@@ -1307,10 +1314,9 @@ QString MailController::activityText() const
             return session->syncText();
         }
     }
-    if (!m_checking.empty()) {
-        return i18nc("@info:status", "Checking for new mail…");
-    }
-    if (m_requests > 0) {
+    // The routine background check is not shown: it runs every few minutes and changes nothing
+    // unless there is news, which has its own notification and counter.
+    if (m_requests > static_cast<int>(m_quietKeychain.size())) {
         return i18nc("@info:status", "Loading…");
     }
     return {};
@@ -2895,6 +2901,7 @@ void MailController::onSecretRead(const QString &key, const QString &password, c
     if (it == m_sessions.cend()) {
         return; // the account was removed meanwhile
     }
+    m_quietKeychain.erase(*it);
     if (!error.isEmpty()) {
         if (m_awaitingFolders.erase(*it) > 0) {
             endRequest(); // its folders will not arrive
@@ -2933,8 +2940,21 @@ void MailController::onSessionError(AccountSession *session, const QString &mess
             last.start();
             qInfo("Idle connection of %s was closed by the server; reconnecting", qPrintable(session->account().email));
             reconnect(session->account().email);
+            m_quietReconnect.insert(session);
+            m_quietKeychain.insert(session);
         } else {
+            // Lost again right after reconnecting: that is not routine, so the chip stays red, but
+            // one more quiet try after the minute is up keeps it from waiting for a click.
             qWarning("Connection of %s was lost again right after reconnecting: %s", qPrintable(session->account().email), qPrintable(message));
+            const auto wait = std::chrono::milliseconds(std::max<qint64>(1000, 60000 - last.elapsed()));
+            QTimer::singleShot(wait, session, [this, session] {
+                if (isKnown(session) && session->connectionState() == AccountSession::Failed && !session->client()->hasSession()) {
+                    m_idleReconnect[session].start();
+                    reconnect(session->account().email);
+                    m_quietReconnect.insert(session);
+                    m_quietKeychain.insert(session);
+                }
+            });
         }
         return;
     }

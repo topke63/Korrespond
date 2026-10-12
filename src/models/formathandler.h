@@ -5,6 +5,7 @@
 
 #include <QObject>
 #include <QPointer>
+#include <QQuickTextDocument>
 #include <QString>
 #include <QTextCharFormat>
 #include <QTextCursor>
@@ -22,6 +23,8 @@ class FormatHandler : public QObject
 {
     Q_OBJECT
     Q_PROPERTY(QTextDocument *document READ document WRITE setDocument NOTIFY documentChanged)
+    // QML: the TextEdit's `textDocument` (a QQuickTextDocument); its QTextDocument is used.
+    Q_PROPERTY(QQuickTextDocument *editorDocument READ editorDocument WRITE setEditorDocument NOTIFY documentChanged)
     Q_PROPERTY(int selectionStart READ selectionStart WRITE setSelectionStart NOTIFY selectionChanged)
     Q_PROPERTY(int selectionEnd READ selectionEnd WRITE setSelectionEnd NOTIFY selectionChanged)
     Q_PROPERTY(int cursorPosition READ cursorPosition WRITE setCursorPosition NOTIFY selectionChanged)
@@ -35,6 +38,9 @@ public:
 
     QTextDocument *document() const;
     void setDocument(QTextDocument *document);
+
+    QQuickTextDocument *editorDocument() const;
+    void setEditorDocument(QQuickTextDocument *editorDocument);
 
     int selectionStart() const;
     void setSelectionStart(int position);
@@ -66,6 +72,7 @@ private:
     QTextCursor targetCursor() const;
     void merge(const QTextCharFormat &format);
 
+    QPointer<QQuickTextDocument> m_editorDocument;
     QPointer<QTextDocument> m_document;
     int m_selectionStart = 0;
     int m_selectionEnd = 0;

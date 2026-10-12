@@ -3,6 +3,7 @@
 
 #include "formathandler.h"
 
+#include <QQuickTextDocument>
 #include <QTextDocument>
 
 #include <algorithm>
@@ -25,6 +26,17 @@ void FormatHandler::setDocument(QTextDocument *document)
     m_document = document;
     Q_EMIT documentChanged();
     Q_EMIT formatChanged();
+}
+
+QQuickTextDocument *FormatHandler::editorDocument() const
+{
+    return m_editorDocument;
+}
+
+void FormatHandler::setEditorDocument(QQuickTextDocument *editorDocument)
+{
+    m_editorDocument = editorDocument;
+    setDocument(editorDocument ? editorDocument->textDocument() : nullptr);
 }
 
 int FormatHandler::selectionStart() const

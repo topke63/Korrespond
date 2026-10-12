@@ -32,7 +32,7 @@ Kirigami.ApplicationWindow {
     property bool restored: false
 
     readonly property bool hasContent: restored || toField.text !== initialTo || ccField.text !== initialCc || bccField.text.length > 0
-        || subjectField.text !== initialSubject || bodyArea.text !== initialBody || attachments.length > 0
+        || subjectField.text !== initialSubject || plainBody() !== initialBody || attachments.length > 0
     property bool discardConfirmed: false
     // True from pressing Send until the server has answered (or the message is queued).
     property bool waiting: false
@@ -52,6 +52,12 @@ Kirigami.ApplicationWindow {
     minimumWidth: Kirigami.Units.gridUnit * 22
     minimumHeight: Kirigami.Units.gridUnit * 16
     pageStack.globalToolBar.style: Kirigami.ApplicationHeaderStyle.None
+
+    // The text of the editor without formatting (bodyArea.text is HTML in rich-text mode). Reading
+    // `length` makes bindings that call this follow edits.
+    function plainBody(): string {
+        return bodyArea.length >= 0 ? bodyArea.getText(0, bodyArea.length) : "";
+    }
 
     // A restored attachment is a plain path, not a URL: encode each segment so that % and # in a file
     // name survive the QUrl conversion done by fileInfo().
@@ -102,7 +108,7 @@ Kirigami.ApplicationWindow {
             cc: ccField.text,
             bcc: bccField.text,
             subject: subjectField.text,
-            body: bodyArea.text,
+            body: plainBody(),
             inReplyTo: initialInReplyTo,
             references: initialReferences,
             attachments: attachments.map(file => file.path)
@@ -121,7 +127,9 @@ Kirigami.ApplicationWindow {
         ccField.text = initialCc;
         bccField.text = initialBcc;
         subjectField.text = initialSubject;
-        bodyArea.text = initialBody;
+        // The binding of `document` may not have run yet; the body has to go into the document now.
+        formatter.editorDocument = bodyArea.textDocument;
+        formatter.setPlainText(initialBody);
         errorText = initialError;
         if (initialAttachments.length > 0) {
             missingAttachments = addAttachments(initialAttachments);
@@ -278,6 +286,92 @@ Kirigami.ApplicationWindow {
                 Layout.topMargin: Kirigami.Units.largeSpacing
             }
 
+            QQC2.ToolBar {
+                Layout.fillWidth: true
+                leftPadding: Kirigami.Units.gridUnit - Kirigami.Units.smallSpacing
+                background: null
+
+                Row {
+                    spacing: Kirigami.Units.smallSpacing
+
+                    QQC2.ToolButton {
+                        icon.name: "format-text-bold"
+                        text: KI18n.i18nc("@action:button", "Bold")
+                        display: QQC2.AbstractButton.IconOnly
+                        focusPolicy: Qt.NoFocus
+                        enabled: !composer.waiting
+                        down: pressed || formatter.bold
+                        onClicked: formatter.bold = !formatter.bold
+                        QQC2.ToolTip.text: KI18n.i18nc("@info:tooltip", "Bold (Ctrl+B)")
+                        QQC2.ToolTip.visible: hovered
+                        QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
+                    }
+                    QQC2.ToolButton {
+                        icon.name: "format-text-italic"
+                        text: KI18n.i18nc("@action:button", "Italic")
+                        display: QQC2.AbstractButton.IconOnly
+                        focusPolicy: Qt.NoFocus
+                        enabled: !composer.waiting
+                        down: pressed || formatter.italic
+                        onClicked: formatter.italic = !formatter.italic
+                        QQC2.ToolTip.text: KI18n.i18nc("@info:tooltip", "Italic (Ctrl+I)")
+                        QQC2.ToolTip.visible: hovered
+                        QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
+                    }
+                    QQC2.ToolButton {
+                        icon.name: "format-text-underline"
+                        text: KI18n.i18nc("@action:button", "Underline")
+                        display: QQC2.AbstractButton.IconOnly
+                        focusPolicy: Qt.NoFocus
+                        enabled: !composer.waiting
+                        down: pressed || formatter.underline
+                        onClicked: formatter.underline = !formatter.underline
+                        QQC2.ToolTip.text: KI18n.i18nc("@info:tooltip", "Underline (Ctrl+U)")
+                        QQC2.ToolTip.visible: hovered
+                        QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
+                    }
+                    QQC2.ToolButton {
+                        icon.name: "format-text-strikethrough"
+                        text: KI18n.i18nc("@action:button", "Strikethrough")
+                        display: QQC2.AbstractButton.IconOnly
+                        focusPolicy: Qt.NoFocus
+                        enabled: !composer.waiting
+                        down: pressed || formatter.strikeOut
+                        onClicked: formatter.strikeOut = !formatter.strikeOut
+                        QQC2.ToolTip.text: KI18n.i18nc("@info:tooltip", "Strikethrough")
+                        QQC2.ToolTip.visible: hovered
+                        QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
+                    }
+                }
+            }
+
+            FormatHandler {
+                id: formatter
+
+                editorDocument: bodyArea.textDocument
+                selectionStart: bodyArea.selectionStart
+                selectionEnd: bodyArea.selectionEnd
+                cursorPosition: bodyArea.cursorPosition
+            }
+
+            Shortcut {
+                sequence: StandardKey.Bold
+                enabled: bodyArea.activeFocus
+                onActivated: formatter.bold = !formatter.bold
+            }
+
+            Shortcut {
+                sequence: StandardKey.Italic
+                enabled: bodyArea.activeFocus
+                onActivated: formatter.italic = !formatter.italic
+            }
+
+            Shortcut {
+                sequence: StandardKey.Underline
+                enabled: bodyArea.activeFocus
+                onActivated: formatter.underline = !formatter.underline
+            }
+
             QQC2.ScrollView {
                 Layout.fillWidth: true
                 Layout.fillHeight: true
@@ -286,7 +380,7 @@ Kirigami.ApplicationWindow {
                     id: bodyArea
 
                     wrapMode: TextEdit.Wrap
-                    textFormat: TextEdit.PlainText
+                    textFormat: TextEdit.RichText
                     placeholderText: KI18n.i18nc("@info:placeholder", "Write your message…")
                     leftPadding: Kirigami.Units.gridUnit
                     rightPadding: Kirigami.Units.gridUnit

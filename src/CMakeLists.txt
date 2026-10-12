@@ -56,6 +56,7 @@ add_library(korrespond_models STATIC
 target_include_directories(korrespond_models PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/models ${CMAKE_CURRENT_SOURCE_DIR}/app)
 target_link_libraries(korrespond_models PUBLIC
     korrespond_engine
+    Qt6::Quick
     KF6::I18n
 )
 
@@ -77,6 +78,7 @@ qt_add_qml_module(korrespond
         app/mailcontroller.cpp app/mailcontroller.h
         app/mailapplication.cpp app/mailapplication.h
         app/shortcutsproxymodel.cpp app/shortcutsproxymodel.h
+        app/formathandlerforeign.h
     QML_FILES
         qml/MimeTheme.qml
         qml/Main.qml

@@ -5845,7 +5845,7 @@ Approach: thread ids are computed in the engine and stored, the list model group
   (e.g. a pending-format flag) if the user wants it.
 
 ### T263 — Body editor becomes rich text, with the style buttons
-- status: todo
+- status: done
 - depends on: T262
 - files: src/qml/ComposeWindow.qml
 - output: `bodyArea` uses `TextEdit.RichText`; `initialBody` goes in via `setPlainText`; a
@@ -5854,7 +5854,16 @@ Approach: thread ids are computed in the engine and stored, the list model group
   The "unsaved changes" check (line 35) compares plain text, as before.
 - verify: manual: open New Message, type, select a word, press Bold: it shows bold; Ctrl+I works;
   `cmake --build --preset dev --target all_qmllint` warning count not raised.
-- notes:
+- notes: `FormatHandler` is registered for QML by `src/app/formathandlerforeign.h` (QML_FOREIGN), not main.cpp.
+  It now takes the TextEdit's `textDocument` (a `QQuickTextDocument`) as `editorDocument` — a plain
+  `QTextDocument*` property is `undefined` in QML (type not registered) — so the models library links
+  Qt6::Quick. The body's plain text is `plainBody()` in ComposeWindow.qml (`getText(0, length)`); `bodyArea.text`
+  is HTML now. `send` already uses `plainBody()`, so T264 only has to add `html`. Buttons use
+  `focusPolicy: Qt.NoFocus` so the selection stays. Ctrl+B/I/U via `Shortcut`. Checked headlessly with
+  `KORRESPOND_SCREENSHOT_COMPOSE=reply`: toolbar shows, quoted reply text intact. Applying a style to a real
+  selection is only unit-tested; the user should try it in T266. Debug tip: Qt warnings only reach a
+  non-tty stderr with `QT_FORCE_STDERR_LOGGING=1`. qmllint: no ComposeWindow findings (the repo-wide count
+  is 33 now, not the 2 in the baseline note; not from this task).
 
 ### T264 — Send: pass `html` from the window to the engine
 - status: todo

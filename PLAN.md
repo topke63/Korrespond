@@ -5783,7 +5783,7 @@ Approach: thread ids are computed in the engine and stored, the list model group
 - **Global verify**: as milestone 2, and `ctest` for the new tests.
 
 ### T259 — `OutgoingMessage::html`: multipart/alternative without attachments
-- status: todo
+- status: done
 - depends on: none
 - files: src/engine/outgoingmessage.h, src/engine/outgoingmessage.cpp
 - inputs: `OutgoingMessage::build` (text/plain single part, or multipart/mixed with attachments)
@@ -5792,7 +5792,9 @@ Approach: thread ids are computed in the engine and stored, the list model group
   quoted-printable) second. Empty `html` changes nothing.
 - verify: new case in `autotests/outgoingmessagetest.cpp` parses the built bytes with KMime and
   finds both parts; the existing cases still pass (`ctest -R outgoingmessage`).
-- notes:
+- notes: `html` sits right after `body` in the struct. Only the no-attachment branch changed; with attachments
+  `html` is still ignored until T260 (the `files.isEmpty() && !html.isEmpty()` branch is where T260 hooks in).
+  Plain part first, HTML last (the last alternative is the preferred one).
 
 ### T260 — `OutgoingMessage::html` with attachments
 - status: todo

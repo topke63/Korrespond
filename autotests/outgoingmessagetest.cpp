@@ -146,6 +146,20 @@ private Q_SLOTS:
         QVERIFY(parsed->attachments().isEmpty());
     }
 
+    void testHtmlIsAnAlternativeToThePlainText()
+    {
+        OutgoingMessage message = sample();
+        message.html = u"<div>Zdravo, <b>see</b> you</div>"_s;
+        const auto parsed = parse(message.build(now).data);
+        QCOMPARE(parsed->contentType()->mimeType(), QByteArray("multipart/alternative"));
+        const auto parts = parsed->contents();
+        QCOMPARE(parts.size(), 2);
+        QCOMPARE(parts.at(0)->contentType()->mimeType(), QByteArray("text/plain"));
+        QCOMPARE(parts.at(0)->decodedText(), message.body);
+        QCOMPARE(parts.at(1)->contentType()->mimeType(), QByteArray("text/html"));
+        QCOMPARE(parts.at(1)->decodedText(), message.html);
+    }
+
     void testAttachments()
     {
         QTemporaryDir dir;

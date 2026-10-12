@@ -19,6 +19,9 @@ struct OutgoingMessage {
     QStringList bcc;
     QString subject;
     QString body;
+    // The same text with formatting, as HTML. When not empty the message carries both: `body` as the
+    // text/plain alternative and this as text/html.
+    QString html;
     // For a reply or forward: the Message-ID of the original (with or without <>) and the
     // Message-IDs of the thread so far, oldest first.
     QString inReplyTo;

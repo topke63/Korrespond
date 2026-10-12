@@ -110,7 +110,23 @@ OutgoingMessage::Built OutgoingMessage::build(const QDateTime &now) const
     auto mimeVersion = std::make_unique<KMime::Headers::MIMEVersion>();
     mimeVersion->from7BitString("1.0");
     message.setHeader(std::move(mimeVersion));
-    if (files.isEmpty()) {
+    if (files.isEmpty() && !html.isEmpty()) {
+        message.contentType()->setMimeType("multipart/alternative");
+        message.contentType()->setBoundary(KMime::multiPartBoundary());
+        // The plain text first: the last part is the preferred one.
+        auto text = std::make_unique<KMime::Content>();
+        text->contentType()->setMimeType("text/plain");
+        text->contentType()->setCharset("utf-8");
+        text->contentTransferEncoding()->setEncoding(KMime::Headers::CEquPr);
+        text->setBody(body.toUtf8());
+        message.appendContent(std::move(text));
+        auto formatted = std::make_unique<KMime::Content>();
+        formatted->contentType()->setMimeType("text/html");
+        formatted->contentType()->setCharset("utf-8");
+        formatted->contentTransferEncoding()->setEncoding(KMime::Headers::CEquPr);
+        formatted->setBody(html.toUtf8());
+        message.appendContent(std::move(formatted));
+    } else if (files.isEmpty()) {
         message.contentType()->setMimeType("text/plain");
         message.contentType()->setCharset("utf-8");
         message.contentTransferEncoding()->setEncoding(KMime::Headers::CEquPr);

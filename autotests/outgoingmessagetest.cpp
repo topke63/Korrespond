@@ -187,6 +187,27 @@ private Q_SLOTS:
         QCOMPARE(parts.at(1)->contentDisposition()->filename(), u"note.txt"_s);
     }
 
+    void testEmojiSurvive()
+    {
+        OutgoingMessage message = sample();
+        const QString emoji = QString::fromUtf8(
+            "\xF0\x9F\x91\x8D\xF0\x9F\x8F\xBD \xF0\x9F\x87\xB7\xF0\x9F\x87\xB8 \xE2\x9C\x8C\xEF\xB8\x8F"); // thumbs up (skin tone), flag, victory hand
+        message.subject = u"Hi "_s + emoji;
+        message.body = u"Body "_s + emoji + u"\nline 2"_s;
+        message.html = u"<div>Body <b>"_s + emoji + u"</b></div>"_s;
+        const OutgoingMessage::Built built = message.build(now);
+        QVERIFY(built.error.isEmpty());
+        for (const char c : built.data) {
+            QVERIFY(static_cast<unsigned char>(c) < 128); // headers and bodies are encoded
+        }
+        const auto parsed = parse(built.data);
+        QCOMPARE(parsed->subject()->asUnicodeString(), message.subject);
+        const auto parts = parsed->contents();
+        QCOMPARE(parts.size(), 2);
+        QCOMPARE(parts.at(0)->decodedText(), message.body);
+        QCOMPARE(parts.at(1)->decodedText(), message.html);
+    }
+
     void testAttachments()
     {
         QTemporaryDir dir;

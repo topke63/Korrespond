@@ -5954,7 +5954,7 @@ Approach: thread ids are computed in the engine and stored, the list model group
   grid units so it fits the default window (30 units). Inserting by a real click is for the user's T271.
 
 ### T270 — Emoji survive building the message
-- status: todo
+- status: done
 - depends on: T259
 - parallel-safe with: T261–T269
 - files: autotests/outgoingmessagetest.cpp
@@ -5962,7 +5962,8 @@ Approach: thread ids are computed in the engine and stored, the list model group
   `body` and `html`; the built message parses back to the same strings.
 - verify: `ctest -R outgoingmessage`. If it fails, the encoding bug is fixed in
   `outgoingmessage.cpp` as part of this task.
-- notes:
+- notes: `testEmojiSurvive` (subject, plain body and html with 👍🏽 🇷🇸 ✌️) passed at once, so no
+  change to `outgoingmessage.cpp` was needed: the built bytes are all 7-bit and parse back to the same strings.
 
 ### T271 — Emoji check with the user
 - status: todo

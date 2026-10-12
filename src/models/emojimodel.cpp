@@ -410,6 +410,11 @@ QStringList EmojiModel::categories() const
     return {u"smileys"_s, u"people"_s, u"animals"_s, u"food"_s, u"travel"_s, u"activities"_s, u"objects"_s, u"symbols"_s};
 }
 
+QString EmojiModel::emojiAt(int row) const
+{
+    return row >= 0 && row < m_rows.size() ? QString::fromUtf8(s_entries[m_rows.at(row)].emoji) : QString();
+}
+
 QString EmojiModel::categoryEmoji(const QString &category) const
 {
     for (const Entry &entry : s_entries) {

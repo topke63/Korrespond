@@ -40,6 +40,9 @@ public:
     // objects, symbols.
     QStringList categories() const;
 
+    // The emoji in a row of the current (filtered) list; empty when out of range.
+    Q_INVOKABLE QString emojiAt(int row) const;
+
     // The emoji of the first entry of a category, for its tab.
     Q_INVOKABLE QString categoryEmoji(const QString &category) const;
 

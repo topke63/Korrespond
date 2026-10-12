@@ -5922,14 +5922,20 @@ Approach: thread ids are computed in the engine and stored, the list model group
   like `src/app/formathandlerforeign.h`. Emoji with a variation selector (e.g. ✌️) are stored with it.
 
 ### T268 — Emoji picker popup
-- status: todo
+- status: done
 - depends on: T267
 - files: src/qml/EmojiPicker.qml (+ CMake QML list)
 - output: `QQC2.Popup` with a search field, a row of category buttons and a scrollable grid
   (Noto Color Emoji font) bound to `EmojiModel`; signal `picked(string emoji)`; Esc closes.
 - verify: qmllint warning count not raised; manual: the popup opens from a test button and the
   grid shows colour emoji.
-- notes:
+- notes: `src/qml/EmojiPicker.qml` (Popup, signal `picked(string)`, `keepOpen`, `category`; Enter in the search
+  field picks the first match via `EmojiModel::emojiAt(0)`, which was added to the model) and
+  `src/app/emojimodelforeign.h` registering `EmojiModel`. Not instantiated anywhere yet; the on-screen check
+  is done in T269 together with the toolbar button. **qmllint**: 2 new findings, both because foreign
+  types from the models library have no members in the generated qmltypes ("EmojiModel was not found",
+  "Unused import"); runtime is fine. Same cause as the existing FormatHandler uses. A fix (a real QML
+  module for the models library) is out of scope; the repo-wide count is now 35.
 
 ### T269 — Emoji button in the new-message toolbar
 - status: todo

@@ -80,6 +80,7 @@ qt_add_qml_module(korrespond
         app/mailapplication.cpp app/mailapplication.h
         app/shortcutsproxymodel.cpp app/shortcutsproxymodel.h
         app/formathandlerforeign.h
+        app/emojimodelforeign.h
     QML_FILES
         qml/MimeTheme.qml
         qml/Main.qml
@@ -102,6 +103,7 @@ qt_add_qml_module(korrespond
         qml/AccountSettingsPage.qml
         qml/AccountDetailsPage.qml
         qml/ComposeWindow.qml
+        qml/EmojiPicker.qml
 )
 # The icon also lives in the executable, for runs from the build folder where the themed icon
 # is not installed.

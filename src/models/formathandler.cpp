@@ -10,6 +10,8 @@
 
 #include <algorithm>
 
+using namespace Qt::StringLiterals;
+
 FormatHandler::FormatHandler(QObject *parent)
     : QObject(parent)
 {
@@ -186,4 +188,16 @@ QString FormatHandler::formattedHtml() const
     }
     const ComposeHtml::Result result = ComposeHtml::fromDocument(*m_document);
     return result.hasFormatting ? result.html : QString();
+}
+
+void FormatHandler::setHtml(const QString &html)
+{
+    if (m_document) {
+        // Qt reads <div><br></div> as a block with a line break in it (an extra blank line); its own
+        // marker for an empty paragraph restores exactly one.
+        QString qtHtml = html;
+        qtHtml.replace(u"<div><br></div>"_s, u"<p style=\"-qt-paragraph-type:empty;\"><br /></p>"_s);
+        m_document->setHtml(qtHtml);
+        Q_EMIT formatChanged();
+    }
 }

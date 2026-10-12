@@ -49,6 +49,7 @@ StatefulApp.StatefulWindow {
             initialBcc: data.bcc ?? "",
             initialSubject: data.subject ?? "",
             initialBody: data.body ?? "",
+            initialHtml: data.html ?? "",
             initialInReplyTo: data.inReplyTo ?? "",
             initialReferences: data.references ?? [],
             initialAttachments: data.attachments ?? [],

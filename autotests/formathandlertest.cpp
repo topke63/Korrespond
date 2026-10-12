@@ -118,6 +118,32 @@ private Q_SLOTS:
         QCOMPARE(handler.formattedHtml(), u"<div>say <b>hi</b></div>"_s);
     }
 
+    // What goes out as HTML comes back as the same text and the same HTML (undo send).
+    void testHtmlRoundTrip()
+    {
+        QTextDocument document;
+        document.setPlainText(u"\nHi  there <you> & co\n\nsecond  line\n> quoted"_s);
+        FormatHandler handler;
+        handler.setDocument(&document);
+        handler.setSelectionStart(1);
+        handler.setSelectionEnd(3);
+        handler.setBold(true);
+        handler.setSelectionStart(15);
+        handler.setSelectionEnd(20);
+        handler.setItalic(true);
+        handler.setUnderline(true);
+        const QString plain = document.toPlainText();
+        const QString html = handler.formattedHtml();
+        QVERIFY(!html.isEmpty());
+
+        QTextDocument restored;
+        FormatHandler other;
+        other.setDocument(&restored);
+        other.setHtml(html);
+        QCOMPARE(restored.toPlainText(), plain);
+        QCOMPARE(other.formattedHtml(), html);
+    }
+
     void testSetPlainTextDropsFormatting()
     {
         QTextDocument document;

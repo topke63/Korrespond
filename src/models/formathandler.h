@@ -62,6 +62,9 @@ public:
     // an empty string when the text has no formatting, so it can go out as plain text.
     Q_INVOKABLE QString formattedHtml() const;
 
+    // Replaces the whole text with HTML written by formattedHtml() (a restored message).
+    Q_INVOKABLE void setHtml(const QString &html);
+
     // Replaces the whole text, without any formatting.
     Q_INVOKABLE void setPlainText(const QString &text);
 

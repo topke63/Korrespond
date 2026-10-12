@@ -5880,13 +5880,18 @@ Approach: thread ids are computed in the engine and stored, the list model group
   user's check in T266 — not done here because it would put mail in their mailbox.
 
 ### T265 — Undo send and reopen keep the formatting
-- status: todo
+- status: done
 - depends on: T264
 - files: src/app/mailcontroller.cpp, src/qml/Main.qml
 - output: the reopened compose window (after Undo or a send failure) restores `html` when the
   map has it (`initialHtml` property → editor), so styles are not lost.
 - verify: manual: send formatted text, press Undo: the window comes back with the bold intact.
-- notes:
+- notes: no controller change was needed: the pending/failed send keeps the whole map, so `html` came back with
+  it. `Main.qml` `reopenMessage()` passes `initialHtml: data.html`; ComposeWindow calls
+  `formatter.setHtml(initialHtml)` when it is not empty. Gotcha (found by `testHtmlRoundTrip`): Qt reads
+  `<div><br></div>` as a block with a line break (an extra blank line), so `FormatHandler::setHtml` first
+  swaps it for Qt's `-qt-paragraph-type:empty` paragraph. Round trip text and HTML are equal in the test.
+  The visual check (send, press Undo) is the user's, in T266.
 
 ### T266 — Check with the user, then docs
 - status: todo

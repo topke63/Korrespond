@@ -23,6 +23,8 @@ Kirigami.ApplicationWindow {
     property string initialBcc
     property string initialSubject
     property string initialBody
+    // The formatted version of initialBody (a message that came back); empty for plain text.
+    property string initialHtml
     property string initialInReplyTo
     property var initialReferences: []
     // A message that came back (undo send, failed hand-off): the paths of its attachments, the error
@@ -130,7 +132,11 @@ Kirigami.ApplicationWindow {
         subjectField.text = initialSubject;
         // The binding of `document` may not have run yet; the body has to go into the document now.
         formatter.editorDocument = bodyArea.textDocument;
-        formatter.setPlainText(initialBody);
+        if (initialHtml.length > 0) {
+            formatter.setHtml(initialHtml);
+        } else {
+            formatter.setPlainText(initialBody);
+        }
         errorText = initialError;
         if (initialAttachments.length > 0) {
             missingAttachments = addAttachments(initialAttachments);

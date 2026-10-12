@@ -5763,6 +5763,113 @@ Approach: thread ids are computed in the engine and stored, the list model group
 - verify: `appstreamcli validate data/io.github.topke63.korrespond.metainfo.xml`; the README commands run
   on a clean clone.
 
+## e. Formatting in new messages
+
+- **Goal**: the new-message window (also reply and forward) can bold, italicise, underline and
+  strike through text. A message with any formatting is sent as `multipart/alternative`
+  (plain text + HTML); a message without any is sent exactly as today (`text/plain`).
+- **Decisions (user, 2026-10-12)**: only the four character styles (no lists, links, colour,
+  font size or alignment); HTML plus plain-text alternative; the quoted original in a reply or
+  forward stays plain `> ` text in the editor (the original's HTML is not carried over).
+- **Out of scope**: lists, quote blocks, links, colours, fonts, alignment, signatures, inline
+  images, saving drafts, quoting the original's HTML. Pasted rich text keeps only the four styles
+  (everything else is dropped by T260's HTML writer).
+- **Design**: the body editor becomes a rich-text `TextArea`; a small C++ `FormatHandler`
+  (the Qt "texteditor" pattern) applies styles to the selection through the `QTextDocument`;
+  `ComposeHtml` writes clean HTML (`<b> <i> <u> <s> <br>`, escaped text, no inline CSS) from the
+  document. The send map gets an optional `html` key next to `body` (which stays the plain text),
+  so the undo-send path round-trips it.
+- **Global verify**: as milestone 2, and `ctest` for the new tests.
+
+### T259 — `OutgoingMessage::html`: multipart/alternative without attachments
+- status: todo
+- depends on: none
+- files: src/engine/outgoingmessage.h, src/engine/outgoingmessage.cpp
+- inputs: `OutgoingMessage::build` (text/plain single part, or multipart/mixed with attachments)
+- output: new `QString html` field; when not empty and there are no attachments the message is
+  `multipart/alternative` with the `body` text/plain part first and a text/html part (utf-8,
+  quoted-printable) second. Empty `html` changes nothing.
+- verify: new case in `autotests/outgoingmessagetest.cpp` parses the built bytes with KMime and
+  finds both parts; the existing cases still pass (`ctest -R outgoingmessage`).
+- notes:
+
+### T260 — `OutgoingMessage::html` with attachments
+- status: todo
+- depends on: T259
+- files: src/engine/outgoingmessage.cpp, autotests/outgoingmessagetest.cpp
+- output: with attachments and `html`, the message is `multipart/mixed` whose first part is the
+  `multipart/alternative` of T259, followed by the attachments.
+- verify: test case builds a message with one attachment and `html`; part structure is
+  mixed → (alternative → plain, html), attachment.
+- notes:
+
+### T261 — `ComposeHtml`: HTML from a `QTextDocument`
+- status: todo
+- depends on: none
+- parallel-safe with: T259, T260
+- files: src/app/composehtml.h, src/app/composehtml.cpp (+ CMake entry)
+- output: `QString composeHtml(const QTextDocument &doc, bool *hasFormatting)` writes `<b>`, `<i>`,
+  `<u>`, `<s>` for the document's character formats, `<br>` for line breaks, text escaped, inside
+  a `<div>`; ignores colour, font, links and everything else. `hasFormatting` is true only when
+  at least one fragment is bold, italic, underlined or struck through.
+- verify: `autotests/composehtmltest.cpp` (plain text → hasFormatting false; mixed styles; nested
+  bold+italic; `<` `&` escaped; pasted coloured/linked text → only the four styles).
+- notes:
+
+### T262 — `FormatHandler`: toggle styles on the selection
+- status: todo
+- depends on: none
+- parallel-safe with: T259–T261
+- files: src/app/formathandler.h, src/app/formathandler.cpp (+ CMake entry)
+- output: QML-registered `FormatHandler` with `textDocument`, `selectionStart`, `selectionEnd`,
+  `cursorPosition` properties and `bold`, `italic`, `underline`, `strikeOut` read/write
+  properties (state at the cursor/selection; setting applies to the selection or the typing
+  position), plus `Q_INVOKABLE void setPlainText(const QString &)`.
+- verify: `autotests/formathandlertest.cpp` drives a bare `QTextDocument`: select a range, set
+  `bold`, check the fragment's `fontWeight`; setting twice toggles off; empty selection changes
+  the typing format.
+- notes:
+
+### T263 — Body editor becomes rich text, with the style buttons
+- status: todo
+- depends on: T262
+- files: src/qml/ComposeWindow.qml
+- output: `bodyArea` uses `TextEdit.RichText`; `initialBody` goes in via `setPlainText`; a
+  `QQC2.ToolBar` above it has four checkable buttons (Bold, Italic, Underline, Strikethrough;
+  icons `format-text-bold` etc.) bound to the handler, with Ctrl+B / Ctrl+I / Ctrl+U shortcuts.
+  The "unsaved changes" check (line 35) compares plain text, as before.
+- verify: manual: open New Message, type, select a word, press Bold: it shows bold; Ctrl+I works;
+  `cmake --build --preset dev --target all_qmllint` warning count not raised.
+- notes:
+
+### T264 — Send: pass `html` from the window to the engine
+- status: todo
+- depends on: T259, T260, T261, T263
+- files: src/qml/ComposeWindow.qml, src/app/mailcontroller.cpp (line ~803, where `body` is read)
+- output: the send map gets `body` = `toPlainText()` and, only when `hasFormatting`, `html`;
+  `MailController` copies `html` into `OutgoingMessage::html`.
+- verify: manual: send a bold word to yourself; the received message has both parts; an
+  unformatted message arrives as `text/plain` as before.
+- notes:
+
+### T265 — Undo send and reopen keep the formatting
+- status: todo
+- depends on: T264
+- files: src/app/mailcontroller.cpp, src/qml/Main.qml
+- output: the reopened compose window (after Undo or a send failure) restores `html` when the
+  map has it (`initialHtml` property → editor), so styles are not lost.
+- verify: manual: send formatted text, press Undo: the window comes back with the bold intact.
+- notes:
+
+### T266 — Check with the user, then docs
+- status: todo
+- depends on: T265
+- files: README.md (feature list)
+- output: the user confirms formatting in new message, reply and forward; README mentions it;
+  global verify passes.
+- verify: global verify.
+- notes:
+
 ## Execution Loop
 
 Execute the plan as a loop. Each iteration handles one task in a fresh context, then ends.

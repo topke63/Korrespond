@@ -192,11 +192,19 @@ OAuthClient *AccountSession::oauth()
     if (!m_oauth) {
         m_oauth = new OAuthClient(this);
         connect(m_oauth, &OAuthClient::signedIn, this, [this](const QString &accessToken, const QString &refreshToken) {
+            setNeedsSignIn(false);
             m_refreshToken = refreshToken;
             m_account.contacts = OAuthClient::hasContactsScope(m_oauth->grantedScopes());
             onAccessToken(accessToken);
         });
-        connect(m_oauth, &OAuthClient::accessTokenChanged, this, &AccountSession::onAccessToken);
+        connect(m_oauth, &OAuthClient::accessTokenChanged, this, [this](const QString &accessToken) {
+            setNeedsSignIn(false);
+            onAccessToken(accessToken);
+        });
+        connect(m_oauth, &OAuthClient::signInExpired, this, [this] {
+            stopWatcher();
+            setNeedsSignIn(true);
+        });
         connect(m_oauth, &OAuthClient::failed, this, &AccountSession::errorOccurred);
         connect(m_oauth, &OAuthClient::failed, this, [this](const QString &message) {
             setConnectionState(Failed, message);
@@ -283,11 +291,27 @@ QString AccountSession::refreshToken() const
     return m_refreshToken;
 }
 
+bool AccountSession::needsSignIn() const
+{
+    return m_needsSignIn;
+}
+
+void AccountSession::setNeedsSignIn(bool needed)
+{
+    if (m_needsSignIn != needed) {
+        m_needsSignIn = needed;
+        Q_EMIT needsSignInChanged();
+    }
+}
+
 void AccountSession::connectWithSecret(const QString &secret)
 {
     if (m_demo) {
         qInfo("demo: blocked network access in %s", __func__);
         return;
+    }
+    if (m_needsSignIn) {
+        return; // the saved sign-in is dead; a login with its token can only fail
     }
     setConnectionState(Connecting);
     // setAccount() disconnects, which a running sync would never hear about.

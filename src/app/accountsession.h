@@ -43,6 +43,10 @@ public:
     };
     [[nodiscard]] ConnectionState connectionState() const;
     [[nodiscard]] QString lastError() const; // of the last Failed state, else empty
+    // Google refused the saved sign-in (revoked, or expired after 7 days in a project in "Testing"
+    // mode): the user has to sign in again. Until then no login is tried with the dead token, so
+    // connectWithSecret() does nothing. A new sign-in or access token clears it.
+    [[nodiscard]] bool needsSignIn() const;
     // "idle", "connecting", "connected" or "failed".
     [[nodiscard]] static QString stateName(ConnectionState state);
 
@@ -120,12 +124,16 @@ Q_SIGNALS:
     void jobsDropped();
     void syncingChanged();
     void connectionStateChanged();
+    void needsSignInChanged();
     void syncTextChanged();
     void storageUsageChanged();
     void inboxChanged(); // the watcher heard of a change in INBOX
     void pushStateChanged();
 
 private:
+    friend class AccountSessionTest;
+
+    void setNeedsSignIn(bool needed);
     void onFoldersListed(const QList<FolderInfo> &folders);
     void setConnectionState(ConnectionState state, const QString &error = {});
     void setSyncText(const QString &text);
@@ -143,6 +151,7 @@ private:
     QString m_contactsToken; // from m_contactsOauth
     ConnectionState m_connectionState = Idle;
     QString m_lastError;
+    bool m_needsSignIn = false;
     QString m_syncText;
     bool m_loggedIn = false; // the first access token has been used to connect
     ImapClient *m_client;

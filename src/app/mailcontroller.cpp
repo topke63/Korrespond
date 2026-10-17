@@ -2151,7 +2151,7 @@ void MailController::forgetChecks(AccountSession *session)
 void MailController::checkInbox(AccountSession *session)
 {
     // Folders arrive from the server only once the account is connected; one check at a time.
-    if (session->folders().isEmpty() || m_checking.contains(session)) {
+    if (session->folders().isEmpty() || m_checking.contains(session) || session->needsSignIn()) {
         return;
     }
     const QString inbox = folderForRole(session->folders(), u"inbox"_s);

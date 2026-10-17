@@ -6010,7 +6010,7 @@ Approach: thread ids are computed in the engine and stored, the list model group
   runs first. T273 should connect to `signInExpired()` and read `signInHasExpired()` for the session flag.
 
 ### T273 — `AccountSession`: `needsSignIn` and no retries while it is set
-- status: todo
+- status: done
 - depends on: T272
 - files: src/app/accountsession.h, src/app/accountsession.cpp
 - inputs: how a session owns its OAuth client and where the inbox check, the reconnect after a lost
@@ -6021,7 +6021,13 @@ Approach: thread ids are computed in the engine and stored, the list model group
 - verify: unit test with a stub client (or the narrowest seam the file offers): after the signal, a
   check request makes no connection attempt; after a new token it does. If no seam exists, split the seam
   into its own task first and say so in notes.
-- notes:
+- notes: `AccountSession::needsSignIn()` + `needsSignInChanged()`; set by `OAuthClient::signInExpired`
+  (which also stops the idle watcher), cleared by a new `signedIn` or `accessTokenChanged`.
+  `connectWithSecret()` returns at once while set, and `MailController::checkInbox()` skips such a session.
+  A manual `reconnect()` still goes through the refresh-token road, so it can succeed if the token works
+  again. Test: `autotests/accountsessiontest.cpp` (flag, no login attempt while set, login after a new
+  token). With T272's fix the failed refresh now also sets the connection state to Failed with the
+  "sign in again" text instead of leaving it at "Connecting…"; T274/T276 can rely on that.
 
 ### T274 — Account list model: a "signin" connection state
 - status: todo

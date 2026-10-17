@@ -185,6 +185,13 @@ ecm_add_test(
     LINK_LIBRARIES korrespond_engine Qt6::Test
 )
 
+# Test for AccountSession's sign-in state
+ecm_add_test(
+    accountsessiontest.cpp
+    TEST_NAME accountsessiontest
+    LINK_LIBRARIES korrespond_models Qt6::Test
+)
+
 # Test for NewMailTracker
 ecm_add_test(
     newmailtrackertest.cpp

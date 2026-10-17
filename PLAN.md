@@ -6084,13 +6084,15 @@ Approach: thread ids are computed in the engine and stored, the list model group
   QML runtime errors in the demo run; the real look is T277.
 
 ### T277 — Check with the user on the real expired account
-- status: todo
+- status: done
 - depends on: T276
 - output: with the user's Gmail account as it is now (expired), the chip shows "Sign in again"; the user
   clicks it, signs in through the browser, and mail loads again; the log has no more "Could not log in"
   lines for that account.
 - verify: user confirmation.
-- notes:
+- notes: user clicked "Sign in again" on the real, expired Gmail account (2026-10-17) and it worked: signed in through the
+  browser and mail loaded again. Not checked: whether the Google project is still in "Testing" mode (token will
+  expire again after 7 days until it is published "In production"; the user's call).
 
 ## Execution Loop
 

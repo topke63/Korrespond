@@ -5973,6 +5973,92 @@ Approach: thread ids are computed in the engine and stored, the list model group
 - verify: user confirmation.
 - notes: user sent a formatted message with an emoji to themselves on 2026-10-12; it arrived intact.
 
+## f. Expired Google sign-in
+
+- **Goal**: when Google no longer accepts a Gmail account's saved sign-in (`invalid_grant`, "Token has
+  been expired or revoked"), the app says so and offers "Sign in again" on that account; until the user
+  does, it stops trying the dead token every few minutes.
+- **Why (seen 2026-10-17)**: the user's Gmail went to "Connecting…" in the status bar with no reason. The log
+  shows `Checking the inbox of topke63@gmail.com failed: Could not log in: SASL(0): successful result:`
+  every 10 minutes and then `Authorization stage: AuthenticationError: invalid_grant(): Token has been
+  expired or revoked.` A Google Cloud project in "Testing" mode expires refresh tokens after 7 days
+  (README line 246), which fits a sign-in made on 2026-10-10. Yahoo kept working.
+- **Out of scope**: changing the Google Cloud project (the user publishes it "In production" themselves);
+  other providers' password failures; the contacts scopes flow (`contactsStatus`).
+- **Global verify**: as milestone 2.
+- **Open questions**: none. The user's own Gmail account is in the expired state right now, so T277 can be
+  checked on the real account without forcing anything.
+
+### T272 — `OAuthClient`: say when the sign-in was rejected
+- status: todo
+- depends on: none
+- files: src/engine/oauthclient.h, src/engine/oauthclient.cpp
+- inputs: the `invalid_grant` branch near line 68 of oauthclient.cpp (it already calls `fail(...)`)
+- output: new signal `signInExpired()` and `bool signInExpired() const`-style flag (name it so it does not
+  clash with the signal), emitted once when Google answers `invalid_grant`; cleared when a new token
+  arrives. The existing error text is unchanged.
+- verify: `autotests` case that drives the same path the existing OAuth tests use (look at
+  autotests/oauthclienttest.cpp for how errors are injected) and checks the signal; `ctest -R oauth`.
+- notes:
+
+### T273 — `AccountSession`: `needsSignIn` and no retries while it is set
+- status: todo
+- depends on: T272
+- files: src/app/accountsession.h, src/app/accountsession.cpp
+- inputs: how a session owns its OAuth client and where the inbox check, the reconnect after a lost
+  connection and the periodic checks call the login
+- output: `bool needsSignIn()` + `needsSignInChanged()`; true after `signInExpired()`; false after a new
+  token is set. While true, the session does not open IMAP connections or run inbox checks (they cannot
+  succeed and only add the "Could not log in" noise).
+- verify: unit test with a stub client (or the narrowest seam the file offers): after the signal, a
+  check request makes no connection attempt; after a new token it does. If no seam exists, split the seam
+  into its own task first and say so in notes.
+- notes:
+
+### T274 — Account list model: a "signin" connection state
+- status: todo
+- depends on: T273
+- files: src/models/accountlistmodel.cpp, autotests/accountlistmodeltest.cpp
+- inputs: the `connectionState` role ("connected", "connecting", "failed", …)
+- output: the role reads "signin" for a session with `needsSignIn()`, taking priority over "failed" and
+  "connecting"; `dataChanged` is emitted when it flips.
+- verify: `ctest -R accountlistmodel` with a new case.
+- notes:
+
+### T275 — `MailController::signInAgain(account)`
+- status: todo
+- depends on: T273
+- files: src/app/mailcontroller.h, src/app/mailcontroller.cpp
+- inputs: `setupGoogleAccount()` (opens the browser, stores the refresh token in the keychain) and
+  `reconnect()`
+- output: `Q_INVOKABLE void signInAgain(const QString &account)`: runs the same Google sign-in for the
+  existing account (no new account, no duplicate), stores the new token, clears `needsSignIn`, reconnects.
+  Errors (cancelled, no network) show in the existing toast and leave the state as it was.
+- verify: builds; unit test only where a seam exists. The real sign-in is the user's, in T277. If the
+  change passes ~100 lines, split the keychain write into its own task.
+- notes:
+
+### T276 — Status bar chip: "Sign in again"
+- status: todo
+- depends on: T274, T275
+- files: src/qml/StatusBar.qml
+- output: an account in state "signin" shows its chip (red dot) with the text "Sign in again"; clicking it
+  calls `MailController.signInAgain(email)`; the tooltip says Google no longer accepts the saved sign-in
+  and, when it repeats every week, that a Google project in "Testing" mode expires tokens after 7 days.
+  The plain "Connecting…" text must not show for this state.
+- verify: `cmake --build --preset dev --target all_qmllint` finds nothing new in StatusBar.qml; screenshot
+  with `KORRESPOND_DEMO=1` if a demo hook can put an account in this state, else the real check in T277.
+- notes:
+
+### T277 — Check with the user on the real expired account
+- status: todo
+- depends on: T276
+- output: with the user's Gmail account as it is now (expired), the chip shows "Sign in again"; the user
+  clicks it, signs in through the browser, and mail loads again; the log has no more "Could not log in"
+  lines for that account.
+- verify: user confirmation.
+- notes:
+
 ## Execution Loop
 
 Execute the plan as a loop. Each iteration handles one task in a fresh context, then ends.

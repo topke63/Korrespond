@@ -2753,6 +2753,46 @@ void MailController::setupGoogleAccount(const QString &email, const QString &dis
     m_pending->signInWithGoogle(m_app.contactsEnabled);
 }
 
+void MailController::signInAgain(const QString &account)
+{
+    AccountSession *session = sessionFor(account);
+    if (!session || m_demo || session->account().authMethod != "oauth"_L1) {
+        return;
+    }
+    if (!m_googleConfigured) {
+        Q_EMIT errorOccurred(i18n("No Google OAuth client is set up. Add ClientId and ClientSecret to the [GoogleOAuth] group of korrespondrc."));
+        return;
+    }
+    // One waiting connection per session, however often the user clicks.
+    if (!session->property("signInAgainWaiting").toBool()) {
+        session->setProperty("signInAgainWaiting", true);
+        connect(
+            session,
+            &AccountSession::signedIn,
+            this,
+            [this, session] {
+                session->setProperty("signInAgainWaiting", false);
+                // The new refresh token must outlive this run, or the next start asks again.
+                const QString email = session->account().email;
+                connect(
+                    m_secrets,
+                    &SecretStore::passwordWritten,
+                    this,
+                    [this, email](const QString &key, const QString &error) {
+                        if (key == email && !error.isEmpty()) {
+                            Q_EMIT errorOccurred(i18n("Could not save the new sign-in for %1 in the keychain: %2", key, error));
+                        }
+                    },
+                    Qt::SingleShotConnection);
+                m_secrets->writePassword(email, session->refreshToken());
+                saveAccounts();
+            },
+            Qt::SingleShotConnection);
+    }
+    // The connection follows by itself: the first access token logs in and lists the folders.
+    session->signInWithGoogle(session->account().contacts);
+}
+
 void MailController::cancelSetup()
 {
     if (!m_pending) {

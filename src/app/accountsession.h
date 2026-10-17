@@ -125,6 +125,8 @@ Q_SIGNALS:
     void syncingChanged();
     void connectionStateChanged();
     void needsSignInChanged();
+    // A browser sign-in finished; refreshToken() is the new token to keep in the keychain.
+    void signedIn();
     void syncTextChanged();
     void storageUsageChanged();
     void inboxChanged(); // the watcher heard of a change in INBOX

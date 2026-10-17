@@ -6045,7 +6045,7 @@ Approach: thread ids are computed in the engine and stored, the list model group
   need a "signin" case.
 
 ### T275 — `MailController::signInAgain(account)`
-- status: todo
+- status: done
 - depends on: T273
 - files: src/app/mailcontroller.h, src/app/mailcontroller.cpp
 - inputs: `setupGoogleAccount()` (opens the browser, stores the refresh token in the keychain) and
@@ -6055,7 +6055,15 @@ Approach: thread ids are computed in the engine and stored, the list model group
   Errors (cancelled, no network) show in the existing toast and leave the state as it was.
 - verify: builds; unit test only where a seam exists. The real sign-in is the user's, in T277. If the
   change passes ~100 lines, split the keychain write into its own task.
-- notes:
+- notes: `Q_INVOKABLE MailController::signInAgain(account)`: runs `session->signInWithGoogle(account.contacts)`
+  (same scopes as before), and on the new `AccountSession::signedIn()` signal (added; emitted after the first
+  access token connects) writes `refreshToken()` to the keychain and calls `saveAccounts()`; one waiting
+  connection per session however often it is called (`signInAgainWaiting` property). No `beginRequest()`
+  busy marker: the browser sign-in can take long and the chip stays up meanwhile. The connection follows by
+  itself because `connectWithRefreshToken` left `m_loggedIn` false, so the first token logs in and lists
+  folders. Errors (cancel, no network) come through the existing `errorOccurred` toast and leave
+  `needsSignIn` set. No unit test: `MailController` has no test seam; the real run is T277. Size: ~45 lines,
+  no split needed.
 
 ### T276 — Status bar chip: "Sign in again"
 - status: todo

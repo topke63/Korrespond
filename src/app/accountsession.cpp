@@ -196,6 +196,7 @@ OAuthClient *AccountSession::oauth()
             m_refreshToken = refreshToken;
             m_account.contacts = OAuthClient::hasContactsScope(m_oauth->grantedScopes());
             onAccessToken(accessToken);
+            Q_EMIT signedIn();
         });
         connect(m_oauth, &OAuthClient::accessTokenChanged, this, [this](const QString &accessToken) {
             setNeedsSignIn(false);

@@ -326,6 +326,10 @@ public:
     // and adds the account. Needs googleConfigured. On failure nothing is saved and
     // errorOccurred is emitted.
     Q_INVOKABLE void setupGoogleAccount(const QString &email, const QString &displayName);
+    // A Google account whose saved sign-in was refused (revoked, or expired after 7 days): signs in
+    // again in the browser with the same scopes, keeps the new refresh token in the keychain and
+    // connects. No new account. Errors and a cancelled sign-in leave the account as it was.
+    Q_INVOKABLE void signInAgain(const QString &account);
     // Gives up an account setup that is still waiting (e.g. for the browser).
     Q_INVOKABLE void cancelSetup();
     // Disconnects one account and deletes its password from the keychain, its local copies and

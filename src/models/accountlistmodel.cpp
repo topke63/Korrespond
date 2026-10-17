@@ -63,7 +63,7 @@ QVariant AccountListModel::data(const QModelIndex &index, int role) const
     case AuthMethodRole:
         return account.authMethod;
     case ConnectionStateRole:
-        return AccountSession::stateName(session->connectionState());
+        return session->needsSignIn() ? u"signin"_s : AccountSession::stateName(session->connectionState());
     case StatusTextRole:
         return session->lastError();
     case SyncTextRole:
@@ -113,6 +113,9 @@ void AccountListModel::setSessions(const QList<AccountSession *> &sessions)
         };
         connect(session, &AccountSession::connectionStateChanged, this, [changed] {
             changed({ConnectionStateRole, StatusTextRole});
+        });
+        connect(session, &AccountSession::needsSignInChanged, this, [changed] {
+            changed({ConnectionStateRole});
         });
         connect(session, &AccountSession::pushStateChanged, this, [changed] {
             changed({PushTextRole});

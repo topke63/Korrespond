@@ -3,6 +3,7 @@
 
 #include "accountlistmodel.h"
 #include "accountsession.h"
+#include "oauthclient.h"
 
 #include <QAbstractItemModelTester>
 #include <QSignalSpy>
@@ -68,6 +69,39 @@ private Q_SLOTS:
 
         // The folder models travel with their rows.
         QCOMPARE(model.session(2)->account().email, u"a@example.com"_s);
+        qDeleteAll(sessions);
+    }
+
+    void testSignInState()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        QList<AccountSession *> sessions;
+        for (const QString &name : {u"a"_s, u"b"_s}) {
+            Account account;
+            account.email = name + u"@example.com"_s;
+            sessions.append(new AccountSession(account, dir.filePath(name), StorageSettings(), this));
+        }
+        AccountListModel model;
+        model.setSessions(sessions);
+        const auto state = [&model](int row) {
+            return model.data(model.index(row), AccountListModel::ConnectionStateRole).toString();
+        };
+        QCOMPARE(state(0), u"idle"_s);
+
+        QSignalSpy changed(&model, &QAbstractItemModel::dataChanged);
+        // Google refuses the saved sign-in of the first account: that row says "signin", whatever
+        // the connection state is; the other row is untouched.
+        Q_EMIT sessions.at(0)->oauth()->signInExpired();
+        QCOMPARE(state(0), u"signin"_s);
+        QCOMPARE(state(1), u"idle"_s);
+        QCOMPARE(changed.count(), 1);
+        QCOMPARE(changed.at(0).at(0).value<QModelIndex>().row(), 0);
+        QVERIFY(changed.at(0).at(2).value<QList<int>>().contains(AccountListModel::ConnectionStateRole));
+
+        // A new token brings the real state back.
+        Q_EMIT sessions.at(0)->oauth()->accessTokenChanged(u"t"_s, QDateTime::currentDateTime().addSecs(3600));
+        QVERIFY(state(0) != u"signin"_s);
         qDeleteAll(sessions);
     }
 

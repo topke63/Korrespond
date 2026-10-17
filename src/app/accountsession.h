@@ -132,6 +132,7 @@ Q_SIGNALS:
 
 private:
     friend class AccountSessionTest;
+    friend class AccountListModelTest;
 
     void setNeedsSignIn(bool needed);
     void onFoldersListed(const QList<FolderInfo> &folders);

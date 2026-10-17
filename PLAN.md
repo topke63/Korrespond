@@ -6030,14 +6030,19 @@ Approach: thread ids are computed in the engine and stored, the list model group
   "sign in again" text instead of leaving it at "Connecting…"; T274/T276 can rely on that.
 
 ### T274 — Account list model: a "signin" connection state
-- status: todo
+- status: done
 - depends on: T273
 - files: src/models/accountlistmodel.cpp, autotests/accountlistmodeltest.cpp
 - inputs: the `connectionState` role ("connected", "connecting", "failed", …)
 - output: the role reads "signin" for a session with `needsSignIn()`, taking priority over "failed" and
   "connecting"; `dataChanged` is emitted when it flips.
 - verify: `ctest -R accountlistmodel` with a new case.
-- notes:
+- notes: `connectionState` role gives "signin" while `session->needsSignIn()`, and `dataChanged` fires from
+  `needsSignInChanged`. `statusText` is still the session's last error, which for this case is the
+  "Google no longer accepts this sign-in … sign in again" message. `AccountSession` got a second friend
+  (`AccountListModelTest`) so the test can emit the OAuth signal. For T276: the StatusBar chip is only
+  visible for `connectionState === "failed"` today and has `stateText()`/`stateColor()` switches that both
+  need a "signin" case.
 
 ### T275 — `MailController::signInAgain(account)`
 - status: todo

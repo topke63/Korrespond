@@ -23,7 +23,7 @@ public:
         ProviderRole, // readable, e.g. "Yahoo"
         ServerRole, // "host:port" of the IMAP server
         AuthMethodRole, // "password" or "oauth"
-        ConnectionStateRole, // "idle", "connecting", "connected" or "failed"
+        ConnectionStateRole, // "idle", "connecting", "connected", "failed" or "signin" (Google refused the saved sign-in)
         StatusTextRole, // the last error while failed, else empty
         SyncTextRole, // e.g. "Syncing Inbox 120 / 340", empty when no sync runs
         PushTextRole, // "Push: active", "Push: connecting", ...

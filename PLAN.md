@@ -5990,7 +5990,7 @@ Approach: thread ids are computed in the engine and stored, the list model group
   checked on the real account without forcing anything.
 
 ### T272 — `OAuthClient`: say when the sign-in was rejected
-- status: todo
+- status: done
 - depends on: none
 - files: src/engine/oauthclient.h, src/engine/oauthclient.cpp
 - inputs: the `invalid_grant` branch near line 68 of oauthclient.cpp (it already calls `fail(...)`)
@@ -6001,7 +6001,13 @@ Approach: thread ids are computed in the engine and stored, the list model group
   autotests/oauthclienttest.cpp; the error handler needs a seam to be tested without Google (e.g. move the
   `invalid_grant` decision into a small function taking the error string), so the task includes that
   refactor. `ctest -R oauthclient` passes. If the seam needs more than ~100 lines, split it into its own task.
-- notes:
+- notes: `OAuthClient` now has signal `signInExpired()` (emitted after `failed()`), `signInHasExpired()` (true
+  until a good token or a new sign-in) and static `isExpiredSignInError()`. The error handling moved into
+  private `handleServerError()`; `autotests/oauthclienttest.cpp` reaches it through `friend class
+  OAuthClientTest`. **Real bug found and fixed**: the old `invalid_grant` branch cleared `m_tokenInUse`
+  *before* `fail()`, and `fail()` ignores errors when no token is in use, so a revoked refresh token never
+  emitted `failed()` at all (that is why the log only had Qt's "Authorization stage" line). Now `fail()`
+  runs first. T273 should connect to `signInExpired()` and read `signInHasExpired()` for the session flag.
 
 ### T273 — `AccountSession`: `needsSignIn` and no retries while it is set
 - status: todo

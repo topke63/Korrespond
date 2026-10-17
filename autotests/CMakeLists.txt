@@ -178,6 +178,13 @@ ecm_add_test(
     LINK_LIBRARIES korrespond_models Qt6::Test
 )
 
+# Test for OAuthClient's error handling
+ecm_add_test(
+    oauthclienttest.cpp
+    TEST_NAME oauthclienttest
+    LINK_LIBRARIES korrespond_engine Qt6::Test
+)
+
 # Test for NewMailTracker
 ecm_add_test(
     newmailtrackertest.cpp

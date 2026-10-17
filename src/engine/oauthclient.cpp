@@ -44,6 +44,7 @@ OAuthClient::OAuthClient(QObject *parent)
         }
         finish();
         m_tokenInUse = true;
+        m_signInExpired = false;
         Q_EMIT signedIn(m_flow->token(), m_flow->refreshToken(), m_flow->expirationAt());
     });
     // A refresh sets the token and its expiry one after the other; emit once both are in.
@@ -57,6 +58,7 @@ OAuthClient::OAuthClient(QObject *parent)
             [this] {
                 m_tokenEmitPending = false;
                 if (m_tokenInUse && !m_flow->token().isEmpty()) {
+                    m_signInExpired = false;
                     Q_EMIT accessTokenChanged(m_flow->token(), m_flow->expirationAt());
                 }
             },
@@ -65,14 +67,7 @@ OAuthClient::OAuthClient(QObject *parent)
     // A refusal on Google's page (e.g. the user pressed Cancel) arrives here first, then as
     // requestFailed(); fail() reports only the first, more precise message.
     connect(m_flow, &QAbstractOAuth2::serverReportedErrorOccurred, this, [this](const QString &error, const QString &description) {
-        if (error == "invalid_grant"_L1) {
-            m_tokenInUse = false;
-            fail(i18n("Google no longer accepts this sign-in (it was revoked or expired). Please sign in again."));
-        } else if (error == "access_denied"_L1) {
-            fail(i18n("Google sign-in was cancelled or access was denied."));
-        } else {
-            fail(i18n("Google sign-in failed: %1", description.isEmpty() ? error : description));
-        }
+        handleServerError(error, description);
     });
     connect(m_flow, &QAbstractOAuth::requestFailed, this, [this](QAbstractOAuth::Error error) {
         switch (error) {
@@ -90,6 +85,35 @@ OAuthClient::OAuthClient(QObject *parent)
 }
 
 OAuthClient::~OAuthClient() = default;
+
+bool OAuthClient::signInHasExpired() const
+{
+    return m_signInExpired;
+}
+
+bool OAuthClient::isExpiredSignInError(const QString &error)
+{
+    return error == "invalid_grant"_L1;
+}
+
+void OAuthClient::handleServerError(const QString &error, const QString &description)
+{
+    // A refused saved token is told apart from a failed interactive sign-in by what was going on.
+    const bool refreshing = m_tokenInUse && !m_signingIn;
+    if (isExpiredSignInError(error)) {
+        // fail() reports only while a token is in use, so clear that after it.
+        fail(i18n("Google no longer accepts this sign-in (it was revoked or expired). Please sign in again."));
+        m_tokenInUse = false;
+        if (refreshing) {
+            m_signInExpired = true;
+            Q_EMIT signInExpired();
+        }
+    } else if (error == "access_denied"_L1) {
+        fail(i18n("Google sign-in was cancelled or access was denied."));
+    } else {
+        fail(i18n("Google sign-in failed: %1", description.isEmpty() ? error : description));
+    }
+}
 
 QStringList OAuthClient::scopeTokens(bool withContacts)
 {

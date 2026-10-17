@@ -40,12 +40,25 @@ public:
     // token gives a failed() that asks the user to sign in again.
     void refresh(const QString &refreshToken);
 
+    // True from the moment Google refused the saved refresh token (revoked, or expired: a Google
+    // project in "Testing" mode drops them after 7 days) until a new sign-in or a good refresh.
+    [[nodiscard]] bool signInHasExpired() const;
+    // Whether Google's error code for a token request means the saved sign-in is dead.
+    [[nodiscard]] static bool isExpiredSignInError(const QString &error);
+
 Q_SIGNALS:
     void signedIn(const QString &accessToken, const QString &refreshToken, const QDateTime &expiresAt);
     void accessTokenChanged(const QString &accessToken, const QDateTime &expiresAt);
     void failed(const QString &message);
+    // Google refused the saved refresh token while it was being refreshed; follows failed().
+    // Only a new signIn() fixes it.
+    void signInExpired();
 
 private:
+    friend class OAuthClientTest;
+
+    // Google's answer to a token request was an error.
+    void handleServerError(const QString &error, const QString &description);
     void finish();
     void fail(const QString &message);
     bool loadClient();
@@ -55,4 +68,5 @@ private:
     bool m_signingIn = false;
     bool m_tokenInUse = false; // a refresh token is set; failures of later refreshes are reported
     bool m_tokenEmitPending = false;
+    bool m_signInExpired = false;
 };

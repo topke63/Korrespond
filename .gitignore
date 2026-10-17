@@ -16,3 +16,9 @@ prefix.sh*
 /bin/
 build-*/
 /.clang-format
+
+# makepkg output (packaging/arch)
+/packaging/arch/*.pkg.tar.*
+/packaging/arch/korrespond-git/
+/packaging/arch/pkg/
+/packaging/arch/src/

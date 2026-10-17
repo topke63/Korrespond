@@ -5997,8 +5997,10 @@ Approach: thread ids are computed in the engine and stored, the list model group
 - output: new signal `signInExpired()` and `bool signInExpired() const`-style flag (name it so it does not
   clash with the signal), emitted once when Google answers `invalid_grant`; cleared when a new token
   arrives. The existing error text is unchanged.
-- verify: `autotests` case that drives the same path the existing OAuth tests use (look at
-  autotests/oauthclienttest.cpp for how errors are injected) and checks the signal; `ctest -R oauth`.
+- verify: there is no OAuthClient test yet (only autotests/oauthsettingstest.cpp). Add
+  autotests/oauthclienttest.cpp; the error handler needs a seam to be tested without Google (e.g. move the
+  `invalid_grant` decision into a small function taking the error string), so the task includes that
+  refactor. `ctest -R oauthclient` passes. If the seam needs more than ~100 lines, split it into its own task.
 - notes:
 
 ### T273 — `AccountSession`: `needsSignIn` and no retries while it is set

@@ -21,7 +21,8 @@ QQC2.Pane {
         switch (state) {
         case "connected": return Kirigami.Theme.positiveTextColor;
         case "connecting": return Kirigami.Theme.neutralTextColor;
-        case "failed": return Kirigami.Theme.negativeTextColor;
+        case "failed":
+        case "signin": return Kirigami.Theme.negativeTextColor;
         default: return Kirigami.Theme.disabledTextColor;
         }
     }
@@ -31,6 +32,7 @@ QQC2.Pane {
         case "connected": return KI18n.i18nc("@info:status", "Connected");
         case "connecting": return KI18n.i18nc("@info:status", "Connecting…");
         case "failed": return KI18n.i18nc("@info:status", "Not connected");
+        case "signin": return KI18n.i18nc("@info:status", "Sign in again");
         default: return KI18n.i18nc("@info:status", "Not started");
         }
     }
@@ -82,11 +84,14 @@ QQC2.Pane {
                 required property string statusText
                 required property string pushText
 
-                visible: connectionState === "failed"
+                // Google no longer accepts the saved sign-in: a new one in the browser is the only way.
+                readonly property bool needsSignIn: connectionState === "signin"
+
+                visible: connectionState === "failed" || needsSignIn
                 enabled: true
                 hoverEnabled: true
                 padding: Kirigami.Units.smallSpacing
-                onClicked: MailController.reconnect(email)
+                onClicked: needsSignIn ? MailController.signInAgain(email) : MailController.reconnect(email)
 
                 QQC2.ToolTip.visible: hovered
                 QQC2.ToolTip.delay: Kirigami.Units.toolTipDelay
@@ -94,6 +99,9 @@ QQC2.Pane {
                     let text = chip.email + "\n" + chip.server + "\n" + bar.stateText(chip.connectionState) + "\n" + chip.pushText;
                     if (chip.statusText.length > 0) {
                         text += "\n" + chip.statusText;
+                    }
+                    if (chip.needsSignIn) {
+                        return text + "\n" + KI18n.i18nc("@info:tooltip", "Click to sign in with Google again. If this happens every week, the Google project is in \"Testing\" mode: publish it \"In production\" to keep sign-ins.");
                     }
                     return text + "\n" + KI18n.i18nc("@info:tooltip", "Click to reconnect");
                 }
@@ -112,7 +120,7 @@ QQC2.Pane {
                         color: bar.stateColor(chip.connectionState)
                     }
                     QQC2.Label {
-                        text: chip.email
+                        text: chip.needsSignIn ? KI18n.i18nc("@info:status %1 is an e-mail address", "%1: sign in again", chip.email) : chip.email
                         font: Kirigami.Theme.smallFont
                         elide: Text.ElideRight
                         color: Kirigami.Theme.textColor

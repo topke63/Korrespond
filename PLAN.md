@@ -6066,7 +6066,7 @@ Approach: thread ids are computed in the engine and stored, the list model group
   no split needed.
 
 ### T276 — Status bar chip: "Sign in again"
-- status: todo
+- status: done
 - depends on: T274, T275
 - files: src/qml/StatusBar.qml
 - output: an account in state "signin" shows its chip (red dot) with the text "Sign in again"; clicking it
@@ -6075,7 +6075,13 @@ Approach: thread ids are computed in the engine and stored, the list model group
   The plain "Connecting…" text must not show for this state.
 - verify: `cmake --build --preset dev --target all_qmllint` finds nothing new in StatusBar.qml; screenshot
   with `KORRESPOND_DEMO=1` if a demo hook can put an account in this state, else the real check in T277.
-- notes:
+- notes: StatusBar.qml: "signin" state has the red dot and the text "Sign in again"; the chip shows for
+  "failed" or "signin", its label reads "<email>: sign in again", a click calls
+  `MailController.signInAgain(email)` (else `reconnect`), and the tooltip adds the Testing-mode hint.
+  Because T272 now moves a refused account to Failed/signin instead of leaving it at Connecting, the
+  middle "Connecting…" text goes away for this case. qmllint: no StatusBar findings; the repo-wide count is
+  36 both before and after this task. No demo hook puts an account in this state, so it was only checked for
+  QML runtime errors in the demo run; the real look is T277.
 
 ### T277 — Check with the user on the real expired account
 - status: todo

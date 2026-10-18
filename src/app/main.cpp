@@ -8,6 +8,7 @@
 #include <KLocalizedString>
 
 #include "appsettings.h"
+#include "attachmentpreview.h"
 #include "legacyprofile.h"
 #include "mailapplication.h"
 #include "mailcontroller.h"
@@ -32,6 +33,7 @@
 
 #include <QFile>
 #include <QFileInfo>
+#include <QMimeDatabase>
 #include <QTextStream>
 #include <memory>
 #ifdef KORRESPOND_DEV_HOOKS
@@ -153,6 +155,35 @@ static void scheduleScreenshot(QQmlApplicationEngine &engine)
         }
         engine.loadFromModule("Korrespond", "ComposeWindow");
         composer = qobject_cast<QQuickWindow *>(engine.rootObjects().constLast());
+    }
+    // KORRESPOND_SCREENSHOT_PREVIEW=<file> opens the attachment preview window for a local file (its
+    // kind and text worked out here, as MailController::previewAttachment() does) and screenshots it.
+    const QString previewFile = qEnvironmentVariable("KORRESPOND_SCREENSHOT_PREVIEW");
+    if (!previewFile.isEmpty()) {
+        QFile file(previewFile);
+        const QFileInfo fileInfo(previewFile);
+        if (file.open(QIODevice::ReadOnly)) {
+            const QByteArray data = file.readAll();
+            const QString mime = QMimeDatabase().mimeTypeForFile(fileInfo).name();
+            const AttachmentPreview::Kind kind = AttachmentPreview::kindFor(fileInfo.fileName(), mime);
+            QVariantMap info{{u"name"_s, fileInfo.fileName()},
+                             {u"mimeType"_s, mime},
+                             {u"size"_s, data.size()},
+                             {u"kind"_s, AttachmentPreview::kindName(kind)},
+                             {u"fileUrl"_s, QUrl::fromLocalFile(fileInfo.absoluteFilePath())},
+                             {u"text"_s, QString()},
+                             {u"truncated"_s, false}};
+            if (kind == AttachmentPreview::Kind::Text) {
+                const AttachmentPreview::TextPreview text = AttachmentPreview::textFor(data);
+                info[u"text"_s] = text.text;
+                info[u"truncated"_s] = text.truncated;
+            }
+            engine.setInitialProperties({{u"info"_s, info}});
+            engine.loadFromModule("Korrespond", "AttachmentPreviewWindow");
+            composer = qobject_cast<QQuickWindow *>(engine.rootObjects().constLast());
+        } else {
+            qWarning("Cannot read %s", qPrintable(previewFile));
+        }
     }
     QTimer::singleShot(delay, &engine, [&engine, file, composer] {
         // The window in front (e.g. the settings window), else the main window.

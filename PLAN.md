@@ -6209,7 +6209,7 @@ Approach: thread ids are computed in the engine and stored, the list model group
   itself is tested in T280. Window use: T284.
 
 ### T284 — `AttachmentPreviewWindow.qml`: the window, header, buttons and a dev hook
-- status: todo
+- status: done
 - depends on: T283
 - files: src/qml/AttachmentPreviewWindow.qml, src/CMakeLists.txt, src/app/main.cpp (dev hook)
 - output: a `Kirigami.ApplicationWindow` with properties `info` (the T282 map) and an `Item` area for the view;
@@ -6219,7 +6219,15 @@ Approach: thread ids are computed in the engine and stored, the list model group
   Dev hook `KORRESPOND_SCREENSHOT_PREVIEW=<file>` opens it for a local file (kind by T278, text by T279) and
   screenshots it, so T285–T288 can check their views without a mailbox.
 - verify: qmllint adds nothing; screenshot of the hook with a `.zip` file shows the placeholder and both buttons.
-- notes:
+- notes: `src/qml/AttachmentPreviewWindow.qml` (Kirigami.ApplicationWindow, property `info`, header with name,
+  size via `Qt.locale().formattedDataSize` and type, Open and Save As… buttons through `openPreviewFile` /
+  `savePreviewFileAs`, Esc / Ctrl+W close). The body is a `Loader` with `sourceComponent: placeholder`:
+  **T285–T288 each add their own `Component` and extend that one line** (pick by `win.kind`); they must not
+  rewrite each other's parts (merge by hand if run in parallel). Dev hook in main.cpp:
+  `KORRESPOND_DEMO=1 KORRESPOND_SCREENSHOT=<png> KORRESPOND_SCREENSHOT_PREVIEW=<file> KORRESPOND_SCREENSHOT_DELAY=2500
+  build/bin/korrespond` (with `QT_FORCE_STDERR_LOGGING=1`); sample files go in the scratchpad `samples/` folder.
+  Checked with a .zip: placeholder and both buttons render. In the hook Open/Save refuse the file (it is not in
+  the controller's temp folder): expected.
 
 ### T285 — Preview: images
 - status: todo

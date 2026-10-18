@@ -105,6 +105,7 @@ qt_add_qml_module(korrespond
         qml/AccountDetailsPage.qml
         qml/ComposeWindow.qml
         qml/EmojiPicker.qml
+        qml/AttachmentPreviewWindow.qml
 )
 # The icon also lives in the executable, for runs from the build folder where the themed icon
 # is not installed.

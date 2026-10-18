@@ -6265,13 +6265,30 @@ Approach: thread ids are computed in the engine and stored, the list model group
 - verify: user confirmation; failures become new tasks.
 - notes:
 
-### T291 — Docs and global verify
+### T291 — Docs
 - status: todo
 - depends on: T290
 - files: README.md
 - output: README feature line ("attachment preview: images, PDF, text, audio and video") and
-  `qt6-multimedia` in the Arch package list and the CMake package table; global verify passes.
-- verify: global verify.
+  `qt6-multimedia` in the Arch package list and the CMake package table.
+- verify: `grep -n multimedia README.md` shows both places.
+- notes:
+
+### T292 — Version 0.2.0 and global verify
+- status: todo
+- depends on: T291
+- files: CMakeLists.txt, data/io.github.topke63.korrespond.metainfo.xml, src/app/main.cpp
+- inputs: user request 2026-10-18 "don't forget to increase version". Version now 0.1.0 in
+  `CMakeLists.txt` (`project(korrespond VERSION 0.1.0 ...)`), in the metainfo `<release>` entry, and hard-coded
+  as `"0.1"` in `main.cpp` (`KAboutData`, about line 196). `packaging/arch/PKGBUILD` derives the version from
+  CMakeLists.txt by itself (its `pkgver=0.1.0` line is rewritten by makepkg; leave it).
+- output: **0.2.0** (new since 0.1.0: compose formatting and emoji, "Sign in again" for an expired Google
+  sign-in, attachment preview, Arch package). `project(... VERSION 0.2.0)`; a new `<release version="0.2.0"
+  date="...">` entry in the metainfo (keep the 0.1.0 one) with a short description list; `main.cpp` takes the
+  version from the CMake version (a compile definition such as `KORRESPOND_VERSION="${PROJECT_VERSION}"`) so it
+  cannot go stale again. No git tag and no push without the user saying so.
+- verify: the global verify passes (full build, `ctest`), `appstreamcli validate` on the metainfo if installed,
+  and the About page shows 0.2.0 (screenshot hook).
 - notes:
 
 ## Execution Loop

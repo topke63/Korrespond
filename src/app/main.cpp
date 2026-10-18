@@ -128,6 +128,20 @@ static void scheduleScreenshot(QQmlApplicationEngine &engine)
             auto controller = engine.singletonInstance<MailController *>("Korrespond", "MailController");
             if (controller && sampleFile.open(QIODevice::ReadOnly)) {
                 controller->showSampleMessage(sampleFile.readAll());
+                // KORRESPOND_SCREENSHOT_SAMPLE_ATTACHMENT=<n> then opens the preview window for the
+                // n-th attachment of that message, through the same controller call as a click (use
+                // KORRESPOND_SCREENSHOT_NEWEST=1 to screenshot that window).
+                bool isNumber = false;
+                const int attachment = qEnvironmentVariableIntValue("KORRESPOND_SCREENSHOT_SAMPLE_ATTACHMENT", &isNumber);
+                if (isNumber) {
+                    const QVariantMap info = controller->previewAttachment(attachment);
+                    if (!info.isEmpty()) {
+                        engine.setInitialProperties({{u"info"_s, info}});
+                        engine.loadFromModule("Korrespond", "AttachmentPreviewWindow");
+                    } else {
+                        qWarning("No preview for attachment %d", attachment);
+                    }
+                }
             } else {
                 qWarning("Could not read the sample message %s", qPrintable(sample));
             }

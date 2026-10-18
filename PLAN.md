@@ -6293,7 +6293,7 @@ Approach: thread ids are computed in the engine and stored, the list model group
   must provide QtMultimedia (and an ffmpeg backend).
 
 ### T289 — Clicking an attachment opens the preview window
-- status: todo
+- status: done
 - depends on: T282, T285, T286, T287, T288
 - files: src/qml/MessagePage.qml, src/qml/Main.qml (only if the window must be created there)
 - output: `page.openAttachment(index)` keeps the risky-file dialog; every other attachment calls
@@ -6301,7 +6301,16 @@ Approach: thread ids are computed in the engine and stored, the list model group
   like the compose window, parent the main window, destroyed on close); an empty result shows the existing error
   toast. The "Open with default program" path stays reachable from the window's Open button.
 - verify: qmllint adds nothing; `ctest`; manual by the user in T290.
-- notes:
+- notes: `MessagePage.openAttachment(index)` keeps the risky-file dialog and otherwise calls the new
+  `previewAttachment(index)`, which creates an `AttachmentPreviewWindow` (parent: the main window, like the
+  compose window) with the map from `MailController.previewAttachment()`; the window destroys itself on close
+  (`onClosing: destroy()`). The old external open (`MailController.openAttachment`) is no longer called from
+  QML; the method stays (it still works, and the window's Open button uses `openPreviewFile`).
+  New dev hook: `KORRESPOND_SCREENSHOT_SAMPLE=<eml> KORRESPOND_SCREENSHOT_SAMPLE_ATTACHMENT=<n>
+  KORRESPOND_SCREENSHOT_NEWEST=1 ...` opens the preview for the n-th attachment through the controller, as a click
+  does. Checked with an .eml holding txt, png, pdf, zip and a .sh: 0–3 open (txt and pdf viewed), the script gives
+  "No preview" (the warning dialog path), and no korrespond-* temp folders are left behind. The QML click itself
+  and Open / Save As from the window are for the user's T290.
 
 ### T290 — Check with the user
 - status: todo

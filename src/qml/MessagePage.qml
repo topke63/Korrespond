@@ -353,7 +353,25 @@ Kirigami.Page {
         if (MailController.attachmentIsRisky(index)) {
             askSave(index);
         } else {
-            MailController.openAttachment(index);
+            previewAttachment(index);
+        }
+    }
+
+    // A preview window of its own, with a copy of what it needs: it stays valid when another message
+    // is opened. An empty answer means the controller refused or failed (it showed the error).
+    function previewAttachment(index) {
+        const info = MailController.previewAttachment(index);
+        if (!info.kind) {
+            return;
+        }
+        const component = Qt.createComponent("Korrespond", "AttachmentPreviewWindow");
+        const preview = component.createObject((page.QQC2.ApplicationWindow.window as Kirigami.ApplicationWindow), {
+            info: info
+        });
+        if (preview) {
+            (preview as Window).show();
+        } else {
+            console.warn(component.errorString());
         }
     }
 

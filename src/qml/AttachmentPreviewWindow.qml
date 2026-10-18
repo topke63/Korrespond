@@ -55,6 +55,9 @@ Kirigami.ApplicationWindow {
         onActivated: win.close()
     }
 
+    // The window is created for one attachment and not needed afterwards.
+    onClosing: destroy()
+
     pageStack.initialPage: Kirigami.Page {
         padding: 0
 

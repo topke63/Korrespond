@@ -6274,7 +6274,7 @@ Approach: thread ids are computed in the engine and stored, the list model group
   message shows, view opens at once). Loader line now has `win.kind === "text" ? textView`.
 
 ### T288 — Preview: audio and video (new dependency qt6-multimedia)
-- status: todo
+- status: done
 - depends on: T284
 - parallel-safe with: T285–T287
 - files: src/qml/AttachmentPreviewWindow.qml, src/CMakeLists.txt, packaging/arch/PKGBUILD
@@ -6283,7 +6283,14 @@ Approach: thread ids are computed in the engine and stored, the list model group
   `qt6-multimedia` added to PKGBUILD `depends`. An error (missing codec) shows its text with Open / Save.
 - verify: builds with and without the package build flags; screenshot of a short MP4 and an MP3 through the hook;
   the playback itself is the user's in T290. Note for T248–T258: the Flatpak runtime needs QtMultimedia.
-- notes:
+- notes: `mediaView` Component (`import QtMultimedia`; `MediaPlayer` + `AudioOutput` + `VideoOutput`), start
+  paused (a video is paused once loaded so its first frame shows), play/pause also on a click in the picture,
+  position slider (seekable only), time labels, volume slider, error text in an InlineMessage; the player is
+  stopped when the view is destroyed. `Multimedia` added to `find_package(Qt6 ...)` in CMakeLists.txt and
+  `Qt6::Multimedia` to the app's link list; `qt6-multimedia` added to PKGBUILD `depends` (README is T291).
+  Checked with a generated 5 s MP3 and a 4 s MP4 (ffmpeg testsrc): controls and durations show, the video's first
+  frame shows. Actual playback and sound are for the user's T290. For T248–T258: the Flatpak KDE runtime
+  must provide QtMultimedia (and an ffmpeg backend).
 
 ### T289 — Clicking an attachment opens the preview window
 - status: todo

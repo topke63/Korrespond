@@ -31,6 +31,7 @@ depends=(
   qqc2-desktop-style
   qt6-base
   qt6-declarative
+  qt6-multimedia
   qt6-networkauth
   qt6-webengine
   qtkeychain-qt6

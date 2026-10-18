@@ -8,6 +8,7 @@ import QtCore
 import QtQuick.Controls as QQC2
 import QtQuick.Dialogs
 import QtQuick.Layouts
+import QtMultimedia
 import QtQuick.Pdf
 import org.kde.ki18n
 import org.kde.kirigami as Kirigami
@@ -100,7 +101,7 @@ Kirigami.ApplicationWindow {
         // The view for the kind; the others are added by their own tasks, and every kind without a
         // view (or none at all) falls back to the placeholder.
         contentItem: Loader {
-            sourceComponent: win.kind === "image" ? imageView : win.kind === "pdf" ? pdfView : win.kind === "text" ? textView : placeholder
+            sourceComponent: win.kind === "image" ? imageView : win.kind === "pdf" ? pdfView : win.kind === "text" ? textView : (win.kind === "audio" || win.kind === "video") ? mediaView : placeholder
         }
     }
 
@@ -401,6 +402,118 @@ Kirigami.ApplicationWindow {
                     leftPadding: Kirigami.Units.gridUnit
                     topPadding: Kirigami.Units.largeSpacing
                     background: null
+                }
+            }
+        }
+    }
+
+    // Audio and video: starts paused; play / pause, a position slider, the time and the volume. A
+    // file the system cannot decode shows the error text (Open and Save As stay in the header).
+    Component {
+        id: mediaView
+
+        ColumnLayout {
+            id: viewer
+
+            property string errorText: ""
+
+            function timeText(ms: real): string {
+                const total = Math.max(0, Math.round(ms / 1000));
+                const seconds = String(total % 60).padStart(2, "0");
+                const minutes = Math.floor(total / 60) % 60;
+                const hours = Math.floor(total / 3600);
+                return (hours > 0 ? hours + ":" + String(minutes).padStart(2, "0") : minutes) + ":" + seconds;
+            }
+
+            spacing: 0
+
+            MediaPlayer {
+                id: player
+
+                source: win.info.fileUrl
+                audioOutput: AudioOutput {
+                    id: audioOutput
+                }
+                videoOutput: win.kind === "video" ? video : null
+                onErrorOccurred: (error, errorString) => viewer.errorText = errorString
+                // Paused, not stopped, shows the first frame of a video instead of an empty window.
+                onMediaStatusChanged: {
+                    if (mediaStatus === MediaPlayer.LoadedMedia && win.kind === "video") {
+                        pause();
+                    }
+                }
+            }
+
+            Component.onDestruction: player.stop()
+
+            Kirigami.InlineMessage {
+                Layout.fillWidth: true
+                visible: viewer.errorText.length > 0
+                type: Kirigami.MessageType.Error
+                text: KI18n.i18nc("@info", "This file cannot be played: %1", viewer.errorText)
+            }
+
+            Item {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+
+                VideoOutput {
+                    id: video
+
+                    anchors.fill: parent
+                    visible: win.kind === "video"
+                }
+                Kirigami.Icon {
+                    anchors.centerIn: parent
+                    visible: win.kind === "audio"
+                    source: "audio-x-generic"
+                    implicitWidth: Kirigami.Units.iconSizes.huge
+                    implicitHeight: implicitWidth
+                }
+                MouseArea {
+                    anchors.fill: parent
+                    onClicked: player.playbackState === MediaPlayer.PlayingState ? player.pause() : player.play()
+                }
+            }
+
+            QQC2.ToolBar {
+                Layout.fillWidth: true
+
+                contentItem: RowLayout {
+                    spacing: Kirigami.Units.smallSpacing
+
+                    QQC2.ToolButton {
+                        icon.name: player.playbackState === MediaPlayer.PlayingState ? "media-playback-pause" : "media-playback-start"
+                        display: QQC2.AbstractButton.IconOnly
+                        text: player.playbackState === MediaPlayer.PlayingState ? KI18n.i18nc("@action:button", "Pause") : KI18n.i18nc("@action:button", "Play")
+                        onClicked: player.playbackState === MediaPlayer.PlayingState ? player.pause() : player.play()
+                    }
+                    QQC2.Label {
+                        text: viewer.timeText(player.position)
+                    }
+                    QQC2.Slider {
+                        Layout.fillWidth: true
+                        from: 0
+                        to: Math.max(1, player.duration)
+                        value: player.position
+                        enabled: player.seekable
+                        onMoved: player.position = value
+                    }
+                    QQC2.Label {
+                        text: viewer.timeText(player.duration)
+                    }
+                    Kirigami.Icon {
+                        source: audioOutput.volume > 0 && !audioOutput.muted ? "audio-volume-high" : "audio-volume-muted"
+                        implicitWidth: Kirigami.Units.iconSizes.small
+                        implicitHeight: implicitWidth
+                    }
+                    QQC2.Slider {
+                        Layout.preferredWidth: Kirigami.Units.gridUnit * 6
+                        from: 0
+                        to: 1
+                        value: audioOutput.volume
+                        onMoved: audioOutput.volume = value
+                    }
                 }
             }
         }

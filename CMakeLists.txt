@@ -27,7 +27,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Dev-only key hook (KORRESPOND_DEMO_KEY_UNDO): needs Qt6::Test (QTest::keyClick, public API) in the app.
 # Off by default so the shipped binary does not link the test library.
 option(KORRESPOND_DEV_HOOKS "Build dev-only demo hooks that need Qt6::Test (key injection)" OFF)
-find_package(Qt6 ${QT_MIN_VERSION} REQUIRED COMPONENTS Core Gui Widgets Network Sql Qml Quick QuickControls2 WebEngineQuick NetworkAuth Test)
+find_package(Qt6 ${QT_MIN_VERSION} REQUIRED COMPONENTS Core Gui Widgets Network Sql Qml Quick QuickControls2 WebEngineQuick NetworkAuth Multimedia Test)
 find_package(KF6 ${KF_MIN_VERSION} REQUIRED COMPONENTS Kirigami I18n CoreAddons Config ColorScheme Mime Notifications NotifyConfig StatusNotifierItem)
 find_package(KF6KirigamiAddons REQUIRED)
 find_package(KPim6IMAP REQUIRED)

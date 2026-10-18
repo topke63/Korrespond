@@ -122,6 +122,7 @@ target_link_libraries(korrespond PRIVATE
     korrespond_models
     Qt6::Qml
     Qt6::WebEngineQuick
+    Qt6::Multimedia
     Qt6::Quick
     Qt6::QuickControls2
     Qt6::Widgets

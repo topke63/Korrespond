@@ -6094,6 +6094,186 @@ Approach: thread ids are computed in the engine and stored, the list model group
   browser and mail loaded again. Not checked: whether the Google project is still in "Testing" mode (token will
   expire again after 7 days until it is published "In production"; the user's call).
 
+## g. Attachment preview window
+
+- **Goal**: clicking an attachment in the message view opens it in its own preview window inside the app
+  (not in an external program). The window shows images, PDF, plain text and audio/video; for every
+  other type it shows the name, size and type with "Open" (default program) and "Save As…" buttons.
+- **Today** (2026-10-18): the chip click goes `ConversationView.attachmentRequested` → `MessagePage.openAttachment()`
+  → `MailController::openAttachment()`, which writes the part to a private temp folder (0700, removed at exit)
+  and calls `QDesktopServices::openUrl`; risky types (`isRiskyAttachment`) get the "Potentially Unsafe File"
+  dialog with Save As instead.
+- **Decisions (user, 2026-10-18)**: preview images, PDF, plain text/code/CSV/logs, audio and video; files
+  without a preview still open the window, with Open / Save buttons; risky files (executables, scripts) are
+  never previewed: the existing warning dialog stays.
+- **Design**: the controller writes the attachment to the same private temp folder and returns a small
+  map (`name`, `mimeType`, `size`, `kind`, `fileUrl`, `text`, `truncated`) so the window does not depend on
+  which message is open later; several preview windows can be open at once. `kind` is one of `image`, `pdf`,
+  `text`, `audio`, `video`, `none`. PDF uses `QtQuick.Pdf` (shipped by qt6-webengine, already required);
+  audio/video use QtMultimedia (**new dependency**: `qt6-multimedia`; add to the PKGBUILD and README, and
+  remember it for the Flatpak work T248–T258). Nothing in a preview is ever executed or given network access.
+- **Out of scope**: editing, printing, preview of the attachments of a message being composed, HTML or Office
+  documents, archives, thumbnails in the message view, a gallery with next/previous.
+- **Global verify**: as milestone 2.
+- **Open questions**: none.
+
+### T278 — `AttachmentPreview::kindFor()`: what kind of preview a file gets
+- status: todo
+- depends on: none
+- files: src/engine/attachmentpreview.h, src/engine/attachmentpreview.cpp (+ CMake entry), autotests/attachmentpreviewtest.cpp
+- output: `AttachmentPreview::Kind` enum {Image, Pdf, Text, Audio, Video, None} and
+  `Kind kindFor(const QString &fileName, const QString &mimeType)`: by MIME type first, then by suffix when the
+  type is missing or `application/octet-stream` (png jpg jpeg gif webp bmp svg; pdf; txt md csv tsv log json xml
+  yaml ini conf and common source suffixes; mp3 ogg flac wav m4a; mp4 webm mkv mov). Also
+  `QString kindName(Kind)` giving "image", "pdf", "text", "audio", "video", "none". Risky files are not its
+  business (the caller checks `isRiskyAttachment` first).
+- verify: `ctest -R attachmentpreview`: table of (name, type) → kind, including a wrong declared type with a
+  right suffix, upper-case suffix, `image/svg+xml`, and unknown → None.
+- notes:
+
+### T279 — `AttachmentPreview::textFor()`: safe text from bytes
+- status: todo
+- depends on: T278
+- files: src/engine/attachmentpreview.h, src/engine/attachmentpreview.cpp, autotests/attachmentpreviewtest.cpp
+- output: `struct TextPreview { QString text; bool truncated; }` and `TextPreview textFor(const QByteArray &data,
+  qsizetype maxBytes = 1 MiB)`: takes at most `maxBytes`, cuts on a character boundary, decodes UTF-8 (with BOM
+  removed) and falls back to Latin-1 when the bytes are not valid UTF-8, turns NUL and other control characters
+  except tab and newline into U+FFFD, line ends as \n.
+- verify: test cases: valid UTF-8 with a multi-byte character exactly at the cut; Latin-1 bytes; CRLF;
+  NUL bytes; a file over the limit sets `truncated`; empty input.
+- notes:
+
+### T280 — `AttachmentPreview::isInsideFolder()`: path guard
+- status: todo
+- depends on: none
+- parallel-safe with: T278, T279
+- files: src/engine/attachmentpreview.h, src/engine/attachmentpreview.cpp, autotests/attachmentpreviewtest.cpp
+- output: `bool isInsideFolder(const QString &path, const QString &folder)`: true only when the canonical path of
+  an existing file lies under the canonical folder (so `..` and symlinks cannot leave it). It guards T283.
+- verify: test with a temp folder: a file inside, a `..` escape, a symlink pointing out, a missing file, the
+  folder itself, a sibling with the same prefix (`/tmp/a` vs `/tmp/ab/x`).
+- notes:
+
+### T281 — `MailController`: one helper writes an attachment to the private temp folder
+- status: todo
+- depends on: none
+- files: src/app/mailcontroller.h, src/app/mailcontroller.cpp
+- inputs: `openAttachment()` (about line 3480 of mailcontroller.cpp), `m_attachmentDir`, `m_attachmentCount`, `writeOwnerOnly()`
+- output: private `QString writeAttachmentToTemp(const AttachmentData &part)` (empty string and an
+  `errorOccurred` on failure) holding the folder creation and file writing now inline in `openAttachment()`;
+  `openAttachment()` calls it. No behaviour change.
+- verify: builds, all tests pass; manual: opening an attachment still works exactly as before (the user's T290
+  covers the real run; here `ctest` and a build are enough).
+- notes:
+
+### T282 — `MailController::previewAttachment(index)`
+- status: todo
+- depends on: T278, T279, T281
+- files: src/app/mailcontroller.h, src/app/mailcontroller.cpp
+- output: `Q_INVOKABLE QVariantMap previewAttachment(int index)` for the open message: `{name, mimeType, size,
+  kind, fileUrl, text, truncated}`. Writes the file with the T281 helper (not for `kind` text, which needs only
+  `text`; but still for save/open later, so always write). A risky attachment, a bad index or no open message
+  returns an empty map (the caller keeps the warning dialog). `size` is the decoded byte count.
+- verify: builds; `ctest`; the map is exercised through the window in T284–T289 (MailController has no unit
+  test seam).
+- notes:
+
+### T283 — `MailController::openPreviewFile()` and `savePreviewFileAs()`
+- status: todo
+- depends on: T280, T281
+- files: src/app/mailcontroller.h, src/app/mailcontroller.cpp
+- output: `Q_INVOKABLE void openPreviewFile(const QUrl &file)` (default program, same errors as
+  `openAttachment`) and `Q_INVOKABLE bool savePreviewFileAs(const QUrl &file, const QUrl &target)` (copies, mode
+  0600, like `saveAttachment`). Both refuse anything for which `isInsideFolder(file, attachmentDir)` is false,
+  and `openPreviewFile` also refuses a risky file name.
+- verify: builds; `ctest`; manual by the user in T290.
+- notes:
+
+### T284 — `AttachmentPreviewWindow.qml`: the window, header, buttons and a dev hook
+- status: todo
+- depends on: T283
+- files: src/qml/AttachmentPreviewWindow.qml, src/CMakeLists.txt, src/app/main.cpp (dev hook)
+- output: a `Kirigami.ApplicationWindow` with properties `info` (the T282 map) and an `Item` area for the view;
+  header shows name, size (`KFormat`-style, "1.2 MB") and type; toolbar buttons "Open" and "Save As…" (FileDialog,
+  default folder Downloads) call T283; Esc and Ctrl+W close; for `kind` none (and as a fallback while a view is not
+  written yet) the area shows a placeholder "No preview for this type of file" with the same two buttons.
+  Dev hook `KORRESPOND_SCREENSHOT_PREVIEW=<file>` opens it for a local file (kind by T278, text by T279) and
+  screenshots it, so T285–T288 can check their views without a mailbox.
+- verify: qmllint adds nothing; screenshot of the hook with a `.zip` file shows the placeholder and both buttons.
+- notes:
+
+### T285 — Preview: images
+- status: todo
+- depends on: T284
+- files: src/qml/AttachmentPreviewWindow.qml
+- output: for `kind` image a scrollable, pinch/wheel-zoomable `Image` (fit to window by default, buttons or keys
+  `+` `-` `0` for zoom and actual size), `asynchronous: true`, `cache: false`, and an error text when the file
+  cannot be decoded.
+- verify: screenshot with a PNG and an SVG through the hook; a broken PNG shows the error text.
+- notes:
+
+### T286 — Preview: PDF
+- status: todo
+- depends on: T284
+- parallel-safe with: T285, T287
+- files: src/qml/AttachmentPreviewWindow.qml
+- output: for `kind` pdf a `QtQuick.Pdf` `PdfMultiPageView` on a `PdfDocument` (page count in the header, zoom,
+  password-protected files show "This PDF needs a password" with Open / Save still available).
+- verify: screenshot with a multi-page PDF through the hook; no QML errors in the log
+  (`QT_FORCE_STDERR_LOGGING=1`).
+- notes:
+
+### T287 — Preview: text
+- status: todo
+- depends on: T284
+- parallel-safe with: T285, T286
+- files: src/qml/AttachmentPreviewWindow.qml
+- output: for `kind` text a read-only `TextArea` (monospace, wrap off, selectable and copyable) showing
+  `info.text`; when `info.truncated` a bar says "Only the first 1 MB is shown" with the Open / Save buttons.
+- verify: screenshot with a long text file and with a file over 1 MB through the hook.
+- notes:
+
+### T288 — Preview: audio and video (new dependency qt6-multimedia)
+- status: todo
+- depends on: T284
+- parallel-safe with: T285–T287
+- files: src/qml/AttachmentPreviewWindow.qml, src/CMakeLists.txt, packaging/arch/PKGBUILD
+- output: `Qt6::Multimedia` found and linked (also `find_package` in CMakeLists.txt), a `MediaPlayer` with play /
+  pause, a position slider and volume; `VideoOutput` for video, a cover icon for audio; playback starts paused;
+  `qt6-multimedia` added to PKGBUILD `depends`. An error (missing codec) shows its text with Open / Save.
+- verify: builds with and without the package build flags; screenshot of a short MP4 and an MP3 through the hook;
+  the playback itself is the user's in T290. Note for T248–T258: the Flatpak runtime needs QtMultimedia.
+- notes:
+
+### T289 — Clicking an attachment opens the preview window
+- status: todo
+- depends on: T282, T285, T286, T287, T288
+- files: src/qml/MessagePage.qml, src/qml/Main.qml (only if the window must be created there)
+- output: `page.openAttachment(index)` keeps the risky-file dialog; every other attachment calls
+  `MailController.previewAttachment(index)` and opens a new `AttachmentPreviewWindow` with the result (created
+  like the compose window, parent the main window, destroyed on close); an empty result shows the existing error
+  toast. The "Open with default program" path stays reachable from the window's Open button.
+- verify: qmllint adds nothing; `ctest`; manual by the user in T290.
+- notes:
+
+### T290 — Check with the user
+- status: todo
+- depends on: T289
+- output: the user sends themselves a mail with a PNG, a PDF, a .txt, an MP3 or MP4 and a .zip (Compose can attach
+  files), opens each from the message view and confirms: preview windows open, several at once, Open and Save As
+  work, the zip shows the placeholder, a script file still gets the warning dialog.
+- verify: user confirmation; failures become new tasks.
+- notes:
+
+### T291 — Docs and global verify
+- status: todo
+- depends on: T290
+- files: README.md
+- output: README feature line ("attachment preview: images, PDF, text, audio and video") and
+  `qt6-multimedia` in the Arch package list and the CMake package table; global verify passes.
+- verify: global verify.
+- notes:
+
 ## Execution Loop
 
 Execute the plan as a loop. Each iteration handles one task in a fresh context, then ends.

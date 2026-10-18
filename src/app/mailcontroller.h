@@ -357,6 +357,12 @@ public:
     // openAttachment writes it to a private temp folder (removed when the app quits) and opens it with
     // the default application; a risky one (executable, script, ...) is not opened: attachmentBlocked.
     Q_INVOKABLE void openAttachment(int index);
+    // What the preview window needs for attachment `index` of the open message, so it does not depend
+    // on which message is open later: {name, mimeType, size, kind, fileUrl, text, truncated}. kind is
+    // "image", "pdf", "text", "audio", "video" or "none"; text (up to 1 MB) only for kind "text". The
+    // file is written to the private temp folder (fileUrl). An empty map for a risky file (it keeps
+    // the warning dialog), a bad index, no open message or a failed write (errorOccurred).
+    Q_INVOKABLE QVariantMap previewAttachment(int index);
     // Writes it to the local file `target` (mode 0600); false, with errorOccurred, on failure.
     Q_INVOKABLE bool saveAttachment(int index, const QUrl &target);
     // True if opening it could run code (by file suffix, declared or detected type).

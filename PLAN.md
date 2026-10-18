@@ -6178,7 +6178,7 @@ Approach: thread ids are computed in the engine and stored, the list model group
   `m_attachmentDir->path()` (T283's guard argument).
 
 ### T282 — `MailController::previewAttachment(index)`
-- status: todo
+- status: done
 - depends on: T278, T279, T281
 - files: src/app/mailcontroller.h, src/app/mailcontroller.cpp
 - output: `Q_INVOKABLE QVariantMap previewAttachment(int index)` for the open message: `{name, mimeType, size,
@@ -6187,7 +6187,10 @@ Approach: thread ids are computed in the engine and stored, the list model group
   returns an empty map (the caller keeps the warning dialog). `size` is the decoded byte count.
 - verify: builds; `ctest`; the map is exercised through the window in T284–T289 (MailController has no unit
   test seam).
-- notes:
+- notes: `Q_INVOKABLE QVariantMap previewAttachment(int)` returns `{name, mimeType, size, kind, fileUrl (a
+  QUrl), text, truncated}`; the file is always written (the window's Open / Save use it), `text` is filled for
+  kind "text" only. Empty map for a risky file, a bad index, no open message or a failed write. No unit test
+  (no controller seam); it is used by the window from T284 on, and by the dev hook's own path there.
 
 ### T283 — `MailController::openPreviewFile()` and `savePreviewFileAs()`
 - status: todo

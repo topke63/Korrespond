@@ -6,6 +6,7 @@
 #include "accountlistmodel.h"
 #include "accountsession.h"
 #include "appsettings.h"
+#include "attachmentpreview.h"
 #include "contactstore.h"
 #include "contactsync.h"
 #include "conversationmodel.h"
@@ -3524,6 +3525,41 @@ void MailController::openAttachment(int index)
     if (!QDesktopServices::openUrl(QUrl::fromLocalFile(path))) {
         Q_EMIT errorOccurred(i18n("No program is set up to open this file."));
     }
+}
+
+QVariantMap MailController::previewAttachment(int index)
+{
+    if (!m_openMessage || index < 0) {
+        return {};
+    }
+    const QList<AttachmentData> &parts = attachmentList();
+    if (index >= parts.size()) {
+        return {};
+    }
+    const AttachmentData &part = parts.at(index);
+    if (isRiskyAttachment(part)) {
+        return {};
+    }
+    const QString path = writeAttachmentToTemp(part);
+    if (path.isEmpty()) {
+        return {}; // errorOccurred was emitted
+    }
+    const AttachmentPreview::Kind kind = AttachmentPreview::kindFor(part.name, part.mimeType);
+    QVariantMap info;
+    info[u"name"_s] = part.name;
+    info[u"mimeType"_s] = part.mimeType;
+    info[u"size"_s] = part.data.size();
+    info[u"kind"_s] = AttachmentPreview::kindName(kind);
+    info[u"fileUrl"_s] = QUrl::fromLocalFile(path);
+    if (kind == AttachmentPreview::Kind::Text) {
+        const AttachmentPreview::TextPreview preview = AttachmentPreview::textFor(part.data);
+        info[u"text"_s] = preview.text;
+        info[u"truncated"_s] = preview.truncated;
+    } else {
+        info[u"text"_s] = QString();
+        info[u"truncated"_s] = false;
+    }
+    return info;
 }
 
 bool MailController::saveAttachment(int index, const QUrl &target)

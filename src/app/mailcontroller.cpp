@@ -32,6 +32,7 @@
 #include <QFileInfo>
 #include <QGuiApplication>
 #include <QMetaEnum>
+#include <QMimeDatabase>
 #include <QPalette>
 #include <QSaveFile>
 #include <QStandardPaths>
@@ -3560,6 +3561,53 @@ QVariantMap MailController::previewAttachment(int index)
         info[u"truncated"_s] = false;
     }
     return info;
+}
+
+// The content of a file the controller wrote itself, as the part it came from; null when `fileUrl` is
+// not such a file.
+std::optional<AttachmentData> MailController::previewFile(const QUrl &fileUrl) const
+{
+    if (!m_attachmentDir || !m_attachmentDir->isValid() || !fileUrl.isLocalFile()
+        || !AttachmentPreview::isInsideFolder(fileUrl.toLocalFile(), m_attachmentDir->path())) {
+        return std::nullopt;
+    }
+    QFile file(fileUrl.toLocalFile());
+    if (!file.open(QIODevice::ReadOnly)) {
+        return std::nullopt;
+    }
+    AttachmentData part;
+    part.name = QFileInfo(file).fileName();
+    part.mimeType = QMimeDatabase().mimeTypeForFile(QFileInfo(file)).name();
+    part.data = file.read(OutgoingMessage::MaxAttachmentBytes + 1);
+    return part;
+}
+
+void MailController::openPreviewFile(const QUrl &fileUrl)
+{
+    const std::optional<AttachmentData> part = previewFile(fileUrl);
+    if (!part) {
+        return;
+    }
+    if (isRiskyAttachment(*part)) {
+        Q_EMIT attachmentBlocked(part->name);
+        return;
+    }
+    if (!QDesktopServices::openUrl(fileUrl)) {
+        Q_EMIT errorOccurred(i18n("No program is set up to open this file."));
+    }
+}
+
+bool MailController::savePreviewFileAs(const QUrl &fileUrl, const QUrl &target)
+{
+    const std::optional<AttachmentData> part = previewFile(fileUrl);
+    if (!part || !target.isLocalFile() || target.toLocalFile().isEmpty()) {
+        return false;
+    }
+    if (!writeOwnerOnly(target.toLocalFile(), part->data)) {
+        Q_EMIT errorOccurred(i18n("Could not save the attachment to %1.", QFileInfo(target.toLocalFile()).fileName()));
+        return false;
+    }
+    return true;
 }
 
 bool MailController::saveAttachment(int index, const QUrl &target)

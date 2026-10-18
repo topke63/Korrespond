@@ -6193,7 +6193,7 @@ Approach: thread ids are computed in the engine and stored, the list model group
   (no controller seam); it is used by the window from T284 on, and by the dev hook's own path there.
 
 ### T283 — `MailController::openPreviewFile()` and `savePreviewFileAs()`
-- status: todo
+- status: done
 - depends on: T280, T281
 - files: src/app/mailcontroller.h, src/app/mailcontroller.cpp
 - output: `Q_INVOKABLE void openPreviewFile(const QUrl &file)` (default program, same errors as
@@ -6201,7 +6201,12 @@ Approach: thread ids are computed in the engine and stored, the list model group
   0600, like `saveAttachment`). Both refuse anything for which `isInsideFolder(file, attachmentDir)` is false,
   and `openPreviewFile` also refuses a risky file name.
 - verify: builds; `ctest`; manual by the user in T290.
-- notes:
+- notes: `openPreviewFile(QUrl)` and `savePreviewFileAs(QUrl file, QUrl target)` in MailController, both through a
+  private `previewFile(QUrl)` that returns the file as an `AttachmentData` only when it is a regular file inside
+  `m_attachmentDir` (`isInsideFolder`), with its MIME type taken from the file by `QMimeDatabase`.
+  `openPreviewFile` also runs `isRiskyAttachment` on it and emits `attachmentBlocked(name)` when risky.
+  Save uses `writeOwnerOnly` (mode 0600) like `saveAttachment`. No unit test (no controller seam); the guard
+  itself is tested in T280. Window use: T284.
 
 ### T284 — `AttachmentPreviewWindow.qml`: the window, header, buttons and a dev hook
 - status: todo

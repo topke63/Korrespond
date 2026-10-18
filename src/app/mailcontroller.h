@@ -365,6 +365,11 @@ public:
     Q_INVOKABLE QVariantMap previewAttachment(int index);
     // Writes it to the local file `target` (mode 0600); false, with errorOccurred, on failure.
     Q_INVOKABLE bool saveAttachment(int index, const QUrl &target);
+    // For the preview window: the file `fileUrl` from previewAttachment(), opened with the default
+    // program / copied to `target` (mode 0600). Both refuse a file that is not in the private
+    // attachment folder, and openPreviewFile also a risky one (attachmentBlocked). errorOccurred on failure.
+    Q_INVOKABLE void openPreviewFile(const QUrl &fileUrl);
+    Q_INVOKABLE bool savePreviewFileAs(const QUrl &fileUrl, const QUrl &target);
     // True if opening it could run code (by file suffix, declared or detected type).
     Q_INVOKABLE bool attachmentIsRisky(int index);
     // The safe file name of attachment `index` (as in messageAttachments, but without paths or control
@@ -677,6 +682,8 @@ private:
     const QList<AttachmentData> &attachmentList() const;
     // The attachment as a file in the private temp folder; empty (after errorOccurred) on failure.
     QString writeAttachmentToTemp(const AttachmentData &part);
+    // A file of the private attachment folder read back as an attachment part; nullopt for any other file.
+    std::optional<AttachmentData> previewFile(const QUrl &fileUrl) const;
     StorageSettings m_storage;
     qint64 m_storageUsedBytes = 0;
     bool m_syncing = false;

@@ -192,6 +192,13 @@ ecm_add_test(
     LINK_LIBRARIES korrespond_models Qt6::Test
 )
 
+# Test for AttachmentPreview
+ecm_add_test(
+    attachmentpreviewtest.cpp
+    TEST_NAME attachmentpreviewtest
+    LINK_LIBRARIES korrespond_engine Qt6::Test
+)
+
 # Test for NewMailTracker
 ecm_add_test(
     newmailtrackertest.cpp

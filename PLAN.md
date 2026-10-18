@@ -6118,7 +6118,7 @@ Approach: thread ids are computed in the engine and stored, the list model group
 - **Open questions**: none.
 
 ### T278 — `AttachmentPreview::kindFor()`: what kind of preview a file gets
-- status: todo
+- status: done
 - depends on: none
 - files: src/engine/attachmentpreview.h, src/engine/attachmentpreview.cpp (+ CMake entry), autotests/attachmentpreviewtest.cpp
 - output: `AttachmentPreview::Kind` enum {Image, Pdf, Text, Audio, Video, None} and
@@ -6129,7 +6129,10 @@ Approach: thread ids are computed in the engine and stored, the list model group
   business (the caller checks `isRiskyAttachment` first).
 - verify: `ctest -R attachmentpreview`: table of (name, type) → kind, including a wrong declared type with a
   right suffix, upper-case suffix, `image/svg+xml`, and unknown → None.
-- notes:
+- notes: `src/engine/attachmentpreview.{h,cpp}`, namespace `AttachmentPreview`: `Kind` {Image, Pdf, Text,
+  Audio, Video, None}, `kindFor(fileName, mimeType)` (type first, suffix when the type gives nothing; a
+  specific type beats a wrong suffix), `kindName(Kind)`. HTML and scripts are shown as *text* only; svg as an
+  image (QtQuick's Image runs no script). T279 and T280 add their functions to the same files and test.
 
 ### T279 — `AttachmentPreview::textFor()`: safe text from bytes
 - status: todo

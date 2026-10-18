@@ -6135,7 +6135,7 @@ Approach: thread ids are computed in the engine and stored, the list model group
   image (QtQuick's Image runs no script). T279 and T280 add their functions to the same files and test.
 
 ### T279 — `AttachmentPreview::textFor()`: safe text from bytes
-- status: todo
+- status: done
 - depends on: T278
 - files: src/engine/attachmentpreview.h, src/engine/attachmentpreview.cpp, autotests/attachmentpreviewtest.cpp
 - output: `struct TextPreview { QString text; bool truncated; }` and `TextPreview textFor(const QByteArray &data,
@@ -6144,7 +6144,9 @@ Approach: thread ids are computed in the engine and stored, the list model group
   except tab and newline into U+FFFD, line ends as \n.
 - verify: test cases: valid UTF-8 with a multi-byte character exactly at the cut; Latin-1 bytes; CRLF;
   NUL bytes; a file over the limit sets `truncated`; empty input.
-- notes:
+- notes: `AttachmentPreview::textFor(data, maxBytes = 1 MiB)` returns `TextPreview{text, truncated}` as planned;
+  BOM dropped, UTF-8 else Latin-1, CRLF and lone CR become \n, control characters (and DEL) become U+FFFD,
+  tab and newline kept. The cut backs up to the first byte of a partly cut UTF-8 character.
 
 ### T280 — `AttachmentPreview::isInsideFolder()`: path guard
 - status: todo

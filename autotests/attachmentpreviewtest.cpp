@@ -51,6 +51,58 @@ private Q_SLOTS:
         QCOMPARE(AttachmentPreview::kindFor(name, mime), kind);
     }
 
+    void testTextUtf8AndBom()
+    {
+        const auto result = AttachmentPreview::textFor(
+            "\xEF\xBB\xBF"
+            "Zdravo \xC4\x8D\xC4\x87\xC5\xA1");
+        QVERIFY(!result.truncated);
+        QCOMPARE(result.text, QString::fromUtf8("Zdravo \xC4\x8D\xC4\x87\xC5\xA1"));
+    }
+
+    void testTextFallsBackToLatin1()
+    {
+        // 0xE9 alone is not valid UTF-8.
+        const auto result = AttachmentPreview::textFor("caf\xE9");
+        QCOMPARE(result.text, QString::fromUtf8("caf\xC3\xA9"));
+    }
+
+    void testTextLineEndsAndControlCharacters()
+    {
+        const auto result = AttachmentPreview::textFor(QByteArray("a\r\nb\rc\td\0e\x01", 11));
+        QCOMPARE(result.text, u"a\nb\nc\td\uFFFDe\uFFFD"_s);
+    }
+
+    void testTextTruncatesOnACharacterBoundary()
+    {
+        // "aaa" + e-acute (2 bytes) + "b": cutting after 4 bytes would split the e-acute.
+        const QByteArray data =
+            "aaa\xC3\xA9"
+            "b";
+        auto result = AttachmentPreview::textFor(data, 4);
+        QVERIFY(result.truncated);
+        QCOMPARE(result.text, u"aaa"_s);
+        result = AttachmentPreview::textFor(data, 5);
+        QVERIFY(result.truncated);
+        QCOMPARE(result.text, QString::fromUtf8("aaa\xC3\xA9"));
+        // A four-byte character (emoji) cut in the middle.
+        result = AttachmentPreview::textFor("a\xF0\x9F\x91\x8D", 3);
+        QCOMPARE(result.text, u"a"_s);
+        // Not over the limit: nothing is cut.
+        result = AttachmentPreview::textFor(data, 6);
+        QVERIFY(!result.truncated);
+        QCOMPARE(result.text,
+                 QString::fromUtf8("aaa\xC3\xA9"
+                                   "b"));
+    }
+
+    void testTextEmpty()
+    {
+        const auto result = AttachmentPreview::textFor(QByteArray());
+        QVERIFY(result.text.isEmpty());
+        QVERIFY(!result.truncated);
+    }
+
     void testKindName()
     {
         QCOMPARE(AttachmentPreview::kindName(Kind::Image), u"image"_s);

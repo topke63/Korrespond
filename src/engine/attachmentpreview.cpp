@@ -4,6 +4,7 @@
 #include "attachmentpreview.h"
 
 #include <QSet>
+#include <QStringDecoder>
 #include <QStringList>
 
 using namespace Qt::StringLiterals;
@@ -101,4 +102,46 @@ QString AttachmentPreview::kindName(Kind kind)
         break;
     }
     return u"none"_s;
+}
+
+AttachmentPreview::TextPreview AttachmentPreview::textFor(const QByteArray &data, qsizetype maxBytes)
+{
+    TextPreview result;
+    QByteArray bytes = data;
+    if (bytes.startsWith("\xEF\xBB\xBF")) {
+        bytes.remove(0, 3);
+    }
+    if (bytes.size() > maxBytes) {
+        result.truncated = true;
+        bytes.truncate(maxBytes);
+        // Do not leave half of a multi-byte UTF-8 character at the end: back up to its first byte.
+        qsizetype end = bytes.size();
+        qsizetype start = end;
+        while (start > 0 && end - start < 4 && (static_cast<unsigned char>(bytes.at(start - 1)) & 0xC0) == 0x80) {
+            --start;
+        }
+        if (start > 0) {
+            const unsigned char lead = static_cast<unsigned char>(bytes.at(start - 1));
+            const qsizetype need = lead >= 0xF0 ? 4 : lead >= 0xE0 ? 3 : lead >= 0xC0 ? 2 : 1;
+            if (need > 1 && end - (start - 1) < need) {
+                bytes.truncate(start - 1);
+            }
+        }
+    }
+    QStringDecoder utf8(QStringDecoder::Utf8, QStringDecoder::Flag::Stateless);
+    QString text = utf8.decode(bytes);
+    if (utf8.hasError()) {
+        text = QString::fromLatin1(bytes);
+    }
+    text.replace(u"\r\n"_s, u"\n"_s);
+    text.replace(u'\r', u'\n');
+    for (QChar &c : text) {
+        if (c.unicode() < 0x20 && c != u'\n' && c != u'\t') {
+            c = QChar::ReplacementCharacter;
+        } else if (c.unicode() == 0x7F) {
+            c = QChar::ReplacementCharacter;
+        }
+    }
+    result.text = text;
+    return result;
 }

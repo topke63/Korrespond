@@ -6149,7 +6149,7 @@ Approach: thread ids are computed in the engine and stored, the list model group
   tab and newline kept. The cut backs up to the first byte of a partly cut UTF-8 character.
 
 ### T280 — `AttachmentPreview::isInsideFolder()`: path guard
-- status: todo
+- status: done
 - depends on: none
 - parallel-safe with: T278, T279
 - files: src/engine/attachmentpreview.h, src/engine/attachmentpreview.cpp, autotests/attachmentpreviewtest.cpp
@@ -6157,7 +6157,10 @@ Approach: thread ids are computed in the engine and stored, the list model group
   an existing file lies under the canonical folder (so `..` and symlinks cannot leave it). It guards T283.
 - verify: test with a temp folder: a file inside, a `..` escape, a symlink pointing out, a missing file, the
   folder itself, a sibling with the same prefix (`/tmp/a` vs `/tmp/ab/x`).
-- notes:
+- notes: `AttachmentPreview::isInsideFolder(path, folder)`: canonical paths on both sides, existing regular
+  file only, compared with a trailing "/" so `/a` does not match `/ab/x`. Tested with `..`, a symlink out,
+  a sibling with the same prefix, a missing file, the folder itself and empty arguments. T283 must call it
+  with the controller's `m_attachmentDir->path()`.
 
 ### T281 — `MailController`: one helper writes an attachment to the private temp folder
 - status: todo

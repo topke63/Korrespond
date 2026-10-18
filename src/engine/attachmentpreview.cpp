@@ -3,6 +3,8 @@
 
 #include "attachmentpreview.h"
 
+#include <QDir>
+#include <QFileInfo>
 #include <QSet>
 #include <QStringDecoder>
 #include <QStringList>
@@ -144,4 +146,20 @@ AttachmentPreview::TextPreview AttachmentPreview::textFor(const QByteArray &data
     }
     result.text = text;
     return result;
+}
+
+bool AttachmentPreview::isInsideFolder(const QString &path, const QString &folder)
+{
+    if (path.isEmpty() || folder.isEmpty()) {
+        return false;
+    }
+    const QFileInfo file(path);
+    const QString canonicalFile = file.canonicalFilePath(); // empty when it does not exist
+    const QString canonicalFolder = QDir(folder).canonicalPath();
+    if (canonicalFile.isEmpty() || canonicalFolder.isEmpty() || !file.isFile()) {
+        return false;
+    }
+    // With the separator, "/tmp/ab/x" is not inside "/tmp/a".
+    const QString prefix = canonicalFolder.endsWith(u'/') ? canonicalFolder : canonicalFolder + u'/';
+    return canonicalFile.startsWith(prefix);
 }

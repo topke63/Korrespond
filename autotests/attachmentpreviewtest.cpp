@@ -1,6 +1,9 @@
 // SPDX-FileCopyrightText: 2026 topke <topke63@gmail.com>
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+#include <QDir>
+#include <QFile>
+#include <QTemporaryDir>
 #include <QTest>
 
 #include "attachmentpreview.h"
@@ -101,6 +104,42 @@ private Q_SLOTS:
         const auto result = AttachmentPreview::textFor(QByteArray());
         QVERIFY(result.text.isEmpty());
         QVERIFY(!result.truncated);
+    }
+
+    void testIsInsideFolder()
+    {
+        QTemporaryDir root;
+        QVERIFY(root.isValid());
+        QDir dir(root.path());
+        QVERIFY(dir.mkpath(u"a/sub"_s));
+        QVERIFY(dir.mkpath(u"ab"_s));
+        const auto touch = [&dir](const QString &relative) {
+            QFile file(dir.filePath(relative));
+            Q_ASSERT(file.open(QIODevice::WriteOnly));
+            file.write("x");
+            return file.fileName();
+        };
+        const QString inside = touch(u"a/sub/file.txt"_s);
+        const QString sibling = touch(u"ab/file.txt"_s);
+        const QString outside = touch(u"outside.txt"_s);
+        const QString folder = dir.filePath(u"a"_s);
+
+        QVERIFY(AttachmentPreview::isInsideFolder(inside, folder));
+        QVERIFY(AttachmentPreview::isInsideFolder(inside, folder + u"/"_s)); // trailing slash
+        // ".." out of the folder, and a folder with the same prefix.
+        QVERIFY(!AttachmentPreview::isInsideFolder(folder + u"/sub/../../outside.txt"_s, folder));
+        QVERIFY(!AttachmentPreview::isInsideFolder(sibling, folder));
+        QVERIFY(!AttachmentPreview::isInsideFolder(outside, folder));
+        // A ".." that stays inside is fine.
+        QVERIFY(AttachmentPreview::isInsideFolder(folder + u"/sub/../sub/file.txt"_s, folder));
+        // A symbolic link inside that points out.
+        QVERIFY(QFile::link(outside, folder + u"/link.txt"_s));
+        QVERIFY(!AttachmentPreview::isInsideFolder(folder + u"/link.txt"_s, folder));
+        // Missing file, the folder itself, empty arguments.
+        QVERIFY(!AttachmentPreview::isInsideFolder(folder + u"/nothing.txt"_s, folder));
+        QVERIFY(!AttachmentPreview::isInsideFolder(folder, folder));
+        QVERIFY(!AttachmentPreview::isInsideFolder(QString(), folder));
+        QVERIFY(!AttachmentPreview::isInsideFolder(inside, QString()));
     }
 
     void testKindName()

@@ -35,4 +35,9 @@ struct TextPreview {
 // decoded as UTF-8 (a BOM is dropped) or, when the bytes are not valid UTF-8, as Latin-1. Control
 // characters other than tab and newline (NUL included) become U+FFFD; line ends are \n.
 TextPreview textFor(const QByteArray &data, qsizetype maxBytes = 1024 * 1024);
+
+// True only when `path` is an existing file below `folder`, after resolving ".." and symbolic
+// links on both. The preview window may open or save only files that the controller wrote to its
+// private attachment folder; this keeps a crafted path from reaching anything else.
+bool isInsideFolder(const QString &path, const QString &folder);
 }

@@ -669,6 +669,8 @@ private:
     int m_attachmentCount = 0;
     mutable std::optional<QList<AttachmentData>> m_attachmentCache; // decoded parts of m_openMessage, built on first use
     const QList<AttachmentData> &attachmentList() const;
+    // The attachment as a file in the private temp folder; empty (after errorOccurred) on failure.
+    QString writeAttachmentToTemp(const AttachmentData &part);
     StorageSettings m_storage;
     qint64 m_storageUsedBytes = 0;
     bool m_syncing = false;

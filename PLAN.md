@@ -6163,7 +6163,7 @@ Approach: thread ids are computed in the engine and stored, the list model group
   with the controller's `m_attachmentDir->path()`.
 
 ### T281 — `MailController`: one helper writes an attachment to the private temp folder
-- status: todo
+- status: done
 - depends on: none
 - files: src/app/mailcontroller.h, src/app/mailcontroller.cpp
 - inputs: `openAttachment()` (about line 3480 of mailcontroller.cpp), `m_attachmentDir`, `m_attachmentCount`, `writeOwnerOnly()`
@@ -6172,7 +6172,10 @@ Approach: thread ids are computed in the engine and stored, the list model group
   `openAttachment()` calls it. No behaviour change.
 - verify: builds, all tests pass; manual: opening an attachment still works exactly as before (the user's T290
   covers the real run; here `ctest` and a build are enough).
-- notes:
+- notes: private `QString MailController::writeAttachmentToTemp(const AttachmentData &)` now holds the temp
+  folder creation and `writeOwnerOnly` call; `openAttachment()` calls it, same errors, same messages. All 32
+  tests pass; the on-screen open path is covered by the user's T290. The temp folder is
+  `m_attachmentDir->path()` (T283's guard argument).
 
 ### T282 — `MailController::previewAttachment(index)`
 - status: todo

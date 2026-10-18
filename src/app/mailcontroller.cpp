@@ -3477,6 +3477,32 @@ QString MailController::attachmentFileName(int index) const
     return index < parts.size() ? parts.at(index).name : QString();
 }
 
+// Writes the attachment to its own subfolder of the private temp folder (mode 0700, removed at exit),
+// so equal names never overwrite each other. Returns the path; an empty string, after errorOccurred,
+// when something failed.
+QString MailController::writeAttachmentToTemp(const AttachmentData &part)
+{
+    if (!m_attachmentDir) {
+        m_attachmentDir = std::make_unique<QTemporaryDir>(QDir::tempPath() + u"/korrespond-"_s + QString::number(QCoreApplication::applicationPid())
+                                                          + u"-XXXXXX"_s); // mode 0700
+    }
+    if (!m_attachmentDir->isValid()) {
+        Q_EMIT errorOccurred(i18n("Could not create a temporary folder for the attachment."));
+        return {};
+    }
+    const QString folder = m_attachmentDir->filePath(QString::number(++m_attachmentCount));
+    if (!QDir().mkdir(folder) || !QFile::setPermissions(folder, QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner)) {
+        Q_EMIT errorOccurred(i18n("Could not create a temporary folder for the attachment."));
+        return {};
+    }
+    const QString path = folder + u'/' + part.name;
+    if (!writeOwnerOnly(path, part.data)) {
+        Q_EMIT errorOccurred(i18n("Could not write the attachment to a temporary file."));
+        return {};
+    }
+    return path;
+}
+
 void MailController::openAttachment(int index)
 {
     if (!m_openMessage || index < 0) {
@@ -3491,24 +3517,9 @@ void MailController::openAttachment(int index)
         Q_EMIT attachmentBlocked(part.name);
         return;
     }
-    if (!m_attachmentDir) {
-        m_attachmentDir = std::make_unique<QTemporaryDir>(QDir::tempPath() + u"/korrespond-"_s + QString::number(QCoreApplication::applicationPid())
-                                                          + u"-XXXXXX"_s); // mode 0700
-    }
-    if (!m_attachmentDir->isValid()) {
-        Q_EMIT errorOccurred(i18n("Could not create a temporary folder for the attachment."));
-        return;
-    }
-    // Its own subfolder, so equal names never overwrite each other.
-    const QString folder = m_attachmentDir->filePath(QString::number(++m_attachmentCount));
-    if (!QDir().mkdir(folder) || !QFile::setPermissions(folder, QFileDevice::ReadOwner | QFileDevice::WriteOwner | QFileDevice::ExeOwner)) {
-        Q_EMIT errorOccurred(i18n("Could not create a temporary folder for the attachment."));
-        return;
-    }
-    const QString path = folder + u'/' + part.name;
-    if (!writeOwnerOnly(path, part.data)) {
-        Q_EMIT errorOccurred(i18n("Could not write the attachment to a temporary file."));
-        return;
+    const QString path = writeAttachmentToTemp(part);
+    if (path.isEmpty()) {
+        return; // errorOccurred was emitted
     }
     if (!QDesktopServices::openUrl(QUrl::fromLocalFile(path))) {
         Q_EMIT errorOccurred(i18n("No program is set up to open this file."));

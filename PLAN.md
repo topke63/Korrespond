@@ -6244,7 +6244,7 @@ Approach: thread ids are computed in the engine and stored, the list model group
   truncated PNG (error text). SVG is rasterised once at its own size, so zooming in an SVG gets soft.
 
 ### T286 — Preview: PDF
-- status: todo
+- status: done
 - depends on: T284
 - parallel-safe with: T285, T287
 - files: src/qml/AttachmentPreviewWindow.qml
@@ -6252,7 +6252,13 @@ Approach: thread ids are computed in the engine and stored, the list model group
   password-protected files show "This PDF needs a password" with Open / Save still available).
 - verify: screenshot with a multi-page PDF through the hook; no QML errors in the log
   (`QT_FORCE_STDERR_LOGGING=1`).
-- notes:
+- notes: `pdfView` Component (`import QtQuick.Pdf`; `PdfDocument` + `PdfMultiPageView`), Loader line extended
+  with `win.kind === "pdf" ? pdfView`. Floating bar: "Page N of M", zoom in/out, fit width; own `fit()`
+  sizes the widest page to the window (`scaleToWidth` left the page wider than the window). A password-protected or
+  damaged file shows a message; there is no password entry (Open / Save As stay in the header). Checked with a
+  3-page hand-made PDF (screenshot: page 1 fitted, centred, "Page 1 of 3"); no QML errors. Not seen: the password
+  and error placeholders (no sample file), multi-page scrolling by hand. A horizontal scroll bar shows even when
+  the page fits; left as is. `QtQuick.Pdf` comes with qt6-webengine (already a dependency).
 
 ### T287 — Preview: text
 - status: todo

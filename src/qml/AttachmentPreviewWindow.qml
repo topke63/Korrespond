@@ -8,6 +8,7 @@ import QtCore
 import QtQuick.Controls as QQC2
 import QtQuick.Dialogs
 import QtQuick.Layouts
+import QtQuick.Pdf
 import org.kde.ki18n
 import org.kde.kirigami as Kirigami
 import Korrespond
@@ -99,7 +100,7 @@ Kirigami.ApplicationWindow {
         // The view for the kind; the others are added by their own tasks, and every kind without a
         // view (or none at all) falls back to the placeholder.
         contentItem: Loader {
-            sourceComponent: win.kind === "image" ? imageView : placeholder
+            sourceComponent: win.kind === "image" ? imageView : win.kind === "pdf" ? pdfView : placeholder
         }
     }
 
@@ -242,6 +243,128 @@ Kirigami.ApplicationWindow {
                         onClicked: {
                             viewer.zoom = 1;
                             viewer.fit = false;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // PDF: all pages one below the other; the page count and zoom are in a floating bar. A file
+    // that needs a password, or cannot be read, says so (Open and Save As stay in the header).
+    Component {
+        id: pdfView
+
+        Item {
+            id: viewer
+
+            property bool passwordNeeded: false
+
+            PdfDocument {
+                id: pdf
+
+                source: win.info.fileUrl
+                onPasswordRequired: viewer.passwordNeeded = true
+            }
+
+            PdfMultiPageView {
+                id: pages
+
+                anchors.fill: parent
+                document: pdf
+                visible: pdf.status === PdfDocument.Ready
+                // Fit the width of the window until the user zooms.
+                onWidthChanged: if (viewer.fitWidth) viewer.fit()
+            }
+
+            property bool fitWidth: true
+
+            // The widest page fits the window, with room for the scroll bar and the page margins.
+            function fit(): void {
+                if (pdf.status !== PdfDocument.Ready || pdf.pageCount === 0 || pages.width <= 0) {
+                    return;
+                }
+                let widest = 1;
+                for (let i = 0; i < pdf.pageCount; ++i) {
+                    widest = Math.max(widest, pdf.pagePointSize(i).width);
+                }
+                pages.renderScale = Math.max(0.2, (pages.width - Kirigami.Units.gridUnit * 3) / widest);
+            }
+
+            Connections {
+                target: pdf
+
+                function onStatusChanged() {
+                    if (viewer.fitWidth) {
+                        viewer.fit();
+                    }
+                }
+            }
+
+            QQC2.BusyIndicator {
+                anchors.centerIn: parent
+                running: pdf.status === PdfDocument.Loading
+                visible: running
+            }
+
+            Kirigami.PlaceholderMessage {
+                anchors.centerIn: parent
+                width: parent.width - Kirigami.Units.gridUnit * 4
+                visible: pdf.status === PdfDocument.Error || viewer.passwordNeeded
+                text: viewer.passwordNeeded ? KI18n.i18nc("@info", "This PDF needs a password") : KI18n.i18nc("@info", "This PDF cannot be shown")
+                explanation: viewer.passwordNeeded ? KI18n.i18nc("@info", "Use Open to view it in another program, or Save As to keep a copy.")
+                                                   : KI18n.i18nc("@info", "The file may be damaged. Use Open or Save As.")
+                icon.name: viewer.passwordNeeded ? "dialog-password" : "image-missing"
+            }
+
+            QQC2.Pane {
+                anchors.bottom: parent.bottom
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.bottomMargin: Kirigami.Units.largeSpacing
+                visible: pdf.status === PdfDocument.Ready
+                padding: Kirigami.Units.smallSpacing
+                Kirigami.Theme.colorSet: Kirigami.Theme.View
+                background: Rectangle {
+                    color: Kirigami.Theme.backgroundColor
+                    opacity: 0.9
+                    radius: Kirigami.Units.cornerRadius
+                    border.color: Kirigami.Theme.disabledTextColor
+                    border.width: 1
+                }
+
+                RowLayout {
+                    spacing: Kirigami.Units.smallSpacing
+
+                    QQC2.Label {
+                        Layout.leftMargin: Kirigami.Units.smallSpacing
+                        text: KI18n.i18ncp("@info page counter, %1 is the current page", "Page %1 of %2", "Page %1 of %2", pages.currentPage + 1, pdf.pageCount)
+                    }
+                    QQC2.ToolButton {
+                        icon.name: "zoom-out"
+                        display: QQC2.AbstractButton.IconOnly
+                        text: KI18n.i18nc("@action:button", "Zoom Out")
+                        onClicked: {
+                            viewer.fitWidth = false;
+                            pages.renderScale = Math.max(0.2, pages.renderScale / 1.25);
+                        }
+                    }
+                    QQC2.ToolButton {
+                        icon.name: "zoom-in"
+                        display: QQC2.AbstractButton.IconOnly
+                        text: KI18n.i18nc("@action:button", "Zoom In")
+                        onClicked: {
+                            viewer.fitWidth = false;
+                            pages.renderScale = Math.min(8, pages.renderScale * 1.25);
+                        }
+                    }
+                    QQC2.ToolButton {
+                        icon.name: "zoom-fit-width"
+                        display: QQC2.AbstractButton.IconOnly
+                        text: KI18n.i18nc("@action:button", "Fit Width")
+                        checked: viewer.fitWidth
+                        onClicked: {
+                            viewer.fitWidth = true;
+                            viewer.fit();
                         }
                     }
                 }

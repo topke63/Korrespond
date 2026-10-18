@@ -6261,14 +6261,17 @@ Approach: thread ids are computed in the engine and stored, the list model group
   the page fits; left as is. `QtQuick.Pdf` comes with qt6-webengine (already a dependency).
 
 ### T287 — Preview: text
-- status: todo
+- status: done
 - depends on: T284
 - parallel-safe with: T285, T286
 - files: src/qml/AttachmentPreviewWindow.qml
 - output: for `kind` text a read-only `TextArea` (monospace, wrap off, selectable and copyable) showing
   `info.text`; when `info.truncated` a bar says "Only the first 1 MB is shown" with the Open / Save buttons.
 - verify: screenshot with a long text file and with a file over 1 MB through the hook.
-- notes:
+- notes: `textView` Component (read-only monospace `TextArea` in a `ScrollView`, no wrap, selectable, plain text
+  so `<&>` shows literally) and a `Kirigami.InlineMessage` "Only the first 1 MB of this file is shown…" when
+  `info.truncated`. Checked by screenshots: a 9 KiB text file with accented characters and a 2.1 MiB log (the
+  message shows, view opens at once). Loader line now has `win.kind === "text" ? textView`.
 
 ### T288 — Preview: audio and video (new dependency qt6-multimedia)
 - status: todo

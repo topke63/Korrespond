@@ -100,7 +100,7 @@ Kirigami.ApplicationWindow {
         // The view for the kind; the others are added by their own tasks, and every kind without a
         // view (or none at all) falls back to the placeholder.
         contentItem: Loader {
-            sourceComponent: win.kind === "image" ? imageView : win.kind === "pdf" ? pdfView : placeholder
+            sourceComponent: win.kind === "image" ? imageView : win.kind === "pdf" ? pdfView : win.kind === "text" ? textView : placeholder
         }
     }
 
@@ -367,6 +367,40 @@ Kirigami.ApplicationWindow {
                             viewer.fit();
                         }
                     }
+                }
+            }
+        }
+    }
+
+    // Plain text, code, CSV, logs: read-only, monospace, selectable. The window got at most the first
+    // 1 MB (info.truncated says whether there was more).
+    Component {
+        id: textView
+
+        ColumnLayout {
+            spacing: 0
+
+            Kirigami.InlineMessage {
+                Layout.fillWidth: true
+                visible: win.info.truncated ?? false
+                type: Kirigami.MessageType.Information
+                text: KI18n.i18nc("@info", "Only the first 1 MB of this file is shown. Use Open or Save As for the whole file.")
+            }
+
+            QQC2.ScrollView {
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+
+                QQC2.TextArea {
+                    readOnly: true
+                    selectByMouse: true
+                    wrapMode: TextEdit.NoWrap
+                    textFormat: TextEdit.PlainText
+                    font: Kirigami.Theme.fixedWidthFont
+                    text: win.info.text ?? ""
+                    leftPadding: Kirigami.Units.gridUnit
+                    topPadding: Kirigami.Units.largeSpacing
+                    background: null
                 }
             }
         }

@@ -99,7 +99,153 @@ Kirigami.ApplicationWindow {
         // The view for the kind; the others are added by their own tasks, and every kind without a
         // view (or none at all) falls back to the placeholder.
         contentItem: Loader {
-            sourceComponent: placeholder
+            sourceComponent: win.kind === "image" ? imageView : placeholder
+        }
+    }
+
+    // Images: fit to the window by default; + / - / 0 (or the buttons, or Ctrl+wheel) zoom, 1 shows
+    // actual size.
+    Component {
+        id: imageView
+
+        Item {
+            id: viewer
+
+            property bool fit: true
+            property real zoom: 1
+            readonly property real fitZoom: image.implicitWidth > 0 && image.implicitHeight > 0
+                ? Math.min(flick.width / image.implicitWidth, flick.height / image.implicitHeight, 1) : 1
+            readonly property real shown: fit ? fitZoom : zoom
+
+            function zoomBy(factor: real): void {
+                zoom = Math.max(0.05, Math.min(16, shown * factor));
+                fit = false;
+            }
+
+            Flickable {
+                id: flick
+
+                anchors.fill: parent
+                clip: true
+                contentWidth: Math.max(width, image.width)
+                contentHeight: Math.max(height, image.height)
+                boundsBehavior: Flickable.StopAtBounds
+                QQC2.ScrollBar.vertical: QQC2.ScrollBar {}
+                QQC2.ScrollBar.horizontal: QQC2.ScrollBar {}
+
+                Image {
+                    id: image
+
+                    x: Math.max(0, (flick.width - width) / 2)
+                    y: Math.max(0, (flick.height - height) / 2)
+                    width: implicitWidth * viewer.shown
+                    height: implicitHeight * viewer.shown
+                    source: win.info.fileUrl
+                    asynchronous: true
+                    cache: false
+                    smooth: true
+                    mipmap: true
+                    visible: status === Image.Ready
+                }
+
+                WheelHandler {
+                    acceptedModifiers: Qt.ControlModifier
+                    onWheel: event => viewer.zoomBy(event.angleDelta.y > 0 ? 1.15 : 1 / 1.15)
+                }
+            }
+
+            QQC2.BusyIndicator {
+                anchors.centerIn: parent
+                running: image.status === Image.Loading
+                visible: running
+            }
+
+            Kirigami.PlaceholderMessage {
+                anchors.centerIn: parent
+                width: parent.width - Kirigami.Units.gridUnit * 4
+                visible: image.status === Image.Error
+                text: KI18n.i18nc("@info", "This image cannot be shown")
+                explanation: KI18n.i18nc("@info", "The file may be damaged or in a format that is not supported. Use Open or Save As.")
+                icon.name: "image-missing"
+            }
+
+            Shortcut {
+                sequence: "+"
+                onActivated: viewer.zoomBy(1.25)
+            }
+            Shortcut {
+                sequence: "="
+                onActivated: viewer.zoomBy(1.25)
+            }
+            Shortcut {
+                sequence: "-"
+                onActivated: viewer.zoomBy(0.8)
+            }
+            Shortcut {
+                sequence: "0"
+                onActivated: viewer.fit = true
+            }
+            Shortcut {
+                sequence: "1"
+                onActivated: {
+                    viewer.zoom = 1;
+                    viewer.fit = false;
+                }
+            }
+
+            QQC2.Pane {
+                anchors.bottom: parent.bottom
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.bottomMargin: Kirigami.Units.largeSpacing
+                visible: image.status === Image.Ready
+                padding: Kirigami.Units.smallSpacing
+                Kirigami.Theme.colorSet: Kirigami.Theme.View
+                background: Rectangle {
+                    color: Kirigami.Theme.backgroundColor
+                    opacity: 0.9
+                    radius: Kirigami.Units.cornerRadius
+                    border.color: Kirigami.Theme.disabledTextColor
+                    border.width: 1
+                }
+
+                RowLayout {
+                    spacing: Kirigami.Units.smallSpacing
+
+                    QQC2.ToolButton {
+                        icon.name: "zoom-out"
+                        display: QQC2.AbstractButton.IconOnly
+                        text: KI18n.i18nc("@action:button", "Zoom Out")
+                        onClicked: viewer.zoomBy(0.8)
+                    }
+                    QQC2.Label {
+                        Layout.minimumWidth: Kirigami.Units.gridUnit * 3
+                        horizontalAlignment: Text.AlignHCenter
+                        text: Math.round(viewer.shown * 100) + " %"
+                    }
+                    QQC2.ToolButton {
+                        icon.name: "zoom-in"
+                        display: QQC2.AbstractButton.IconOnly
+                        text: KI18n.i18nc("@action:button", "Zoom In")
+                        onClicked: viewer.zoomBy(1.25)
+                    }
+                    QQC2.ToolButton {
+                        icon.name: "zoom-fit-best"
+                        display: QQC2.AbstractButton.IconOnly
+                        text: KI18n.i18nc("@action:button", "Fit to Window")
+                        checked: viewer.fit
+                        onClicked: viewer.fit = true
+                    }
+                    QQC2.ToolButton {
+                        icon.name: "zoom-original"
+                        display: QQC2.AbstractButton.IconOnly
+                        text: KI18n.i18nc("@action:button", "Actual Size")
+                        onClicked: {
+                            viewer.zoom = 1;
+                            viewer.fit = false;
+                        }
+                    }
+                }
+            }
         }
     }
 

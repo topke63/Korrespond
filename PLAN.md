@@ -6230,14 +6230,19 @@ Approach: thread ids are computed in the engine and stored, the list model group
   the controller's temp folder): expected.
 
 ### T285 — Preview: images
-- status: todo
+- status: done
 - depends on: T284
 - files: src/qml/AttachmentPreviewWindow.qml
 - output: for `kind` image a scrollable, pinch/wheel-zoomable `Image` (fit to window by default, buttons or keys
   `+` `-` `0` for zoom and actual size), `asynchronous: true`, `cache: false`, and an error text when the file
   cannot be decoded.
 - verify: screenshot with a PNG and an SVG through the hook; a broken PNG shows the error text.
-- notes:
+- notes: `imageView` Component in AttachmentPreviewWindow.qml; the Loader line is now
+  `sourceComponent: win.kind === "image" ? imageView : placeholder` (T286–T288 extend it). Fit by default (never
+  above 100 %), zoom with + / = / - / 0 (fit) / 1 (actual size), Ctrl+wheel, and a floating toolbar; a damaged
+  file shows "This image cannot be shown". Checked by screenshots of a PNG (88 % fit), an SVG (100 %) and a
+  truncated PNG (error text). Gotcha: the hook writes `<name>.png` when the file name is already `.png`
+  (use different output names). SVG is rasterised once at its own size, so zooming in an SVG gets soft.
 
 ### T286 — Preview: PDF
 - status: todo

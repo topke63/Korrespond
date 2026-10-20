@@ -84,6 +84,11 @@ public:
         Flagged
     };
 
+    // Keep-alive: sends a harmless command (CAPABILITY) on the open, logged-in session so that a
+    // connection the server has dropped is noticed now and not at the next click. Does nothing without
+    // such a session: it never connects or logs in. Success is silent; a dead connection ends the
+    // session like any failed job (sessionLost() and errorOccurred()).
+    void probe();
     void listFolders();
     // Fetches headers of the newest `limit` messages in `folder` that match `filter`.
     void fetchHeaders(const QString &folder, int limit, HeaderFilter filter = AllMessages);

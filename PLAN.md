@@ -6366,7 +6366,7 @@ Approach: thread ids are computed in the engine and stored, the list model group
 - **Open questions**: none.
 
 ### T293 — `ImapClient::probe()`: a harmless command on the open connection
-- status: todo
+- status: done
 - depends on: none
 - files: src/engine/imapclient.h, src/engine/imapclient.cpp
 - inputs: `ImapClient::session()`, `checkJob()`, `fail()`, `hasSession()`; KIMAP has no NOOP job, so use
@@ -6376,7 +6376,12 @@ Approach: thread ids are computed in the engine and stored, the list model group
   `checkJob()` / `fail()` path (so `sessionLost` and `errorOccurred` follow exactly as for any other job);
   does nothing in network-blocked (demo) mode.
 - verify: builds; `ctest`; the effect is checked in T295 from the log (ImapClient has no unit test without a server).
-- notes:
+- notes: `void ImapClient::probe()` queues a `KIMAP::CapabilitiesJob` on the current session, only when the
+  session state is Authenticated or Selected (never connects, never logs in, nothing in demo mode); its result
+  goes through `checkJob()`, so a dead connection ends the session with the usual `sessionLost` +
+  `errorOccurred(connectionLostText)` and a non-connection error is reported but keeps the session. Session
+  timeout is 60 s, so a half-open connection is noticed within a minute. No unit test (ImapClient needs a server);
+  T295 checks it in the journal.
 
 ### T294 — `KeepAlivePolicy` and a timer in `MailController`
 - status: todo

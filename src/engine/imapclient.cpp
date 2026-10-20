@@ -444,6 +444,23 @@ void ImapClient::queueSelect(const QString &folder, quint64 generation)
     select->start();
 }
 
+void ImapClient::probe()
+{
+    if (m_networkBlocked || !m_session) {
+        return;
+    }
+    const KIMAP::Session::State state = m_session->state();
+    if (state != KIMAP::Session::Authenticated && state != KIMAP::Session::Selected) {
+        return; // not logged in (yet), or already gone
+    }
+    const quint64 generation = m_generation;
+    auto job = new KIMAP::CapabilitiesJob(m_session);
+    connect(job, &KJob::result, this, [this, generation](KJob *finished) {
+        checkJob(finished, generation);
+    });
+    job->start();
+}
+
 void ImapClient::listFolders()
 {
     if (networkBlocked(__func__)) {

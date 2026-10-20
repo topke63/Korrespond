@@ -6347,6 +6347,62 @@ Approach: thread ids are computed in the engine and stored, the list model group
   and the About page shows 0.2.0 (screenshot hook).
 - notes:
 
+## h. Keep the main connection alive
+
+- **Goal**: the first click after a pause no longer shows "Connection to the server was lost" and a red chip;
+  the app notices a dead main IMAP connection by itself and reconnects quietly.
+- **Why (seen 2026-10-20, packaged build r378)**: the journal of the running app shows, at 22:02:47 and
+  22:12:36, `Connection error: Connection to the server was lost.` for Gmail and at 22:11:59 the same for
+  Yahoo (`Connection error: topke63@yahoo.com: …`), each with a toast, and the Yahoo chip stayed red until the
+  next check. The quiet-reconnect path in `MailController::onSessionError` only applies when nothing is in
+  flight (`!hadJobs && m_requests == 0`); a click (opening a message, an attachment) that finds the connection
+  dead takes the loud path. With push (IDLE) active, the periodic check of the main connection runs only every
+  15 minutes (`IdlePolicy::pollInterval`), long enough for Google and Yahoo to drop it. After a fatal error
+  `ImapClient` opens a new session on the next request, which is why the next click worked.
+- **Decision (user, 2026-10-20)**: keep-alive plus quiet reconnect; no retry of the user's click (not planned).
+- **Out of scope**: replaying a failed user action after reconnecting; the push (IDLE) connection, which has its
+  own reconnect policy (`IdlePolicy`); changing the 15-minute inbox poll.
+- **Global verify**: as milestone 2.
+- **Open questions**: none.
+
+### T293 — `ImapClient::probe()`: a harmless command on the open connection
+- status: todo
+- depends on: none
+- files: src/engine/imapclient.h, src/engine/imapclient.cpp
+- inputs: `ImapClient::session()`, `checkJob()`, `fail()`, `hasSession()`; KIMAP has no NOOP job, so use
+  `KIMAP::CapabilitiesJob` (a CAPABILITY command, which changes nothing on the server)
+- output: `void probe()`: does nothing without a session (it must never open one or log in); otherwise queues a
+  CapabilitiesJob on the current session whose success is silent and whose failure goes through the existing
+  `checkJob()` / `fail()` path (so `sessionLost` and `errorOccurred` follow exactly as for any other job);
+  does nothing in network-blocked (demo) mode.
+- verify: builds; `ctest`; the effect is checked in T295 from the log (ImapClient has no unit test without a server).
+- notes:
+
+### T294 — `KeepAlivePolicy` and a timer in `MailController`
+- status: todo
+- depends on: T293
+- files: src/engine/keepalivepolicy.h, src/engine/keepalivepolicy.cpp (+ CMake entry), autotests/keepalivepolicytest.cpp, src/app/mailcontroller.cpp, src/app/mailcontroller.h
+- output: pure `KeepAlivePolicy::shouldProbe(connected, busy, sinceLastActivity)` (true when the session is
+  connected, nothing is in flight and its last traffic was at least 4 minutes ago) with a test; in
+  `MailController` a repeating timer (every minute) that calls `session->client()->probe()` for each session
+  the policy picks. "Busy" = `m_requests > 0`, jobs in `m_inflight`, a running check (`m_checking`), a pending
+  account setup, or a Needs-sign-in session. Last traffic is the time of the last started request, check or
+  probe of that session; keep it in a small `std::map`. A failed probe takes the existing quiet-reconnect path
+  of `onSessionError` (nothing is in flight, so it is quiet).
+- verify: `ctest -R keepalivepolicy`; the build; the live effect in T295. If the controller part passes about
+  100 lines, split the timer into its own task.
+- notes:
+
+### T295 — Check on the real accounts
+- status: todo
+- depends on: T294
+- output: the user (or the loop, from the journal) runs the new build for an hour with both accounts: no
+  `Connection error:` line and no toast while the app is only sitting there; a click after ten idle minutes
+  opens the message at once. `journalctl --user _PID=<pid>` shows the quiet reconnects
+  ("Idle connection of … was closed by the server; reconnecting") instead of errors. Failures become new tasks.
+- verify: user confirmation plus the journal.
+- notes:
+
 ## Execution Loop
 
 Execute the plan as a loop. Each iteration handles one task in a fresh context, then ends.

@@ -519,6 +519,8 @@ private:
     void checkInbox(AccountSession *session);
     void retryQueuedCheck(AccountSession *session);
     void checkForNewMail();
+    // Probes the idle main connections (KeepAlivePolicy), so a dead one is replaced before a click finds it.
+    void keepConnectionsAlive();
     // Push mail (IDLE): the watcher's change signal starts a check after a short pause.
     void startPush(AccountSession *session);
     void onPushChanged(AccountSession *session);
@@ -640,6 +642,7 @@ private:
     std::set<AccountSession *> m_checkQueued; // a push change arrived during a check: one more after it
     std::map<AccountSession *, QTimer *> m_pushDebounce; // single-shot, children of their session
     std::map<AccountSession *, std::chrono::steady_clock::time_point> m_lastCheck;
+    std::map<AccountSession *, std::chrono::steady_clock::time_point> m_lastProbe; // keep-alive, see KeepAlivePolicy
     std::set<QString> m_moving; // moveKey()s of messages the server is moving
     QSet<QString> m_batchKeys; // the moves of one conversation still on their way
     bool m_batchWasOpen = false; // the open message was one of the batch

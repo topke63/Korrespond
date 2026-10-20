@@ -14,6 +14,7 @@
 #include "folderutils.h"
 #include "idlepolicy.h"
 #include "imapclient.h"
+#include "keepalivepolicy.h"
 #include "messagecomposer.h"
 #include "messagelistmodel.h"
 #include "messagerenderer.h"
@@ -2087,6 +2088,7 @@ void MailController::checkForNewMail()
     if (m_demo) {
         return;
     }
+    keepConnectionsAlive();
     const auto now = std::chrono::steady_clock::now();
     for (AccountSession *session : std::as_const(m_sessions)) {
         const auto last = m_lastCheck.find(session);
@@ -2094,6 +2096,29 @@ void MailController::checkForNewMail()
             continue;
         }
         checkInbox(session);
+    }
+}
+
+void MailController::keepConnectionsAlive()
+{
+    const auto now = std::chrono::steady_clock::now();
+    for (AccountSession *session : std::as_const(m_sessions)) {
+        // The last traffic is the later of the last check and the last probe; a session seen for the
+        // first time counts from now.
+        auto &probed = m_lastProbe[session];
+        if (probed == std::chrono::steady_clock::time_point()) {
+            probed = now;
+        }
+        const auto checked = m_lastCheck.find(session);
+        const auto lastTraffic = checked != m_lastCheck.end() ? std::max(checked->second, probed) : probed;
+        const auto queued = m_inflight.find(session);
+        const bool busy = m_requests > 0 || m_checking.contains(session) || m_awaitingFolders.contains(session) || session == m_pending
+            || session->needsSignIn() || (queued != m_inflight.end() && !queued->second.empty());
+        const bool connected = session->connectionState() == AccountSession::Connected && session->client()->hasSession();
+        if (KeepAlivePolicy::shouldProbe(connected, busy, now - lastTraffic)) {
+            probed = now;
+            session->client()->probe();
+        }
     }
 }
 

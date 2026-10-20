@@ -199,6 +199,13 @@ ecm_add_test(
     LINK_LIBRARIES korrespond_engine Qt6::Test
 )
 
+# Test for KeepAlivePolicy
+ecm_add_test(
+    keepalivepolicytest.cpp
+    TEST_NAME keepalivepolicytest
+    LINK_LIBRARIES korrespond_engine Qt6::Test
+)
+
 # Test for NewMailTracker
 ecm_add_test(
     newmailtrackertest.cpp

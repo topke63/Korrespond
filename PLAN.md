@@ -6384,7 +6384,7 @@ Approach: thread ids are computed in the engine and stored, the list model group
   T295 checks it in the journal.
 
 ### T294 — `KeepAlivePolicy` and a timer in `MailController`
-- status: todo
+- status: done
 - depends on: T293
 - files: src/engine/keepalivepolicy.h, src/engine/keepalivepolicy.cpp (+ CMake entry), autotests/keepalivepolicytest.cpp, src/app/mailcontroller.cpp, src/app/mailcontroller.h
 - output: pure `KeepAlivePolicy::shouldProbe(connected, busy, sinceLastActivity)` (true when the session is
@@ -6396,7 +6396,15 @@ Approach: thread ids are computed in the engine and stored, the list model group
   of `onSessionError` (nothing is in flight, so it is quiet).
 - verify: `ctest -R keepalivepolicy`; the build; the live effect in T295. If the controller part passes about
   100 lines, split the timer into its own task.
-- notes:
+- notes: `src/engine/keepalivepolicy.h` is header-only (constexpr `probeInterval()` = 4 min and
+  `shouldProbe(connected, busy, idleFor)`), tested by `autotests/keepalivepolicytest.cpp`. No new timer: the
+  existing 30-second `m_checkTimer` (`checkForNewMail()`) calls the new `MailController::keepConnectionsAlive()`,
+  which probes a session that is Connected with an open client session and not busy (`m_requests > 0`, a check
+  or folder wait in flight, `m_pending`, needs sign-in, queued header jobs), when the later of its last
+  inbox check (`m_lastCheck`) and last probe (`m_lastProbe`, new) is 4 minutes old; a session seen for the
+  first time counts from that moment. All 33 tests pass. Worst case a click lands before the next probe notices
+  a dead connection (up to 4.5 minutes of silence): that still shows the old error; retrying clicks is out of
+  scope. T295 checks it live.
 
 ### T295 — Check on the real accounts
 - status: todo

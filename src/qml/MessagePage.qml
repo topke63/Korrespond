@@ -34,9 +34,22 @@ Kirigami.Page {
     onBodyBackgroundChanged: Qt.callLater(syncBodyColours)
     onBodyLinkChanged: Qt.callLater(syncBodyColours)
 
+    // What the view currently shows. currentMessageChanged also fires for flag and read-state updates,
+    // and reloading identical HTML makes the pane flash.
+    property string shownHtml
+    property bool shownImages: false
+    property bool hasShown: false
+
     function showHtml() {
+        const images = MailController.remoteImagesLoaded;
+        if (hasShown && html === shownHtml && images === shownImages) {
+            return;
+        }
+        hasShown = true;
+        shownHtml = html;
+        shownImages = images;
         // Set right before loading so the setting and the HTML always belong to the same message.
-        view.settings.autoLoadImages = MailController.remoteImagesLoaded;
+        view.settings.autoLoadImages = images;
         view.loadHtml(html, "about:blank");
     }
 

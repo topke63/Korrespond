@@ -500,6 +500,7 @@ private:
     [[nodiscard]] QString currentEmail() const; // empty without a session
     AccountSession *createSession(const Account &account);
     // Stops a session and deletes it; with deleteStore also its local copies and folder.
+    void dropInflight(AccountSession *session);
     void discardSession(AccountSession *session, bool deleteStore);
     [[nodiscard]] bool isKnown(const AccountSession *session) const;
     // Reads the password of every saved password account from the keychain and connects them.

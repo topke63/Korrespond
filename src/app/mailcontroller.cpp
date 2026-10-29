@@ -303,10 +303,24 @@ bool MailController::isKnown(const AccountSession *session) const
     return session == m_pending || m_sessions.contains(const_cast<AccountSession *>(session));
 }
 
+// Forgets the listings asked of a session whose answers will not come. Each one counted as a request.
+void MailController::dropInflight(AccountSession *session)
+{
+    const auto queued = m_inflight.find(session);
+    if (queued == m_inflight.end()) {
+        return;
+    }
+    const auto count = queued->second.size();
+    m_inflight.erase(queued);
+    for (size_t i = 0; i < count; ++i) {
+        endRequest();
+    }
+}
+
 void MailController::discardSession(AccountSession *session, bool deleteStore)
 {
     m_sharedRequested.erase(session);
-    m_inflight.erase(session);
+    dropInflight(session);
     m_idleReconnect.erase(session);
     m_quietReconnect.erase(session);
     m_quietKeychain.erase(session);
@@ -2978,7 +2992,7 @@ void MailController::onSecretRead(const QString &key, const QString &password, c
         return;
     }
     // The connection is set up again, which drops the old session's jobs without a reply.
-    m_inflight.erase(*it);
+    dropInflight(*it);
     // For a Google account the keychain holds the refresh token, not a password.
     if ((*it)->account().authMethod == "oauth"_L1) {
         (*it)->connectWithRefreshToken(password);
@@ -2994,7 +3008,7 @@ void MailController::onSessionError(AccountSession *session, const QString &mess
     }
     const auto queued = m_inflight.find(session);
     const bool hadJobs = queued != m_inflight.end() && !queued->second.empty();
-    m_inflight.erase(session); // its queued answers will not come
+    dropInflight(session); // its queued answers will not come
     // A server that closes an idle connection (Yahoo and Google do) is not an error: nobody asked
     // for anything, so connect again quietly. That includes a background check that found the
     // connection dead. A second loss within a minute only turns the chip red, with no toast.

@@ -549,26 +549,14 @@ void ImapClient::fetchHeaders(const QString &folder, int limit, HeaderFilter fil
     if (networkBlocked(__func__)) {
         return;
     }
-    // The headers of the newest `limit` messages, found by UID SEARCH. Message numbers are not used:
-    // another folder's SELECT can slip in between ours and the FETCH, and a number from one folder
-    // is "Bad sequence" in another.
-    session();
-    const quint64 generation = m_generation;
-    auto searchUids = [this, folder, limit, filter, generation] {
-        queueSelect(folder, generation); // a no-op unless another folder was selected meanwhile
-        auto search = new KIMAP::SearchJob(m_session);
+    if (filter != AllMessages) {
+        // UID SEARCH in the folder, then the headers of the newest `limit` matches.
+        session();
+        const quint64 generation = m_generation;
+        queueSelect(folder, generation);
+        auto search = new KIMAP::SearchJob(session());
         search->setUidBased(true);
-        switch (filter) {
-        case Unread:
-            search->setTerm(KIMAP::Term(KIMAP::Term::Seen).setNegated(true));
-            break;
-        case Flagged:
-            search->setTerm(KIMAP::Term(KIMAP::Term::Flagged));
-            break;
-        default:
-            search->setTerm(KIMAP::Term(KIMAP::Term::SequenceNumber, KIMAP::ImapSet(1, 0))); // 1:* is every message
-            break;
-        }
+        search->setTerm(filter == Unread ? KIMAP::Term(KIMAP::Term::Seen).setNegated(true) : KIMAP::Term(KIMAP::Term::Flagged));
         connect(search, &KJob::result, this, [this, folder, limit, filter, generation](KJob *job) {
             if (!checkJob(job, generation)) {
                 return;
@@ -581,35 +569,34 @@ void ImapClient::fetchHeaders(const QString &folder, int limit, HeaderFilter fil
             std::sort(uids.begin(), uids.end());
             KIMAP::ImapSet set;
             set.add(QList<qint64>(uids.cend() - std::min<qsizetype>(limit, uids.size()), uids.cend()));
-            queueSelect(folder, generation);
             fetchSummaries(set, true, folder, filter, generation);
         });
         search->start();
-    };
-
-    if (filter != AllMessages) {
-        queueSelect(folder, generation);
-        searchUids();
         return;
     }
 
-    // SELECT is issued directly here because we need its message count: servers reject SEARCH 1:*
-    // in an empty folder, so an empty folder is answered without asking.
+    // SELECT is issued directly here because we need its message count.
     auto select = new KIMAP::SelectJob(session());
+    const quint64 generation = m_generation;
     select->setMailBox(folder);
     m_selectedFolder = folder;
-    connect(select, &KJob::result, this, [this, folder, filter, generation, searchUids](KJob *job) {
+
+    connect(select, &KJob::result, this, [this, folder, limit, filter, generation](KJob *job) {
         if (!checkJob(job, generation)) {
             if (generation == m_generation) {
                 m_selectedFolder.clear();
             }
             return;
         }
-        if (static_cast<KIMAP::SelectJob *>(job)->messageCount() <= 0 || !m_session) {
+        const int count = static_cast<KIMAP::SelectJob *>(job)->messageCount();
+        if (count <= 0 || !m_session) {
             Q_EMIT headersFetched(folder, filter, {});
             return;
         }
-        searchUids();
+        // Message numbers are only valid in the selected folder, and another folder's SELECT may have been
+        // queued after ours ("Bad sequence" on Yahoo): select again, right before the FETCH, when it was.
+        queueSelect(folder, generation);
+        fetchSummaries(KIMAP::ImapSet(std::max(1, count - limit + 1), count), false, folder, filter, generation);
     });
     select->start();
 }
@@ -646,7 +633,6 @@ void ImapClient::search(const QString &folder, const QString &text)
         std::sort(uids.begin(), uids.end());
         KIMAP::ImapSet set;
         set.add(QList<qint64>(uids.cend() - std::min<qsizetype>(SearchLimit, uids.size()), uids.cend()));
-        queueSelect(folder, generation);
         fetchSummaries(set, true, folder, AllMessages, generation);
     });
     search->start();

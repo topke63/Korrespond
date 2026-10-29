@@ -549,41 +549,69 @@ void ImapClient::fetchHeaders(const QString &folder, int limit, HeaderFilter fil
     if (networkBlocked(__func__)) {
         return;
     }
-    // UID SEARCH in the folder, then the headers of the newest `limit` matches. Message numbers are
-    // not used: another folder's SELECT can slip in between ours and the FETCH, and a number from
-    // one folder is "Bad sequence" in another.
+    // The headers of the newest `limit` messages, found by UID SEARCH. Message numbers are not used:
+    // another folder's SELECT can slip in between ours and the FETCH, and a number from one folder
+    // is "Bad sequence" in another.
     session();
     const quint64 generation = m_generation;
-    queueSelect(folder, generation);
-    auto search = new KIMAP::SearchJob(session());
-    search->setUidBased(true);
-    switch (filter) {
-    case Unread:
-        search->setTerm(KIMAP::Term(KIMAP::Term::Seen).setNegated(true));
-        break;
-    case Flagged:
-        search->setTerm(KIMAP::Term(KIMAP::Term::Flagged));
-        break;
-    default:
-        search->setTerm(KIMAP::Term(KIMAP::Term::SequenceNumber, KIMAP::ImapSet(1, 0))); // 1:* is every message
-        break;
+    auto searchUids = [this, folder, limit, filter, generation] {
+        queueSelect(folder, generation); // a no-op unless another folder was selected meanwhile
+        auto search = new KIMAP::SearchJob(m_session);
+        search->setUidBased(true);
+        switch (filter) {
+        case Unread:
+            search->setTerm(KIMAP::Term(KIMAP::Term::Seen).setNegated(true));
+            break;
+        case Flagged:
+            search->setTerm(KIMAP::Term(KIMAP::Term::Flagged));
+            break;
+        default:
+            search->setTerm(KIMAP::Term(KIMAP::Term::SequenceNumber, KIMAP::ImapSet(1, 0))); // 1:* is every message
+            break;
+        }
+        connect(search, &KJob::result, this, [this, folder, limit, filter, generation](KJob *job) {
+            if (!checkJob(job, generation)) {
+                return;
+            }
+            QList<qint64> uids = static_cast<KIMAP::SearchJob *>(job)->results();
+            if (uids.isEmpty() || !m_session) {
+                Q_EMIT headersFetched(folder, filter, {});
+                return;
+            }
+            std::sort(uids.begin(), uids.end());
+            KIMAP::ImapSet set;
+            set.add(QList<qint64>(uids.cend() - std::min<qsizetype>(limit, uids.size()), uids.cend()));
+            queueSelect(folder, generation);
+            fetchSummaries(set, true, folder, filter, generation);
+        });
+        search->start();
+    };
+
+    if (filter != AllMessages) {
+        queueSelect(folder, generation);
+        searchUids();
+        return;
     }
-    connect(search, &KJob::result, this, [this, folder, limit, filter, generation](KJob *job) {
+
+    // SELECT is issued directly here because we need its message count: servers reject SEARCH 1:*
+    // in an empty folder, so an empty folder is answered without asking.
+    auto select = new KIMAP::SelectJob(session());
+    select->setMailBox(folder);
+    m_selectedFolder = folder;
+    connect(select, &KJob::result, this, [this, folder, filter, generation, searchUids](KJob *job) {
         if (!checkJob(job, generation)) {
+            if (generation == m_generation) {
+                m_selectedFolder.clear();
+            }
             return;
         }
-        QList<qint64> uids = static_cast<KIMAP::SearchJob *>(job)->results();
-        if (uids.isEmpty() || !m_session) {
+        if (static_cast<KIMAP::SelectJob *>(job)->messageCount() <= 0 || !m_session) {
             Q_EMIT headersFetched(folder, filter, {});
             return;
         }
-        std::sort(uids.begin(), uids.end());
-        KIMAP::ImapSet set;
-        set.add(QList<qint64>(uids.cend() - std::min<qsizetype>(limit, uids.size()), uids.cend()));
-        queueSelect(folder, generation); // a no-op unless another folder was selected meanwhile
-        fetchSummaries(set, true, folder, filter, generation);
+        searchUids();
     });
-    search->start();
+    select->start();
 }
 
 void ImapClient::search(const QString &folder, const QString &text)

@@ -975,6 +975,11 @@ bool MailController::keepInTray() const
     return m_app.keepInTray;
 }
 
+bool MailController::startMinimized() const
+{
+    return m_app.startMinimized;
+}
+
 int MailController::checkMinutes() const
 {
     return m_app.checkMinutes;
@@ -1268,6 +1273,16 @@ void MailController::saveAppSettings(bool keepInTray, int checkMinutes)
     }
     settings.save();
     m_app = settings;
+    Q_EMIT appSettingsChanged();
+}
+
+void MailController::setStartMinimized(bool enabled)
+{
+    if (enabled == m_app.startMinimized) {
+        return;
+    }
+    m_app.startMinimized = enabled;
+    m_app.save();
     Q_EMIT appSettingsChanged();
 }
 

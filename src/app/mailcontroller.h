@@ -138,6 +138,7 @@ class MailController : public QObject
     // General options (see AppSettings): hide to the tray when the window is closed, and the
     // background check interval in minutes.
     Q_PROPERTY(bool keepInTray READ keepInTray NOTIFY appSettingsChanged)
+    Q_PROPERTY(bool startMinimized READ startMinimized NOTIFY appSettingsChanged)
     Q_PROPERTY(int checkMinutes READ checkMinutes NOTIFY appSettingsChanged)
     Q_PROPERTY(bool pushEnabled READ pushEnabled NOTIFY appSettingsChanged)
     Q_PROPERTY(bool contactsEnabled READ contactsEnabled NOTIFY appSettingsChanged)
@@ -238,6 +239,7 @@ public:
     [[nodiscard]] QString lastActionText() const;
     [[nodiscard]] QDateTime lastCheckedAt() const;
     [[nodiscard]] bool keepInTray() const;
+    [[nodiscard]] bool startMinimized() const;
     [[nodiscard]] int checkMinutes() const;
     [[nodiscard]] bool pushEnabled() const;
     [[nodiscard]] bool contactsEnabled() const;
@@ -393,6 +395,7 @@ public:
     // Saves the options at once: the check timer restarts with the new interval (1–60) and
     // appSettingsChanged is emitted (the tray follows keepInTray).
     Q_INVOKABLE void saveAppSettings(bool keepInTray, int checkMinutes);
+    Q_INVOKABLE void setStartMinimized(bool enabled);
     // Push (IDLE) on or off; off stops every watcher, on starts them for the connected accounts.
     Q_INVOKABLE void setPushEnabled(bool enabled);
     // Switches contacts (suggestions, sender names, sync) on or off. Off stops the syncs and hides

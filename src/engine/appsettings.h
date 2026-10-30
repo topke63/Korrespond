@@ -21,6 +21,8 @@ struct AppSettings {
 
     // Closing the window hides it to the tray icon instead of quitting.
     bool keepInTray = false;
+    // Start with the window hidden to the tray (keepInTray on) or minimized (off).
+    bool startMinimized = false;
     // How often the accounts are checked for new mail in the background.
     int checkMinutes = 5;
     // Use IMAP IDLE (push) where the server supports it; off = poll everyone every checkMinutes.

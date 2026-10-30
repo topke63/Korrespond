@@ -364,6 +364,15 @@ int main(int argc, char *argv[])
         // "Keep running in the tray" is applied by MailController (lastWindowClosed), not here.
         tray = std::make_unique<TrayIcon>(controller, qobject_cast<QWindow *>(engine.rootObjects().constFirst()));
         notifier = std::make_unique<MailNotifier>(controller, qobject_cast<QWindow *>(engine.rootObjects().constFirst()));
+        // Start minimized: before the event loop runs, so the window never appears.
+        if (controller->startMinimized()) {
+            auto *window = qobject_cast<QWindow *>(engine.rootObjects().constFirst());
+            if (controller->keepInTray()) {
+                window->hide();
+            } else {
+                window->showMinimized();
+            }
+        }
     }
 
     // Dev only, with KORRESPOND_DEMO=1 (never any SMTP): KORRESPOND_DEMO_SEND=1 queues a fictional

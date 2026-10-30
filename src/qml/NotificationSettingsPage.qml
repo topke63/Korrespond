@@ -52,6 +52,15 @@ FormCard.FormCardPage {
             checked: MailController.keepInTray
             onToggled: MailController.saveAppSettings(checked, MailController.checkMinutes)
         }
+
+        FormCard.FormDelegateSeparator {}
+
+        FormCard.FormSwitchDelegate {
+            text: KI18n.i18nc("@option:check", "Start minimized")
+            description: KI18n.i18nc("@info", "Korrespond starts without showing its window: hidden in the tray if it keeps running there, otherwise minimized.")
+            checked: MailController.startMinimized
+            onToggled: MailController.setStartMinimized(checked)
+        }
     }
 
     FormCard.FormCard {

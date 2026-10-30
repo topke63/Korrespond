@@ -67,6 +67,7 @@ AppSettings AppSettings::load()
     const KConfigGroup group = generalGroup();
     AppSettings settings;
     settings.keepInTray = group.readEntry("KeepInTray", settings.keepInTray);
+    settings.startMinimized = group.readEntry("StartMinimized", settings.startMinimized);
     settings.checkMinutes = clampMinutes(group.readEntry("CheckMinutes", settings.checkMinutes));
     settings.pushEnabled = group.readEntry("PushEnabled", settings.pushEnabled);
     settings.sidebarWidth = clampSidebar(group.readEntry("SidebarWidth", settings.sidebarWidth));
@@ -96,6 +97,7 @@ void AppSettings::save() const
 {
     KConfigGroup group = generalGroup();
     group.writeEntry("KeepInTray", keepInTray);
+    group.writeEntry("StartMinimized", startMinimized);
     group.writeEntry("CheckMinutes", clampMinutes(checkMinutes));
     group.writeEntry("PushEnabled", pushEnabled);
     group.writeEntry("SidebarWidth", clampSidebar(sidebarWidth));
